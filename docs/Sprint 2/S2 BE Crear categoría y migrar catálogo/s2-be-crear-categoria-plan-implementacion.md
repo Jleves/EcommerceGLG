@@ -1,6 +1,6 @@
 # S2 BE — Crear categoría: plan de implementación
 
-**Estado:** tanda 1 completa; tandas 2 y 3 pendientes.
+**Estado:** tandas 1 y 2 completas; tanda 3 pendiente.
 
 **Fuente funcional:** alcance acordado para la tarjeta S2 BE — Crear categoría y `docs/modelo-inicial.md`.
 
@@ -76,7 +76,7 @@ Para el listado: `CategoryController.list()` → `CategoryServiceImpl.list()` �
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Migración y persistencia de categoría | Ninguna | Completa |
-| 2 | Servicio de alta y listado con regla de unicidad | Tanda 1 | Planificada |
+| 2 | Servicio de alta y listado con regla de unicidad | Tanda 1 | Completa |
 | 3 | API, permisos, errores y recorrido HTTP completo | Tanda 2 | Planificada |
 
 ```text
@@ -257,7 +257,27 @@ TRATAMIENTO
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (29/09/2026). Detalle en [tanda-2-resultado.md](tanda-2-resultado.md).
+
+**Cambios realizados:** DTOs, contrato e implementación del servicio, excepción específica para nombre ocupado, pruebas unitarias y carrera MySQL con dos altas simultáneas.
+
+**Diferencias respecto del plan:** ninguna funcional. La prueba de carrera usa un repositorio espiado y una consulta JDBC en la preparación para asegurar que ambas llamadas superen la comprobación de existencia antes del `saveAndFlush`.
+
+**Tests ejecutados:** `CategoryServiceTest` (3), `CategoryServiceMySqlTest` (1), `CategoryPersistenceIntegrationTest` (1), `MySqlSchemaIntegrationTests` (2), `SpringStarterApplicationTests` (1) y `UserPersistenceIntegrationTests` (1).
+
+**Tests exitosos:** 9 de 9 en la ejecución final. El servicio crea, rechaza nombres ocupados, lista vacíos y filas activas/inactivas; MySQL conserva una fila ante dos altas concurrentes y rechaza una inserción con el índice único. Pasaron las regresiones de esquema, arranque y usuarios.
+
+**Tests fallidos:** ninguno en la ejecución final. Hubo un fallo inicial de preparación de la prueba de concurrencia, documentado como `INC-002`.
+
+**Incidentes:** `INC-001` de entorno: Maven no resolvió dependencias dentro del sandbox; se reejecutó con acceso autorizado. `INC-002` de test: Mockito no pudo invocar el método abstracto real del repositorio espiado; se reemplazó esa lectura por una consulta JDBC real a MySQL.
+
+**Tests faltantes:** ninguno de los previstos para esta tanda. Traducción HTTP y permisos corresponden a la tanda 3.
+
+**Riesgos residuales:** aún no existe ruta HTTP ni validación Bean Validation del DTO; entradas inválidas no se prueban en esta tanda. El error de índice concurrente todavía no se convierte en respuesta 409 porque no hay controller/handler de categoría.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CreateCategoryRequest.java`, `CategoryResponse.java`, `CategoryService.java`, `CategoryServiceImpl.java`, `CategoryConflictException.java`, `CategoryServiceTest.java`, `CategoryServiceMySqlTest.java`, este plan y `tanda-2-resultado.md`.
 
 ## Tanda 3 — API, permisos y errores
 

@@ -1,0 +1,78 @@
+package com.ashenox.starter.catalog.category;
+
+import com.ashenox.starter.catalog.category.dto.CreateCategoryRequest;
+import com.ashenox.starter.catalog.category.model.Category;
+import com.ashenox.starter.catalog.category.repository.CategoryRepository;
+import com.ashenox.starter.catalog.category.service.CategoryConflictException;
+import com.ashenox.starter.catalog.category.service.CategoryServiceImpl;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class CategoryServiceTest {
+
+    private final CategoryRepository repository = mock(CategoryRepository.class);
+    private final CategoryServiceImpl service = new CategoryServiceImpl(repository);
+
+    @Test
+    void createsActiveCategoryWithTrimmedNameAndNormalizedKey() {
+        when(repository.saveAndFlush(any(Category.class))).thenAnswer(invocation -> {
+            Category category = invocation.getArgument(0);
+            category.setId(17L);
+            return category;
+        });
+
+        var response = service.create(new CreateCategoryRequest("  CEMENTO  ", null, "cement-icon"));
+
+        verify(repository).existsByNombreNormalizado("cemento");
+        verify(repository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(category ->
+                category.getNombre().equals("CEMENTO")
+                        && category.getNombreNormalizado().equals("cemento")
+                        && category.getDescripcion() == null
+                        && category.getIcono().equals("cement-icon")
+                        && category.isActivo()));
+        assertThat(response.id()).isEqualTo(17L);
+        assertThat(response.nombre()).isEqualTo("CEMENTO");
+        assertThat(response.descripcion()).isNull();
+        assertThat(response.icono()).isEqualTo("cement-icon");
+        assertThat(response.activo()).isTrue();
+    }
+
+    @Test
+    void rejectsExistingNameBeforeSavingRegardlessOfActiveState() {
+        for (boolean existingActive : new boolean[]{true, false}) {
+            Category existing = category(1L, "Cemento", existingActive);
+            when(repository.existsByNombreNormalizado(existing.getNombreNormalizado())).thenReturn(true);
+
+            assertThatThrownBy(() -> service.create(new CreateCategoryRequest(" cemento ", null, "icon")))
+                    .isInstanceOf(CategoryConflictException.class);
+        }
+        verify(repository, never()).saveAndFlush(any(Category.class));
+    }
+
+    @Test
+    void listsEmptyResultAndMapsRepositoryOrderIncludingInactiveCategories() {
+        when(repository.findAllByOrderByNombreAscIdAsc()).thenReturn(List.of());
+        assertThat(service.list()).isEmpty();
+
+        when(repository.findAllByOrderByNombreAscIdAsc()).thenReturn(List.of(
+                category(2L, "Arena", false), category(1L, "Cemento", true)));
+        var result = service.list();
+        assertThat(result).extracting(response -> response.nombre()).containsExactly("Arena", "Cemento");
+        assertThat(result).extracting(response -> response.activo()).containsExactly(false, true);
+        assertThat(result).extracting(response -> response.id()).containsExactly(2L, 1L);
+    }
+
+    private Category category(Long id, String nombre, boolean activo) {
+        return Category.builder().id(id).nombre(nombre).nombreNormalizado(nombre.toLowerCase())
+                .icono("icon").activo(activo).build();
+    }
+}
