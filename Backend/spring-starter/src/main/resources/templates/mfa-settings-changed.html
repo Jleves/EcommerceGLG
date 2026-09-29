@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Cambio de seguridad</title></head>
+<body>
+  <h1>Cambio en la verificación en dos pasos</h1>
+  <p th:if="${enabled}">La verificación en dos pasos por correo fue activada en tu cuenta.</p>
+  <p th:unless="${enabled}">La verificación en dos pasos por correo fue desactivada en tu cuenta.</p>
+  <p>Si no realizaste este cambio, revisá la seguridad de tu cuenta y de tu correo.</p>
+</body>
+</html>

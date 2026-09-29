@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Verificación en dos pasos</title></head>
+<body>
+  <h1>Código para desactivar la verificación en dos pasos</h1>
+  <p>Usá este código para desactivar la verificación en dos pasos en tu cuenta:</p>
+  <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px" th:text="${code}">000000</p>
+  <p>Vence el <span th:text="${expiresAt}">fecha UTC</span> (UTC). Reenviarlo no extiende el vencimiento.</p>
+  <p>No compartas este código. Si no solicitaste esta operación, ignorá este mensaje.</p>
+</body>
+</html>
