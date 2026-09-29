@@ -11,6 +11,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -46,5 +47,32 @@ class MySqlSchemaIntegrationTests {
                 where table_schema = database() and table_name = 'auth_rate_limits'
                   and index_name = 'uk_auth_rate_limits_scope_subject'
                 """, Integer.class)).isPositive();
+    }
+
+    @Test
+    void categoriesHaveUniqueNormalizedNameInMySql() {
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from flyway_schema_history where version = '5'", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from information_schema.statistics
+                where table_schema = database() and table_name = 'categories'
+                  and index_name = 'uk_categories_nombre_normalizado' and non_unique = 0
+                """, Integer.class)).isEqualTo(1);
+
+        jdbcTemplate.update("""
+                insert into categories
+                    (nombre, nombre_normalizado, icono, activo, created_at, updated_at)
+                values ('Cemento', 'cemento', 'cement', true, now(6), now(6))
+                """);
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                insert into categories
+                    (nombre, nombre_normalizado, icono, activo, created_at, updated_at)
+                values (' CEMENTO ', 'cemento', 'cement', false, now(6), now(6))
+                """))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from categories where nombre_normalizado = 'cemento'", Integer.class))
+                .isEqualTo(1);
     }
 }
