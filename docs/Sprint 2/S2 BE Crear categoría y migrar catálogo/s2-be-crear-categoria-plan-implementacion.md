@@ -1,6 +1,6 @@
 # S2 BE — Crear categoría: plan de implementación
 
-**Estado:** tandas 1 y 2 completas; tanda 3 pendiente.
+**Estado:** tandas 1, 2 y 3 completas.
 
 **Fuente funcional:** alcance acordado para la tarjeta S2 BE — Crear categoría y `docs/modelo-inicial.md`.
 
@@ -77,7 +77,7 @@ Para el listado: `CategoryController.list()` → `CategoryServiceImpl.list()` �
 | --- | --- | --- | --- |
 | 1 | Migración y persistencia de categoría | Ninguna | Completa |
 | 2 | Servicio de alta y listado con regla de unicidad | Tanda 1 | Completa |
-| 3 | API, permisos, errores y recorrido HTTP completo | Tanda 2 | Planificada |
+| 3 | API, permisos, errores y recorrido HTTP completo | Tanda 2 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3
@@ -349,7 +349,27 @@ TRATAMIENTO
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (29/09/2026). Detalle en [tanda-3-resultado.md](tanda-3-resultado.md).
+
+**Cambios realizados:** `CategoryController` expone POST/GET privados; `CreateCategoryRequest` valida obligatoriedad y límites; `GlobalExceptionHandler` traduce el conflicto de nombre a 409. Se agregaron pruebas HTTP H2 de flujo, validación, errores y permisos, y prueba MySQL de carrera HTTP.
+
+**Diferencias respecto del plan:** ninguna funcional. La nueva prueba HTTP cierra su contexto de Spring al finalizar para evitar interferencia con la regresión de CSRF de administración (`INC-002`).
+
+**Tests ejecutados:** 42 pruebas en 9 clases: `CategoryControllerTest` (4), `CategoryServiceMySqlTest` (2), `CategoryServiceTest` (3), `CategoryPersistenceIntegrationTest` (1), `MySqlSchemaIntegrationTests` (2), `AuthControllerTest` (2), `AdminUserProvisioningIntegrationTest` (12), `GlobalExceptionHandlerTest` (13) y `SecurityErrorHandlersTest` (3).
+
+**Tests exitosos:** 42/42 en la ejecución final. POST → base → GET, validación, conflicto activo/inactivo, tres roles, anonimato, CSRF, restricción de administración y carrera MySQL 201/409 con una fila.
+
+**Tests fallidos:** ninguno en la ejecución final. La primera regresión combinada tuvo diez fallos de preparación de CSRF en `AdminUserProvisioningIntegrationTest`, resueltos mediante aislamiento del contexto de la nueva clase de test.
+
+**Incidentes:** `INC-001`: `JAVA_HOME` ausente y Maven bloqueado por la red del sandbox; JDK 21 y ejecución autorizada. `INC-002`: interferencia de contexto de test sobre la emisión de cookie CSRF; `@DirtiesContext` tras `CategoryControllerTest` y regresión combinada verde.
+
+**Tests faltantes:** ninguno de los previstos para la tanda 3. Edición, lectura pública y uso por productos corresponden a otras tarjetas.
+
+**Riesgos residuales:** la causa interna exacta de la interferencia del contexto de pruebas no quedó determinada; el aislamiento elimina el fallo en la regresión combinada. El 403 de permiso se comprueba con una identidad de test sin rol permitido porque el modelo solo define tres roles, todos autorizados.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CategoryController.java`, `CreateCategoryRequest.java`, `GlobalExceptionHandler.java`, `CategoryControllerTest.java`, `CategoryServiceMySqlTest.java`, este plan y `tanda-3-resultado.md`.
 
 ## Decisiones pendientes
 

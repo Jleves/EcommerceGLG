@@ -1,5 +1,6 @@
 package com.ashenox.starter.shared.error;
 
+import com.ashenox.starter.catalog.category.service.CategoryConflictException;
 import com.ashenox.starter.security.error.InvalidCredentialsException;
 import com.ashenox.starter.security.error.InvalidTokenException;
 import com.ashenox.starter.security.error.InvalidRefreshTokenException;
@@ -30,6 +31,12 @@ public class GlobalExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final ApiErrorResponder responder;
+
+    @ExceptionHandler(CategoryConflictException.class)
+    public ResponseEntity<ApiError> handleCategoryConflict(CategoryConflictException exception,
+                                                            HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT, ApiErrorCode.RESOURCE_CONFLICT, exception.getMessage());
+    }
 
     @ExceptionHandler(com.ashenox.starter.user.service.AdminUserConflictException.class)
     public ResponseEntity<ApiError> handleAdminConflict(
