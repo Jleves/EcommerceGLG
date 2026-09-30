@@ -92,7 +92,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 1 | Tabla, mapeo y repositorio | `categories` V5 | Planificada |
 | 2 | Servicio de alta y reglas de negocio | Tanda 1 | Completa |
-| 3 | Ruta privada, errores y pruebas HTTP | Tanda 2 | Planificada |
+| 3 | Ruta privada, errores y pruebas HTTP | Tanda 2 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3
@@ -362,7 +362,27 @@ TRATAMIENTO: tarjetas de edición/listados de Sprint 2 y de variantes/catálogo 
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA
+
+**Cambios realizados:** `ProductController` expone `POST /api/catalog/products` con validación, `201` y `ProductResponse`. `SecurityConfig` autoriza explícitamente la ruta y subrutas a `SUPER_ADMIN`, `ADMIN` y `USER`, manteniendo CSRF. `GlobalExceptionHandler` traduce `ProductCategoryInactiveException` a `409 RESOURCE_CONFLICT`. Se añadió `ProductControllerTest` con recorrido HTTP y persistencia real.
+
+**Diferencias respecto del plan:** ninguna funcional. Las pruebas usaron Maven con Java 21 en Docker, como en las tandas anteriores.
+
+**Tests ejecutados:** `ProductControllerTest` (5) y regresión `CategoryControllerTest` (7), mediante MockMvc, H2, Flyway y seguridad real de la aplicación.
+
+**Tests exitosos:** 12/12, sin omisiones. Se comprobaron 201 y datos persistidos para los tres roles, estados fijados por servidor, 400 de validación y JSON malformado, 401/403 de seguridad, 404/409 de categoría sin inserción, y conservación del producto al desactivar/reactivar la categoría por HTTP. Las siete pruebas HTTP de categoría pasaron.
+
+**Tests fallidos:** ninguno.
+
+**Incidentes:** ninguno relevante.
+
+**Tests faltantes:** ninguno de los planificados para esta tanda.
+
+**Riesgos residuales:** el recorrido HTTP se probó con H2; el bloqueo concurrente y el DDL MySQL se verificaron en las tandas 1 y 2, no se repitieron aquí. Edición, lectura pública y variantes pertenecen a tarjetas posteriores.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `ProductController.java`, `SecurityConfig.java`, `GlobalExceptionHandler.java`, `ProductControllerTest.java`, este plan y `tanda-3-resultado.md`.
 
 ## Registro global de decisiones pendientes
 
