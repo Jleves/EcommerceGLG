@@ -2,8 +2,10 @@ package com.ashenox.starter.catalog.category.service;
 
 import com.ashenox.starter.catalog.category.dto.CategoryResponse;
 import com.ashenox.starter.catalog.category.dto.CreateCategoryRequest;
+import com.ashenox.starter.catalog.category.dto.UpdateCategoryRequest;
 import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
+import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,24 @@ public class CategoryServiceImpl implements CategoryService {
                 .icono(request.icono())
                 .activo(true)
                 .build();
+        return CategoryResponse.from(categoryRepository.saveAndFlush(category));
+    }
+
+    @Override
+    @Transactional
+    public CategoryResponse update(Long id, UpdateCategoryRequest request) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+        String nombre = request.nombre().strip();
+        String nombreNormalizado = nombre.toLowerCase(Locale.ROOT);
+        if (categoryRepository.existsByNombreNormalizadoAndIdNot(nombreNormalizado, id)) {
+            throw new CategoryConflictException();
+        }
+
+        category.setNombre(nombre);
+        category.setNombreNormalizado(nombreNormalizado);
+        category.setDescripcion(request.descripcion());
+        category.setIcono(request.icono());
         return CategoryResponse.from(categoryRepository.saveAndFlush(category));
     }
 

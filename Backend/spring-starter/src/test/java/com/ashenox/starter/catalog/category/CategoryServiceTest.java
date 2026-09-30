@@ -1,13 +1,16 @@
 package com.ashenox.starter.catalog.category;
 
 import com.ashenox.starter.catalog.category.dto.CreateCategoryRequest;
+import com.ashenox.starter.catalog.category.dto.UpdateCategoryRequest;
 import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.category.service.CategoryConflictException;
 import com.ashenox.starter.catalog.category.service.CategoryServiceImpl;
+import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,6 +58,44 @@ class CategoryServiceTest {
             assertThatThrownBy(() -> service.create(new CreateCategoryRequest(" cemento ", null, "icon")))
                     .isInstanceOf(CategoryConflictException.class);
         }
+        verify(repository, never()).saveAndFlush(any(Category.class));
+    }
+
+    @Test
+    void updatesOwnNameWithoutConflictAndPreservesInactiveState() {
+        Category existing = category(7L, "Cemento", false);
+        existing.setDescripcion("Anterior");
+        when(repository.findById(7L)).thenReturn(Optional.of(existing));
+        when(repository.saveAndFlush(existing)).thenReturn(existing);
+
+        var response = service.update(7L, new UpdateCategoryRequest("  CEMENTO  ", null, "new-icon"));
+
+        verify(repository).existsByNombreNormalizadoAndIdNot("cemento", 7L);
+        assertThat(response.nombre()).isEqualTo("CEMENTO");
+        assertThat(response.descripcion()).isNull();
+        assertThat(response.icono()).isEqualTo("new-icon");
+        assertThat(response.activo()).isFalse();
+        assertThat(existing.getNombreNormalizado()).isEqualTo("cemento");
+    }
+
+    @Test
+    void rejectsAnotherCategoryNameWithoutChangingTarget() {
+        Category target = category(7L, "Arena", true);
+        when(repository.findById(7L)).thenReturn(Optional.of(target));
+        when(repository.existsByNombreNormalizadoAndIdNot("cemento", 7L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(7L, new UpdateCategoryRequest("  CEMENTO ", "Nueva", "icon")))
+                .isInstanceOf(CategoryConflictException.class);
+        assertThat(target.getNombre()).isEqualTo("Arena");
+        assertThat(target.isActivo()).isTrue();
+        verify(repository, never()).saveAndFlush(any(Category.class));
+    }
+
+    @Test
+    void rejectsMissingCategoryBeforeCheckingNameOrSaving() {
+        assertThatThrownBy(() -> service.update(99L, new UpdateCategoryRequest("Cemento", null, "icon")))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).existsByNombreNormalizadoAndIdNot(any(), any());
         verify(repository, never()).saveAndFlush(any(Category.class));
     }
 

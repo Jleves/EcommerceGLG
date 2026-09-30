@@ -90,7 +90,7 @@ Las descripciones siguientes se pueden pegar en las tarjetas homónimas. Las tar
 
 ## Sprint 2 — catálogo administrable básico
 
-Conservar y refinar las tarjetas existentes `Crear categoría`, `Editar/eliminar categoría`, `Crear producto` y `Editar/eliminar producto`. Añadir una tarjeta **Marca: crear, editar y desactivar** porque el PDF compromete catálogo y filtros por marca. Criterio conjunto: migraciones Flyway y endpoints con permisos para `SUPER_ADMIN`, `ADMIN` y `USER`; formulario React; productos con nombre, categoría, descripción, precio de referencia y disponibilidad. No incluir aún fotos ni atributos particulares. Si la estimación supera la capacidad del sprint, comprometer categorías y marcas primero y mantener productos en `Refinado`.
+Conservar y refinar las tarjetas existentes `Crear categoría`, `S2 BE Editar, desactivar o reactivar categoría`, `Crear producto` y `Editar/eliminar producto`. La tarjeta de edición de categoría incluye desactivación y reactivación. Añadir una tarjeta **Marca: crear, editar y desactivar** porque el PDF compromete catálogo y filtros por marca. Criterio conjunto: migraciones Flyway y endpoints con permisos para `SUPER_ADMIN`, `ADMIN` y `USER`; formulario React; productos con nombre, categoría, descripción, precio de referencia y disponibilidad. No incluir aún fotos ni atributos particulares. Si la estimación supera la capacidad del sprint, comprometer categorías y marcas primero y mantener productos en `Refinado`.
 
 ## Sprint 3 — detalle de datos e imágenes
 
@@ -125,7 +125,7 @@ Usar esta tabla al refinar las tarjetas; una fila corresponde a la tarjeta con e
 | Tarjeta actual | Destino | Criterio de aceptación resumido |
 | --- | --- | --- |
 | Crear categoría | Sprint 2 | `SUPER_ADMIN`, `ADMIN` y `USER` crean nombre, ícono y descripción; validación y persistencia visibles. |
-| Editar/eliminar categoría | Sprint 2 | Se edita y desactiva; una categoría con productos no desaparece del historial. |
+| S2 BE Editar, desactivar o reactivar categoría | Sprint 2 | Se edita, desactiva y reactiva sin borrado físico. La categoría conserva sus productos al cambiar de estado y estos siguen activos. Una categoría inactiva no puede asignarse a productos nuevos; al reactivarla vuelve a ser elegible. |
 | Crear producto | Sprint 2 | Alta con nombre, categoría, descripción, precio y disponibilidad; solo activos se publican. |
 | Editar/eliminar producto | Sprint 2 | Cambios visibles en catálogo; la baja es desactivación sin perder referencias. |
 | Características comunes + particulares | Sprint 3 | Ficha admite atributos reutilizables y específicos con nombre, valor y unidad opcional. |
@@ -165,4 +165,3 @@ Usar esta tabla al refinar las tarjetas; una fila corresponde a la tarjeta con e
 ## Regla de terminado
 
 Cada tarjeta debe describir valor observable, permisos, estados vacíos/errores y prueba de aceptación. La funcionalidad heredada ya tiene evidencia local en GLG; solo pasa a `Terminado` cuando además se acepta en la revisión del sprint. El despliegue de destino se controla como trabajo separado.
-

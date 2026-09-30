@@ -74,5 +74,19 @@ class MySqlSchemaIntegrationTests {
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from categories where nombre_normalizado = 'cemento'", Integer.class))
                 .isEqualTo(1);
+
+        jdbcTemplate.update("""
+                insert into categories
+                    (nombre, nombre_normalizado, icono, activo, created_at, updated_at)
+                values ('Arena', 'arena', 'sand', false, now(6), now(6))
+                """);
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                update categories set nombre = 'CEMENTO', nombre_normalizado = 'cemento'
+                where nombre_normalizado = 'arena'
+                """))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(jdbcTemplate.queryForObject(
+                "select nombre_normalizado from categories where nombre = 'Arena'", String.class))
+                .isEqualTo("arena");
     }
 }
