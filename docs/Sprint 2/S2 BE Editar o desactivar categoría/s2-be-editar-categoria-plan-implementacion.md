@@ -86,7 +86,7 @@ Las dos rutas de estado siguen la misma entrada y búsqueda por ID; `CategorySer
 | --- | --- | --- | --- |
 | 1 | Edición y unicidad en servicio | Categoría existente | Completa |
 | 2 | Desactivación y reactivación en servicio | Tanda 1 | Completa |
-| 3 | Rutas HTTP, seguridad y regresión integral | Tandas 1 y 2 | Planificada |
+| 3 | Rutas HTTP, seguridad y regresión integral | Tandas 1 y 2 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3
@@ -313,7 +313,27 @@ TRATAMIENTO: cubrir en S2 BE Crear producto y repetir la prueba de conservación
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (30/09/2026). Detalle en [tanda-3-resultado.md](tanda-3-resultado.md).
+
+**Cambios realizados:** rutas `PUT /{id}`, `POST /{id}/deactivate` y `POST /{id}/reactivate` en `CategoryController`; matcher explícito de los tres roles en `SecurityConfig`; pruebas HTTP de contrato, persistencia, errores y seguridad.
+
+**Diferencias respecto del plan:** ninguna funcional. El servicio y el repositorio de tandas anteriores no requirieron cambios.
+
+**Tests ejecutados:** 30 pruebas: `CategoryControllerTest` (7), `CategoryServiceTest` (8), `CategoryPersistenceIntegrationTest` (3) y `AdminUserProvisioningIntegrationTest` (12).
+
+**Tests exitosos:** 30/30. Se comprobaron las tres rutas para cada rol, validación y errores 400/404/409, anonimato 401, CSRF y rol no permitido 403, alta/listado, persistencia del servicio y permisos de `/api/admin/users`.
+
+**Tests fallidos:** ninguno de los tests ejecutados. El intento inicial en sandbox no inició las pruebas por bloqueo de red; ver `INC-003`.
+
+**Incidentes:** `INC-003`, Maven no pudo resolver el parent POM en sandbox. La ejecución autorizada finalizó correctamente.
+
+**Tests faltantes:** alta de producto con categoría inactiva y conservación de productos relacionados; `Product` aún no existe. No pertenecen al alcance de esta tanda.
+
+**Riesgos residuales:** la aceptación final ligada a productos sigue pendiente de la tarjeta **S2 BE Crear producto**. La prueba HTTP usa H2; la unicidad bajo concurrencia se apoya en el índice MySQL ya comprobado en la tanda 1.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CategoryController`, `SecurityConfig`, `CategoryControllerTest`, este plan y `tanda-3-resultado.md`.
 
 ## Decisiones pendientes
 
@@ -326,15 +346,11 @@ Durante la ejecución, registrar como `INC-XXX` cualquier fallo relevante con ta
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY
-Sesión + CSRF → CategoryController.create/list
+IMPLEMENTADO EN ESTA TARJETA
+Sesión + CSRF + rol → CategoryController.create/list
               → CategoryServiceImpl.create/list
               → CategoryRepository → categories
-CategoryServiceImpl.update/deactivate/reactivate → CategoryRepository → categories
-  (servicios implementados en tandas 1 y 2; todavía sin rutas HTTP)
-
-PENDIENTE EN ESTA TARJETA
-Sesión + CSRF + rol → CategoryController.update/deactivate/reactivate (tanda 3)
+Sesión + CSRF + rol → CategoryController.update/deactivate/reactivate
                     → CategoryServiceImpl.update/deactivate/reactivate
                     → CategoryRepository → categories
                     → CategoryResponse / ApiError

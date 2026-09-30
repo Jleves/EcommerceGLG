@@ -123,6 +123,9 @@ public class SecurityConfig  {
                         .requestMatchers("/api/admin/**")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")
 
+                        .requestMatchers("/api/catalog/categories", "/api/catalog/categories/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
+
 
                         .requestMatchers(HttpMethod.POST, "/api/auth/mfa/login/verify",
                                 "/api/auth/mfa/login/resend", "/api/auth/mfa/cancel").permitAll()
