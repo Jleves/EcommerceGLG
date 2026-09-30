@@ -92,13 +92,19 @@ Las descripciones siguientes se pueden pegar en las tarjetas homónimas. Las tar
 
 Conservar y refinar las tarjetas existentes `Crear categoría`, `S2 BE Editar, desactivar o reactivar categoría`, `Crear producto` y `Editar/eliminar producto`. La tarjeta de edición de categoría incluye desactivación y reactivación. Añadir una tarjeta **Marca: crear, editar y desactivar** porque el PDF compromete catálogo y filtros por marca. Criterio conjunto: migraciones Flyway y endpoints con permisos para `SUPER_ADMIN`, `ADMIN` y `USER`; formulario React; productos con nombre, categoría, descripción, precio de referencia y disponibilidad. No incluir aún fotos ni atributos particulares. Si la estimación supera la capacidad del sprint, comprometer categorías y marcas primero y mantener productos en `Refinado`.
 
+**Decisión para `S2 BE Crear producto básico`:** el alta crea el producto con un precio de referencia y disponibilidad temporales, sin exigir variantes ni características. La evolución acordada está en la tarjeta separada `S3 BE Variantes de producto`; no representar colores o medidas como productos independientes para simular opciones de una misma ficha.
+
 ## Sprint 3 — detalle de datos e imágenes
 
 Mover desde el Sprint 2 actual las tarjetas `Características comunes + particulares del producto` y `Carga de múltiples fotos + selección de foto principal`. Vincularlas a la tarjeta S3/CloudFront diferida del Sprint 1. Aceptación: atributos por producto, varias imágenes, una principal y entrega pública por CloudFront sin exponer credenciales de subida.
 
+**Nueva tarjeta: `S3 BE Variantes de producto`.** Una ficha agrupa variantes distinguibles por una o más características (por ejemplo color, capacidad, diámetro y largo). Cada variante activa tiene precio de referencia y disponibilidad propios; no se admiten dos variantes del mismo producto con idéntica combinación de valores. Migrar cada producto básico existente a una variante inicial y trasladar allí su precio y disponibilidad. El contrato de catálogo expone el ID y los valores de cada variante para conservar la selección en detalle, carrito y consulta comercial. Depende de la tarjeta de características comunes y particulares.
+
 ## Sprint 4 — catálogo público
 
 Mover desde el Sprint 2 actual `Header`, `Cards de categorías`, `Footer`, `Buscar producto`, `Detalle de producto` y `Productos relacionados`. Añadir tarjetas de **filtros por categoría, marca y atributos**, **búsqueda por marca/palabra clave** y **estado de disponibilidad**, comprometidos en el PDF. Aceptación: navegación móvil, resultados o mensaje vacío, ficha detallada y datos servidos desde el catálogo administrable. `Carril de marcas` puede entrar cuando exista la página pública.
+
+**Regla para cards y detalle público:** la card muestra el precio de la variante activa y disponible más barata, sin «desde». El detalle abre con esa misma variante seleccionada. Si no hay variantes activas disponibles, ambos muestran la variante activa más barata y «No disponible»; un producto sin variantes activas no se publica. En empates de precio, seleccionar el menor ID de variante. La selección explícita de otra variante actualiza precio y disponibilidad visibles. Estas tarjetas dependen de `S3 BE Variantes de producto`.
 
 ## Sprint 5 — consulta comercial
 
@@ -126,21 +132,22 @@ Usar esta tabla al refinar las tarjetas; una fila corresponde a la tarjeta con e
 | --- | --- | --- |
 | Crear categoría | Sprint 2 | `SUPER_ADMIN`, `ADMIN` y `USER` crean nombre, ícono y descripción; validación y persistencia visibles. |
 | S2 BE Editar, desactivar o reactivar categoría | Sprint 2 | Se edita, desactiva y reactiva sin borrado físico. La categoría conserva sus productos al cambiar de estado y estos siguen activos. Una categoría inactiva no puede asignarse a productos nuevos; al reactivarla vuelve a ser elegible. |
-| Crear producto | Sprint 2 | Alta con nombre, categoría, descripción, precio y disponibilidad; solo activos se publican. |
+| Crear producto | Sprint 2 | Alta con nombre, categoría, descripción, precio y disponibilidad temporales; solo activos se publican. No requiere variantes ni características; la migración corresponde a Sprint 3. |
 | Editar/eliminar producto | Sprint 2 | Cambios visibles en catálogo; la baja es desactivación sin perder referencias. |
 | Características comunes + particulares | Sprint 3 | Ficha admite atributos reutilizables y específicos con nombre, valor y unidad opcional. |
+| S3 BE Variantes de producto | Sprint 3 | Variantes por combinación única de características, cada una con precio y disponibilidad; migración de productos básicos y selección identificable por ID. |
 | Carga de múltiples fotos + principal | Sprint 3 | Varias imágenes por producto, una principal y orden estable; se muestran por CloudFront. |
 | E3-1 Header | Sprint 4 | Logo, navegación, buscador y contador de carrito accesibles en móvil y escritorio. |
 | E3-3 Cards de categorías | Sprint 4 | Cada card muestra nombre e ícono y abre productos de esa categoría. |
 | E3-6 Footer | Sprint 4 | Logo, navegación, teléfono, email, dirección y redes con enlaces correctos. |
-| E4-1 Buscar por nombre | Sprint 4 | Resultados en cards y mensaje claro sin coincidencias; ampliar a marca/palabra clave. |
-| E4-2 Detalle de producto | Sprint 4 | Fotos, descripción, atributos, precio orientativo, disponibilidad y consulta. |
+| E4-1 Buscar por nombre | Sprint 4 | Resultados en cards con el precio de la variante inicial, sin «desde»; mensaje claro sin coincidencias y búsqueda por marca/palabra clave. |
+| E4-2 Detalle de producto | Sprint 4 | Abre con la variante de la card seleccionada; cambiar variante actualiza precio y disponibilidad, y la consulta conserva la variante elegida. |
 | E4-3 Productos relacionados | Sprint 4 | Productos activos de la misma categoría o marca; sin duplicar el producto actual. |
 | E3-4 Carril de marcas | Sprint 4 | Marcas activas enlazan a resultados filtrados. |
-| E5-1 Agregar al carrito | Sprint 5 | Sin login; producto y cantidad persisten en el navegador. |
+| E5-1 Agregar al carrito | Sprint 5 | Sin login; producto, variante seleccionada y cantidad persisten en el navegador. |
 | E5-2 Ver/editar carrito | Sprint 5 | Cambiar cantidades y quitar ítems actualiza total y contador. |
-| E5-3 Presupuesto por WhatsApp | Sprint 5 | Mensaje incluye productos y cantidades, abre el número comercial, sin pago. |
-| E5-4 Consulta de producto por WhatsApp | Sprint 5 | Desde ficha se abre mensaje con identificación del producto. |
+| E5-3 Presupuesto por WhatsApp | Sprint 5 | Mensaje incluye productos, variantes y cantidades; abre el número comercial, sin pago. |
+| E5-4 Consulta de producto por WhatsApp | Sprint 5 | Desde ficha se abre mensaje con identificación del producto y variante seleccionada. |
 | E7-1 Producto destacado/promoción | V1 posterior | Administrador marca un producto activo; aparece en el carril correspondiente. |
 | E7-2 Precio promocional con vigencia | V1 posterior | Inicio y fin controlan precio visible; vencido vuelve al precio normal. |
 | E3-2 Carril de ofertas | V1 posterior | Solo muestra promociones vigentes y productos activos. |

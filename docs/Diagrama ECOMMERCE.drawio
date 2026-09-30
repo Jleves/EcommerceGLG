@@ -1,6 +1,6 @@
 <mxfile host="Electron">
   <diagram name="Modelo V1" id="tOAnkQZ1Ov10PjZShuQs">
-    <mxGraphModel dx="4130" dy="2875" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1500" math="0" shadow="0">
+    <mxGraphModel dx="3198" dy="2325" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1500" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -19,14 +19,20 @@
         <mxCell id="categoria" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;CATEGORIA&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;id: bigint PK&lt;br&gt;nombre: string&lt;br&gt;descripcion: string&lt;br&gt;icono: string&lt;br&gt;activo: boolean&lt;/div&gt;" vertex="1">
           <mxGeometry height="205" width="220" x="-170" y="95" as="geometry" />
         </mxCell>
-        <mxCell id="producto" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;PRODUCTO&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;id: bigint PK&lt;br&gt;categoria_id: bigint FK&lt;br&gt;nombre: string&lt;br&gt;descripcion: string&lt;br&gt;precio_referencia: decimal&lt;br&gt;disponible: boolean&lt;br&gt;activo: boolean&lt;br&gt;destacado: boolean&lt;/div&gt;" vertex="1">
-          <mxGeometry height="280" width="265" x="340" y="150" as="geometry" />
+        <mxCell id="producto" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;PRODUCTO&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;id: bigint PK&lt;br&gt;categoria_id: bigint FK&lt;br&gt;nombre: string&lt;br&gt;descripcion: string&lt;br&gt;activo: boolean&lt;br&gt;destacado: boolean&lt;/div&gt;" vertex="1">
+          <mxGeometry height="240" width="265" x="340" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="variante_producto" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;VARIANTE_PRODUCTO&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;id: bigint PK&lt;br&gt;producto_id: bigint FK&lt;br&gt;sku: string (opcional)&lt;br&gt;precio_referencia: decimal&lt;br&gt;disponible: boolean&lt;br&gt;activo: boolean&lt;/div&gt;" vertex="1">
+          <mxGeometry height="235" width="275" x="312.5" y="-400" as="geometry" />
         </mxCell>
         <mxCell id="producto_caracteristica" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;PRODUCTO_CARACTERISTICA&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;producto_id: bigint FK&lt;br&gt;caracteristica_id: bigint FK&lt;br&gt;valor: string&lt;br&gt;unidad: string (opcional)&lt;br&gt;UNIQUE(producto_id, caracteristica_id)&lt;/div&gt;" vertex="1">
           <mxGeometry height="215" width="285" x="690" y="-120" as="geometry" />
         </mxCell>
         <mxCell id="caracteristica" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;CARACTERISTICA&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;id: bigint PK&lt;br&gt;nombre: string (único)&lt;br&gt;Ejemplo: &amp;quot;Marca&amp;quot;&lt;/div&gt;" vertex="1">
           <mxGeometry height="150" width="215" x="1030" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="variante_caracteristica" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#eef6ff;strokeColor=#5b8fc1;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;VARIANTE_CARACTERISTICA&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;variante_id: bigint FK&lt;br&gt;caracteristica_id: bigint FK&lt;br&gt;valor: string&lt;br&gt;unidad: string (opcional)&lt;br&gt;UNIQUE(variante_id, caracteristica_id)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="215" width="285" x="1030" y="-360" as="geometry" />
         </mxCell>
         <mxCell id="imagen_producto" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;spacingRight=10;strokeWidth=1.5;fillColor=#f6f0ff;strokeColor=#9072b7;fontColor=#172b4d;" value="&lt;div style=&quot;font-size:15px;font-weight:bold;margin-bottom:8px&quot;&gt;IMAGEN_PRODUCTO&lt;/div&gt;&lt;div style=&quot;font-size:12px;line-height:1.45&quot;&gt;id: bigint PK&lt;br&gt;producto_id: bigint FK&lt;br&gt;s3_key: string&lt;br&gt;orden: int&lt;br&gt;es_principal: boolean&lt;/div&gt;" vertex="1">
           <mxGeometry height="205" width="265" x="-50" y="406.5" as="geometry" />
@@ -68,6 +74,15 @@
           <mxGeometry height="110" width="355" x="1350" y="1190" as="geometry" />
         </mxCell>
         <mxCell id="rel_cat_prod" edge="1" parent="1" source="categoria" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#64748b;strokeWidth=7;" target="producto" value="1 a N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_prod_var" edge="1" parent="1" source="producto" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#64748b;strokeWidth=4;" target="variante_producto" value="1 a N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_var_car" edge="1" parent="1" source="variante_producto" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#64748b;strokeWidth=4;" target="variante_caracteristica" value="1 a N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_car_var" edge="1" parent="1" source="caracteristica" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#64748b;strokeWidth=4;" target="variante_caracteristica" value="1 a N">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="rel_prod_car" edge="1" parent="1" source="producto" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#64748b;strokeWidth=6;" target="producto_caracteristica" value="1 a N">

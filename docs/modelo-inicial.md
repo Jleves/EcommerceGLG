@@ -19,15 +19,25 @@ En Sprint 1 se define y revisa el modelo; no se crean estas tablas todavía. La 
 | Entidad | Datos y relaciones | Reglas acordadas |
 | --- | --- | --- |
 | `Categoria` | `id`, nombre, descripción, ícono, activo | Una categoría contiene muchos productos. Se desactiva, no se borra físicamente si tiene productos. |
-| `Producto` | `id`, `categoria_id`, nombre, descripción, precio de referencia, disponibilidad, activo, destacado | Pertenece a una categoría. Puede crearse sin promoción. Solo los activos se publican. No tiene `marca_id` ni `caracteristica_id` directo. |
+| `Producto` | `id`, `categoria_id`, nombre, descripción, activo, destacado | Agrupa las variantes bajo una ficha pública. Pertenece a una categoría; solo los activos se publican. No tiene `marca_id` ni `caracteristica_id` directo. |
+| `VarianteProducto` | `id`, `producto_id`, SKU opcional, precio de referencia, disponibilidad, activo | Representa una opción concreta del producto, con precio y disponibilidad propios. Un producto puede tener varias variantes. |
 | `Caracteristica` | `id`, nombre | Define claves reutilizables, por ejemplo `Marca`, `Color` o `Medida`. El nombre es único. |
-| `Producto_Caracteristica` | `producto_id`, `caracteristica_id`, valor, unidad opcional | Tabla intermedia. La combinación producto/característica es única si cada producto tiene un valor por clave. `Marca` se guarda como característica; por ejemplo, clave `Marca`, valor `Acme`. |
+| `Producto_Caracteristica` | `producto_id`, `caracteristica_id`, valor, unidad opcional | Atributos compartidos por todas las variantes. La combinación producto/característica es única. `Marca` puede guardarse como característica; por ejemplo, clave `Marca`, valor `Acme`. |
+| `Variante_Caracteristica` | `variante_id`, `caracteristica_id`, valor, unidad opcional | Valores que distinguen una variante, como color, capacidad, diámetro o largo. La combinación variante/característica es única. |
 | `ImagenProducto` | `id`, `producto_id`, clave S3, orden, es principal | Un producto tiene varias imágenes y como máximo una principal. Se almacena la clave del objeto, no una URL pública fija. |
 | `Promocion` | `id`, `producto_id`, precio promocional, inicio, fin, activa | Un producto puede no tener promoción y conservar promociones históricas. Como máximo una puede estar vigente para el producto. |
 
 `Producto.destacado` es independiente de `Promocion`: puede haber un producto destacado sin descuento, una promoción no destacada o ambas cosas a la vez. En este último caso, el producto aparece destacado con su precio promocional mientras la promoción esté activa y vigente.
 
 La marca no requiere una tabla propia. El filtro por marca se obtiene buscando la característica cuyo nombre es `Marca` y comparando su valor. La cardinalidad y unicidad de atributos deben respetarse al editar el producto.
+
+### Variantes y precio inicial del catálogo
+
+Una ficha pública representa un `Producto` con sus variantes. Por ejemplo, una pintura de 20 L puede tener variantes roja, blanca y celeste; un tornillo puede variar simultáneamente en diámetro y largo. Cada combinación de valores dentro de un producto identifica una sola variante: no se permiten combinaciones duplicadas.
+
+La tarjeta del catálogo público muestra, sin prefijo «desde», el precio de referencia de la variante activa y disponible más barata. Al abrir el detalle, esa misma variante queda seleccionada inicialmente. Si ninguna variante activa está disponible, se muestra la variante activa más barata con el aviso «No disponible»; un producto sin variantes activas no se publica. Ante precios iguales, se desempata por ID de variante para mantener una selección estable. El carrito y la consulta de presupuesto deben conservar la variante seleccionada.
+
+El alta básica de Sprint 2 conserva temporalmente precio de referencia y disponibilidad en `Producto`, sin exigir características ni variantes. La tarjeta de variantes de Sprint 3 migrará esos valores a una variante inicial por cada producto existente y ajustará el contrato de lectura y edición. El diagrama representa el modelo objetivo posterior a esa migración.
 
 ## Suscripciones y consentimiento
 
@@ -77,7 +87,7 @@ El backend aplica la autorización; ocultar controles en React no reemplaza las 
 ## Separación de implementación
 
 - **Sprint 2 — catálogo básico:** categorías y productos con sus datos esenciales, relaciones, estado y precio de referencia. Las migraciones y tarjetas deben reflejar que no existe entidad `Marca`.
-- **Sprint 3 — atributos e imágenes:** `Caracteristica`, `Producto_Caracteristica` e imágenes múltiples con selección de principal, según las tarjetas de catálogo.
+- **Sprint 3 — variantes, atributos e imágenes:** `VarianteProducto`, `Caracteristica`, `Producto_Caracteristica`, `Variante_Caracteristica` e imágenes múltiples con selección de principal, según tarjetas separadas de catálogo.
 - **Sprints posteriores:** promociones; captura, consulta y exportación de suscripciones; métricas y panel. Cada grupo requiere tarjetas y migraciones separadas. Las fechas de baja se incluyen en la tabla de suscripción desde su primera migración, aunque la automatización de bajas se agregue después.
 - **Fuera de V1:** pedidos persistidos, detalle de pedido, pagos online y stock integrado.
 
