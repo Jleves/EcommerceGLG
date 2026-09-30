@@ -100,6 +100,40 @@ class CategoryServiceTest {
     }
 
     @Test
+    void deactivatesAndReactivatesWithoutChangingOtherFields() {
+        Category category = category(7L, "Cemento", true);
+        category.setDescripcion("Material de obra");
+        when(repository.findById(7L)).thenReturn(Optional.of(category));
+        when(repository.saveAndFlush(category)).thenReturn(category);
+
+        var deactivated = service.deactivate(7L);
+        assertThat(deactivated.activo()).isFalse();
+        var repeatedDeactivation = service.deactivate(7L);
+        assertThat(repeatedDeactivation).isEqualTo(deactivated);
+
+        var reactivated = service.reactivate(7L);
+        assertThat(reactivated.activo()).isTrue();
+        var repeatedReactivation = service.reactivate(7L);
+        assertThat(repeatedReactivation).isEqualTo(reactivated);
+
+        assertThat(category.getNombre()).isEqualTo("Cemento");
+        assertThat(category.getNombreNormalizado()).isEqualTo("cemento");
+        assertThat(category.getDescripcion()).isEqualTo("Material de obra");
+        assertThat(category.getIcono()).isEqualTo("icon");
+        verify(repository, org.mockito.Mockito.times(4)).saveAndFlush(category);
+        verify(repository, never()).delete(any(Category.class));
+    }
+
+    @Test
+    void rejectsMissingCategoryForBothStateTransitions() {
+        assertThatThrownBy(() -> service.deactivate(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service.reactivate(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, never()).saveAndFlush(any(Category.class));
+    }
+
+    @Test
     void listsEmptyResultAndMapsRepositoryOrderIncludingInactiveCategories() {
         when(repository.findAllByOrderByNombreAscIdAsc()).thenReturn(List.of());
         assertThat(service.list()).isEmpty();

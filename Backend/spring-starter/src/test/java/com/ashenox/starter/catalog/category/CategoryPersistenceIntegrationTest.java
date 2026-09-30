@@ -64,6 +64,36 @@ class CategoryPersistenceIntegrationTest {
         assertThat(categoryRepository.existsByNombreNormalizadoAndIdNot("cemento", category.getId())).isTrue();
     }
 
+    @Test
+    void stateTransitionsPersistRemainListedAndPreserveDataAndRowCount() {
+        Category category = category("Cemento", "cemento", true);
+        category.setDescripcion("Material de obra");
+        category.setIcono("cement-icon");
+        category = categoryRepository.saveAndFlush(category);
+        Long id = category.getId();
+        long rowCount = categoryRepository.count();
+
+        assertThat(categoryService.deactivate(id).activo()).isFalse();
+        assertThat(categoryService.deactivate(id).activo()).isFalse();
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(categoryRepository.findById(id).orElseThrow().isActivo()).isFalse();
+        assertThat(categoryService.list()).extracting(response -> response.id()).contains(id);
+        assertThat(categoryRepository.count()).isEqualTo(rowCount);
+
+        assertThat(categoryService.reactivate(id).activo()).isTrue();
+        assertThat(categoryService.reactivate(id).activo()).isTrue();
+        entityManager.flush();
+        entityManager.clear();
+        Category persisted = categoryRepository.findById(id).orElseThrow();
+        assertThat(persisted.isActivo()).isTrue();
+        assertThat(persisted.getNombre()).isEqualTo("Cemento");
+        assertThat(persisted.getNombreNormalizado()).isEqualTo("cemento");
+        assertThat(persisted.getDescripcion()).isEqualTo("Material de obra");
+        assertThat(persisted.getIcono()).isEqualTo("cement-icon");
+        assertThat(categoryRepository.count()).isEqualTo(rowCount);
+    }
+
     private Category category(String nombre, String nombreNormalizado, boolean activo) {
         return Category.builder()
                 .nombre(nombre)

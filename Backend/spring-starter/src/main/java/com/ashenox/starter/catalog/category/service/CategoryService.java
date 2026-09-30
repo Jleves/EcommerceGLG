@@ -12,5 +12,9 @@ public interface CategoryService {
 
     CategoryResponse update(Long id, UpdateCategoryRequest request);
 
+    CategoryResponse deactivate(Long id);
+
+    CategoryResponse reactivate(Long id);
+
     List<CategoryResponse> list();
 }

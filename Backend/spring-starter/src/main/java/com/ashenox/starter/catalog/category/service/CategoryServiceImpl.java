@@ -57,6 +57,25 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
+    public CategoryResponse deactivate(Long id) {
+        return setActive(id, false);
+    }
+
+    @Override
+    @Transactional
+    public CategoryResponse reactivate(Long id) {
+        return setActive(id, true);
+    }
+
+    private CategoryResponse setActive(Long id, boolean active) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+        category.setActivo(active);
+        return CategoryResponse.from(categoryRepository.saveAndFlush(category));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<CategoryResponse> list() {
         return categoryRepository.findAllByOrderByNombreAscIdAsc().stream()

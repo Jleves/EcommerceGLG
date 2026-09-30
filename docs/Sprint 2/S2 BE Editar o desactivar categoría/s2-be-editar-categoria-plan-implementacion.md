@@ -85,7 +85,7 @@ Las dos rutas de estado siguen la misma entrada y búsqueda por ID; `CategorySer
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Edición y unicidad en servicio | Categoría existente | Completa |
-| 2 | Desactivación y reactivación en servicio | Tanda 1 | Planificada |
+| 2 | Desactivación y reactivación en servicio | Tanda 1 | Completa |
 | 3 | Rutas HTTP, seguridad y regresión integral | Tandas 1 y 2 | Planificada |
 
 ```text
@@ -228,7 +228,27 @@ TRATAMIENTO: probarla al implementar Product y su relación con Category.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (30/09/2026). Detalle en [tanda-2-resultado.md](tanda-2-resultado.md).
+
+**Cambios realizados:** `CategoryService.deactivate/reactivate(...)` y su implementación transaccional. Ambas operaciones buscan por ID, fijan `activo`, persisten y devuelven `CategoryResponse`; repetirlas mantiene el estado solicitado.
+
+**Diferencias respecto del plan:** ninguna funcional. Se reutilizaron `findById` y `saveAndFlush`; no se modificó el repositorio ni el esquema.
+
+**Tests ejecutados:** 17 pruebas: `CategoryServiceTest` (8), `CategoryPersistenceIntegrationTest` (3), `CategoryControllerTest` (4) y `MySqlSchemaIntegrationTests` (2).
+
+**Tests exitosos:** 17/17. Las pruebas nuevas cubren ambas transiciones, repetición, ID inexistente, persistencia, listado, cantidad de filas y conservación de nombre, clave normalizada, descripción e ícono. Las pruebas existentes cubren regresión de edición, alta, listado y esquema MySQL.
+
+**Tests fallidos:** ninguno de los tests ejecutados. El primer intento en sandbox no inició pruebas por bloqueo de red; ver `INC-002`.
+
+**Incidentes:** `INC-002`, Maven no pudo resolver el parent POM dentro del sandbox. La ejecución con acceso autorizado finalizó correctamente.
+
+**Tests faltantes:** conservación de relaciones y estado de productos, porque `Product` todavía no existe. El contrato HTTP, CSRF y roles de las transiciones pertenecen a la tanda 3.
+
+**Riesgos residuales:** no hay ruta HTTP para las transiciones hasta la tanda 3; la aceptación vinculada a productos requiere su implementación.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CategoryService`, `CategoryServiceImpl`, `CategoryServiceTest`, `CategoryPersistenceIntegrationTest`, este plan y `tanda-2-resultado.md`.
 
 ## Tanda 3 — API y autorización
 
@@ -310,11 +330,10 @@ IMPLEMENTADO HOY
 Sesión + CSRF → CategoryController.create/list
               → CategoryServiceImpl.create/list
               → CategoryRepository → categories
-CategoryServiceImpl.update → CategoryRepository → categories
-  (servicio implementado en tanda 1; todavía sin ruta HTTP)
+CategoryServiceImpl.update/deactivate/reactivate → CategoryRepository → categories
+  (servicios implementados en tandas 1 y 2; todavía sin rutas HTTP)
 
 PENDIENTE EN ESTA TARJETA
-CategoryServiceImpl.deactivate/reactivate (tanda 2)
 Sesión + CSRF + rol → CategoryController.update/deactivate/reactivate (tanda 3)
                     → CategoryServiceImpl.update/deactivate/reactivate
                     → CategoryRepository → categories
