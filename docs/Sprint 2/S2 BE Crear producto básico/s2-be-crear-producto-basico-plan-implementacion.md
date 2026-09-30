@@ -91,7 +91,7 @@ sequenceDiagram
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Tabla, mapeo y repositorio | `categories` V5 | Planificada |
-| 2 | Servicio de alta y reglas de negocio | Tanda 1 | Planificada |
+| 2 | Servicio de alta y reglas de negocio | Tanda 1 | Completa |
 | 3 | Ruta privada, errores y pruebas HTTP | Tanda 2 | Planificada |
 
 ```text
@@ -271,7 +271,27 @@ TRATAMIENTO: tanda 3.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA
+
+**Cambios realizados:** se añadieron `CreateProductRequest` con restricciones de entrada, `ProductResponse`, `ProductService`, `ProductServiceImpl` y `ProductCategoryInactiveException`. El alta bloquea la categoría, exige que esté activa, recorta el nombre y fija `activo=true` y `destacado=false` antes de guardar. `CategoryRepository.lockById` usa `PESSIMISTIC_WRITE`; desactivación y reactivación usan ese mismo bloqueo. Se añadieron pruebas unitarias, H2 y de los dos órdenes concurrentes en MySQL.
+
+**Diferencias respecto del plan:** ninguna funcional. Java 21 y Maven se ejecutaron en un contenedor temporal por ausencia de JDK local.
+
+**Tests ejecutados:** `ProductServiceTest` (4), `ProductServiceIntegrationTest` (1), `ProductCategoryConcurrencyMySqlTest` (2), `CategoryServiceTest` (8), `CategoryPersistenceIntegrationTest` (3), `CategoryControllerTest` (7), `CategoryServiceMySqlTest` (2), `ProductPersistenceIntegrationTest` (1) y `ProductPersistenceMySqlTest` (3).
+
+**Tests exitosos:** 31/31 en las ejecuciones finales, sin omisiones. MySQL observó esperas reales de bloqueo en ambos órdenes y verificó el resultado luego del commit. H2 comprobó conservación y reactivación; la regresión de categoría y persistencia pasó.
+
+**Tests fallidos:** ninguno en las ejecuciones finales. La primera ejecución omitió los tests MySQL al no detectar el socket Docker dentro del contenedor Maven; se repitió con el socket correcto.
+
+**Incidentes:** `INC-T2-001`, montaje inicial del socket Docker; resolución y evidencia en `s2-be-crear-producto-basico-tanda-2-resultado.md`.
+
+**Tests faltantes:** ninguno de los planificados para esta tanda.
+
+**Riesgos residuales:** aún no se verifican respuestas HTTP, permisos ni CSRF del alta de producto; corresponden a la tanda 3. Las restricciones del DTO todavía no se ejercitan por HTTP.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CreateProductRequest.java`, `ProductResponse.java`, `ProductService.java`, `ProductServiceImpl.java`, `ProductCategoryInactiveException.java`, `CategoryRepository.java`, `CategoryServiceImpl.java`, `ProductServiceTest.java`, `ProductServiceIntegrationTest.java`, `ProductCategoryConcurrencyMySqlTest.java`, `CategoryServiceTest.java`, este plan y `s2-be-crear-producto-basico-tanda-2-resultado.md`.
 
 ## Tanda 3 — API privada y errores
 

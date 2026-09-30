@@ -103,7 +103,7 @@ class CategoryServiceTest {
     void deactivatesAndReactivatesWithoutChangingOtherFields() {
         Category category = category(7L, "Cemento", true);
         category.setDescripcion("Material de obra");
-        when(repository.findById(7L)).thenReturn(Optional.of(category));
+        when(repository.lockById(7L)).thenReturn(Optional.of(category));
         when(repository.saveAndFlush(category)).thenReturn(category);
 
         var deactivated = service.deactivate(7L);
@@ -121,6 +121,7 @@ class CategoryServiceTest {
         assertThat(category.getDescripcion()).isEqualTo("Material de obra");
         assertThat(category.getIcono()).isEqualTo("icon");
         verify(repository, org.mockito.Mockito.times(4)).saveAndFlush(category);
+        verify(repository, org.mockito.Mockito.times(4)).lockById(7L);
         verify(repository, never()).delete(any(Category.class));
     }
 
@@ -130,6 +131,7 @@ class CategoryServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
         assertThatThrownBy(() -> service.reactivate(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository, org.mockito.Mockito.times(2)).lockById(99L);
         verify(repository, never()).saveAndFlush(any(Category.class));
     }
 

@@ -69,7 +69,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private CategoryResponse setActive(Long id, boolean active) {
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         category.setActivo(active);
         return CategoryResponse.from(categoryRepository.saveAndFlush(category));
