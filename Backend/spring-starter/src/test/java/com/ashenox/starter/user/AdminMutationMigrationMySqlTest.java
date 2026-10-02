@@ -22,7 +22,7 @@ class AdminMutationMigrationMySqlTest {
                     values ('legacy@example.com', 'hash', 'SUPER_ADMIN', true, now(6), now(6), 2, true, 7)
                     """);
             var flyway = Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword()).load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(3);
             assertThat(flyway.migrate().migrationsExecuted).isZero();
             try (var rows = statement.executeQuery("select id from admin_mutation_lock")) {
                 assertThat(rows.next()).isTrue();

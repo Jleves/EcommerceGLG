@@ -152,6 +152,45 @@ class ProductServiceTest {
         verifyNoMoreInteractions(products);
     }
 
+    @Test
+    void statusTransitionsAreIdempotentAndKeepAllOtherData() {
+        Category inactiveCategory = Category.builder().id(7L).activo(false).build();
+        Product product = Product.builder().id(11L).category(inactiveCategory).nombre("Arena")
+                .descripcion("Para obra").precioReferencia(new BigDecimal("125.50"))
+                .disponible(false).activo(true).destacado(true).build();
+        when(products.lockById(11L)).thenReturn(Optional.of(product));
+        when(products.saveAndFlush(product)).thenReturn(product);
+
+        assertThat(service.deactivate(11L).activo()).isFalse();
+        assertThat(service.deactivate(11L).activo()).isFalse();
+        assertThat(service.reactivate(11L).activo()).isTrue();
+        var repeated = service.reactivate(11L);
+
+        assertThat(repeated.activo()).isTrue();
+        assertThat(repeated.id()).isEqualTo(11L);
+        assertThat(repeated.categoriaId()).isEqualTo(7L);
+        assertThat(repeated.nombre()).isEqualTo("Arena");
+        assertThat(repeated.descripcion()).isEqualTo("Para obra");
+        assertThat(repeated.precioReferencia()).isEqualByComparingTo("125.50");
+        assertThat(repeated.disponible()).isFalse();
+        assertThat(repeated.destacado()).isTrue();
+        verify(products, times(4)).lockById(11L);
+        verify(products, times(4)).saveAndFlush(product);
+        verifyNoInteractions(categories);
+    }
+
+    @Test
+    void missingProductCannotChangeStatusOrCreateRows() {
+        assertThatThrownBy(() -> service.deactivate(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service.reactivate(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(products, times(2)).lockById(99L);
+        verify(products, never()).saveAndFlush(any());
+        verifyNoInteractions(categories);
+    }
+
     private CreateProductRequest request(String name, Long categoryId) {
         return new CreateProductRequest(name, categoryId, "Material de obra", new BigDecimal("125.50"), false);
     }

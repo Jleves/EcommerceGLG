@@ -2,7 +2,7 @@
 
 **Fuentes de diseño:** [tarjeta BE de Trello](https://trello.com/c/t6Sy1vOk), [tarjeta de listados](https://trello.com/c/hW6oiQ3S), [tarjeta FE asociada](https://trello.com/c/DQGDVmWT), `docs/modelo-inicial.md`, `docs/Sprint 2/S2 BE Crear producto básico/s2-be-crear-producto-basico-plan-implementacion.md` y las decisiones acordadas para esta tarjeta. La tarjeta BE menciona características y ubica la reactivación en listados; las decisiones actuales difieren características a Sprint 3 y adelantan la reactivación a este backend.
 
-**Alcance acordado:** editar nombre, categoría, descripción, precio de referencia y disponibilidad; desactivar y reactivar mediante baja lógica. No implementar características, variantes, fotos, promociones, control de `destacado`, listados, consulta por ID, formulario React ni ficha pública. La tanda 1 está completa; las tandas 2 y 3 siguen pendientes.
+**Alcance acordado:** editar nombre, categoría, descripción, precio de referencia y disponibilidad; desactivar y reactivar mediante baja lógica. No implementar características, variantes, fotos, promociones, control de `destacado`, listados, consulta por ID, formulario React ni ficha pública. Las tandas 1 y 2 están completas; la tanda 3 sigue pendiente.
 
 ## Estado al planificar — COMPROBADO EN EL CÓDIGO
 
@@ -56,7 +56,7 @@ sequenceDiagram
 
 ### Flujo objetivo completo
 
-`ProductServiceImpl.update(...)`, `UpdateProductRequest` y `ProductRepository.lockById(...)` quedaron **IMPLEMENTADOS EN LA TANDA 1**. Los métodos `ProductController.update(...)`, `deactivate(...)` y `reactivate(...)` siguen **PROPUESTOS**; `ProductController`, `CategoryRepository`, `SecurityConfig`, `ProductResponse` y `GlobalExceptionHandler` ya existían.
+`ProductServiceImpl.update(...)`, `UpdateProductRequest` y `ProductRepository.lockById(...)` quedaron **IMPLEMENTADOS EN LA TANDA 1**. `ProductServiceImpl.deactivate(...)` y `reactivate(...)` quedaron **IMPLEMENTADOS EN LA TANDA 2**. Los tres métodos nuevos de `ProductController` siguen **PROPUESTOS**; `ProductController`, `CategoryRepository`, `SecurityConfig`, `ProductResponse` y `GlobalExceptionHandler` ya existían.
 
 ```mermaid
 sequenceDiagram
@@ -101,7 +101,7 @@ sequenceDiagram
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Edición básica en servicio y persistencia | Producto básico existente | Completa |
-| 2 | Desactivación y reactivación idempotentes | Tanda 1 | Planificada |
+| 2 | Desactivación y reactivación idempotentes | Tanda 1 | Completa |
 | 3 | Rutas HTTP, seguridad y verificación integral | Tandas 1 y 2 | Planificada |
 
 ```text
@@ -284,13 +284,33 @@ TRATAMIENTO: cubrir en la tanda 3.
 
 ### Criterio de cierre
 
-- [ ] Desactivación y reactivación idempotentes y persistidas.
-- [ ] Fila, categoría y demás datos conservados, incluso con categoría inactiva.
-- [ ] Tests de la tanda ejecutados; faltantes, incidentes y riesgos registrados.
+- [x] Desactivación y reactivación idempotentes y persistidas.
+- [x] Fila, categoría y demás datos conservados, incluso con categoría inactiva.
+- [x] Tests de la tanda ejecutados; faltantes, incidentes y riesgos registrados.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (02/10/2026). Detalle en [tanda-2-resultado.md](tanda-2-resultado.md).
+
+**Cambios realizados:** `ProductService.deactivate(...)` y `reactivate(...)` transaccionales reutilizan `ProductRepository.lockById(...)`, fijan solo `activo` y devuelven `ProductResponse`. Se añadieron pruebas unitarias, integración H2 y concurrencia MySQL.
+
+**Diferencias respecto del plan:** ninguna funcional. La primera ejecución MySQL se interrumpió por la imposibilidad de conectar a Ryuk desde Docker Desktop; la repetición configuró solo el contenedor de Maven para desactivar Ryuk y usar `host.docker.internal`. No se modificó configuración del repositorio.
+
+**Tests ejecutados:** selección Maven de `ProductServiceTest`, `ProductServiceIntegrationTest`, `ProductStatusConcurrencyMySqlTest`, `ProductCategoryConcurrencyMySqlTest`, `ProductPersistenceIntegrationTest` y `ProductControllerTest`. Resultado final: 23 pruebas, 0 fallos, 0 errores y 0 omisiones.
+
+**Tests exitosos:** 10 unitarios de servicio, 4 de integración H2, 1 de bloqueo de producto y 2 de concurrencia de categoría en MySQL, 1 de persistencia y 5 de regresión HTTP del alta. La prueba nueva observó una espera real en `performance_schema.data_lock_waits` sobre `products`.
+
+**Tests fallidos:** ninguno de la ejecución final. La primera ejecución quedó interrumpida antes de ejecutar la selección por el problema de Ryuk; ver `INC-T2-001`.
+
+**Incidentes:** `INC-T2-001`, conectividad del contenedor auxiliar de Testcontainers en Docker Desktop; resuelto para la ejecución sin cambiar código ni tests.
+
+**Tests faltantes:** ninguno de la tanda 2. Las rutas HTTP, sus permisos y CSRF pertenecen a la tanda 3.
+
+**Riesgos residuales:** las transiciones no son accesibles por HTTP todavía; el control de formularios obsoletos sigue fuera de alcance. MySQL se verificó con Ryuk desactivado solo durante el comando de prueba; `docker ps` no mostró contenedores en ejecución al terminar.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `ProductService.java`, `ProductServiceImpl.java`, `ProductServiceTest.java`, `ProductServiceIntegrationTest.java`, prueba MySQL nueva, este plan y el resultado detallado.
 
 ## Tanda 3 — Rutas HTTP, seguridad y aceptación integral
 
@@ -404,7 +424,7 @@ IMPLEMENTADO — TANDA 1, SOLO SERVICIO
 ProductServiceImpl.update → producto bloqueado → categoría existente
 → products UPDATE de cinco datos básicos → ProductResponse
 
-PENDIENTE — TANDA 2
+IMPLEMENTADO — TANDA 2, SOLO SERVICIO
 ProductServiceImpl.deactivate/reactivate → producto bloqueado
 → activo=false/true sin borrado → ProductResponse
 

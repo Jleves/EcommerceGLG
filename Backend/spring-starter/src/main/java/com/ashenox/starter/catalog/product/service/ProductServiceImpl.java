@@ -55,4 +55,23 @@ public class ProductServiceImpl implements ProductService {
         product.setDisponible(request.disponible());
         return ProductResponse.from(productRepository.saveAndFlush(product));
     }
+
+    @Override
+    @Transactional
+    public ProductResponse deactivate(Long id) {
+        return setActive(id, false);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse reactivate(Long id) {
+        return setActive(id, true);
+    }
+
+    private ProductResponse setActive(Long id, boolean active) {
+        Product product = productRepository.lockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
+        product.setActivo(active);
+        return ProductResponse.from(productRepository.saveAndFlush(product));
+    }
 }

@@ -8,4 +8,8 @@ public interface ProductService {
     ProductResponse create(CreateProductRequest request);
 
     ProductResponse update(Long id, UpdateProductRequest request);
+
+    ProductResponse deactivate(Long id);
+
+    ProductResponse reactivate(Long id);
 }

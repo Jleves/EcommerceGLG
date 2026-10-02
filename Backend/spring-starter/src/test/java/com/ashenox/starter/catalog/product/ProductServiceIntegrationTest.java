@@ -126,4 +126,41 @@ class ProductServiceIntegrationTest {
         assertThat(unchanged.getPrecioReferencia()).isEqualByComparingTo("10.00");
         assertThat(unchanged.isDisponible()).isFalse();
     }
+
+    @Test
+    void statusTransitionsPersistAndKeepProductInInactiveCategory() {
+        long initialProductCount = products.count();
+        String unique = UUID.randomUUID().toString();
+        Category category = categories.saveAndFlush(Category.builder()
+                .nombre("Materiales " + unique).nombreNormalizado("materiales-" + unique)
+                .icono("icon").activo(true).build());
+        var created = productService.create(new CreateProductRequest("Arena", category.getId(),
+                "Para obra", new BigDecimal("125.50"), false));
+        var product = products.findById(created.id()).orElseThrow();
+        product.setDestacado(true);
+        products.saveAndFlush(product);
+        var createdAt = product.getCreatedAt();
+        categoryService.deactivate(category.getId());
+
+        for (int repetition = 0; repetition < 2; repetition++) {
+            assertThat(productService.deactivate(created.id()).activo()).isFalse();
+            assertThat(products.findById(created.id()).orElseThrow().isActivo()).isFalse();
+        }
+        for (int repetition = 0; repetition < 2; repetition++) {
+            assertThat(productService.reactivate(created.id()).activo()).isTrue();
+            assertThat(products.findById(created.id()).orElseThrow().isActivo()).isTrue();
+        }
+
+        var reloaded = products.findById(created.id()).orElseThrow();
+        assertThat(products.count()).isEqualTo(initialProductCount + 1);
+        assertThat(reloaded.getId()).isEqualTo(created.id());
+        assertThat(reloaded.getCategory().getId()).isEqualTo(category.getId());
+        assertThat(categories.findById(category.getId()).orElseThrow().isActivo()).isFalse();
+        assertThat(reloaded.getNombre()).isEqualTo("Arena");
+        assertThat(reloaded.getDescripcion()).isEqualTo("Para obra");
+        assertThat(reloaded.getPrecioReferencia()).isEqualByComparingTo("125.50");
+        assertThat(reloaded.isDisponible()).isFalse();
+        assertThat(reloaded.isDestacado()).isTrue();
+        assertThat(reloaded.getCreatedAt()).isEqualTo(createdAt);
+    }
 }
