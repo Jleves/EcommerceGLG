@@ -1,6 +1,6 @@
 # S2 BE — Crear característica y migrar características: plan de implementación
 
-**Estado:** ejecución en curso; tandas 1–4 autorizadas para esta ejecución.
+**Estado:** tandas 1–4 ejecutadas; resultados y riesgos registrados para revisión final.
 
 **Fuente funcional principal:** [S2 BE Crear característica y migrar características](https://trello.com/c/uxJ6ZOVZ). **Método de planificación:** `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`. La tarjeta de [edición y eliminación](https://trello.com/c/4NeAHpsb) fija una dependencia de concurrencia, pero sus endpoints y su borrado quedan fuera de este plan.
 
@@ -310,13 +310,13 @@ TRATAMIENTO: tanda 3 conecta el alta; eliminación corresponde a la tarjeta BE d
 
 **Diferencias respecto del plan:** el conflicto por carrera se deja a la restricción única y al manejador global de integridad. No se añadió una prueba de dos requests simultáneos; la restricción se probó directamente en MySQL en tanda 1.
 
-**Tests ejecutados/exitosos:** `CharacteristicControllerTest` (201, 200, 404, 400, 409, JSON malformado, tres roles, anónimo, rol ajeno, CSRF y acceso denegado de `USER` a usuarios admin); `CharacteristicPersistenceMySqlTest` (unicidad normalizada real). PASS.
+**Tests ejecutados/exitosos:** `CharacteristicControllerTest` (listado vacío y orden, 201, 200, 404, 400, 409, JSON malformado, tres roles, anónimo, rol ajeno, CSRF y acceso denegado de `USER` a usuarios admin); `CharacteristicPersistenceMySqlTest` (unicidad normalizada real). PASS.
 
 **Tests fallidos:** ninguno en la última ejecución.
 
 **Incidentes:** ninguno propio de esta tanda.
 
-**Tests faltantes:** lista vacía y orden estable no tienen aserción directa; la carrera concurrente de dos altas no tiene test de hilos. Riesgo residual: cambios futuros en la consulta de listado u orquestación concurrente podrían escapar a esta suite; recomendación: añadir casos dedicados cuando se amplíe el catálogo.
+**Tests faltantes:** la carrera concurrente de dos altas no tiene test de hilos. La restricción UNIQUE de MySQL y la traducción de integridad a 409 sí están probadas por separado. Riesgo residual: una regresión en la orquestación concurrente de la API podría escapar a esta suite; recomendación: añadir un caso de carrera si se incorporan mutaciones de definiciones.
 
 **Riesgos residuales:** una definición creada todavía no aporta valores a productos hasta la tanda 3.
 
@@ -468,7 +468,45 @@ TRATAMIENTO: registrar esa limitación explícitamente y no declarar validada la
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** tests HTTP de alta con definición previa, reutilización de `Marca`, respuestas con arreglo siempre presente, errores y permisos; recorrido completo contra MySQL 8.4; ajuste de `docs/modelo-inicial.md` para situar definiciones y valores de producto en Sprint 2 y variantes en Sprint 3.
+
+**Diferencias respecto del plan:** se agregaron clases de test específicas para no sobrecargar las suites existentes. Las suites nuevas limpian sus asociaciones al finalizar para coexistir con la limpieza previa de producto.
+
+**Tests ejecutados/exitosos:** `ProductCharacteristicControllerTest` (H2/MockMvc: 201 con valores y nombre, alta básica con arreglo vacío, 400 por ID repetido/valor blanco/límites, 404 por ID inexistente, JSON malformado, 401/403 y ausencia de escrituras); `ProductCharacteristicFlowMySqlTest` (MySQL 8.4: definición por HTTP, dos productos que la reutilizan con valores distintos, respuesta y filas persistidas); `ProductControllerTest` (regresión de alta básica, categoría inactiva, edición/estado y permisos); `CategoryControllerTest` (regresión de categorías y roles). PASS tras INC-002.
+
+**Tests fallidos:** la ejecución conjunta inicial falló en la preparación de `ProductControllerTest`; la repetición posterior terminó sin fallas.
+
+**Incidentes:** INC-002 e INC-003, documentados abajo.
+
+**Tests faltantes:** la carrera de crear producto contra borrar característica no puede ejecutarse hasta que exista el endpoint de eliminación. Frontend, edición/eliminación, variantes y ficha pública pertenecen a otras tarjetas. Riesgo de concurrencia futura: la eliminación debe seguir el mismo bloqueo; recomendación: probar ambos órdenes en esa tarjeta.
+
+**Riesgos residuales:** el contrato está validado contra MySQL local mediante Testcontainers; el despliegue a un entorno compartido queda fuera de esta ejecución.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** pruebas HTTP H2/MySQL de producto y `docs/modelo-inicial.md`; ajustes de aislamiento en pruebas nuevas.
+
+**Criterio de cierre:** [x] recorrido HTTP/MySQL completo; [x] errores, seguridad y regresión básica; [x] documentación S2/S3; [x] faltantes e incidentes registrados.
+
+#### INC-002
+
+**Contexto:** primera ejecución conjunta de regresión H2.
+**Test/comportamiento afectado:** preparación `ProductControllerTest.clean()` después de pruebas nuevas con asociaciones.
+**Esperado:** borrar productos de prueba antes de cada caso. **Obtenido:** 10 errores de FK al intentar borrarlos con filas en `product_characteristics`.
+**Clasificación:** defecto del test (aislamiento de datos). **Causa:** H2 conserva la base por `DB_CLOSE_DELAY=-1`; reiniciar el contexto no limpia filas, y las pruebas nuevas dejaban asociaciones.
+**Resolución:** `@AfterEach` elimina las asociaciones creadas por las suites nuevas; la regresión se repitió. **Código productivo modificado:** no. **Tests modificados:** sí. **Configuración/migraciones modificadas:** no.
+**Resultado posterior:** PASS. **Riesgo o aprendizaje derivado:** las pruebas que comparten H2 deben limpiar primero tablas hijas; no agregar cascada de borrado al modelo para acomodar fixtures.
+
+#### INC-003
+
+**Contexto:** primera ejecución de Testcontainers desde la imagen Maven local.
+**Test/comportamiento afectado:** arranque de MySQL 8.4.
+**Esperado:** Testcontainers inicia MySQL y ejecuta las pruebas. **Obtenido:** conexión rechazada hacia Ryuk en la pasarela Docker.
+**Clasificación:** configuración/infraestructura/entorno. **Causa:** la ruta de red por defecto del contenedor Maven no alcanzó Ryuk en Docker Desktop.
+**Resolución:** ejecutar con `TESTCONTAINERS_RYUK_DISABLED=true`, `TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal` y socket Docker montado; las pruebas MySQL se ejecutaron. **Código productivo modificado:** no. **Tests modificados:** no. **Configuración/migraciones modificadas:** no.
+**Resultado posterior:** PASS. **Riesgo o aprendizaje derivado:** la invocación de Testcontainers desde otro contenedor requiere esa configuración local; no se cambió la configuración de la aplicación.
 
 ## Registro global de decisiones pendientes
 

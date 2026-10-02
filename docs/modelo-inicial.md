@@ -37,7 +37,7 @@ Una ficha pública representa un `Producto` con sus variantes. Por ejemplo, una 
 
 La tarjeta del catálogo público muestra, sin prefijo «desde», el precio de referencia de la variante activa y disponible más barata. Al abrir el detalle, esa misma variante queda seleccionada inicialmente. Si ninguna variante activa está disponible, se muestra la variante activa más barata con el aviso «No disponible»; un producto sin variantes activas no se publica. Ante precios iguales, se desempata por ID de variante para mantener una selección estable. El carrito y la consulta de presupuesto deben conservar la variante seleccionada.
 
-El alta básica de Sprint 2 conserva temporalmente precio de referencia y disponibilidad en `Producto`, sin exigir características ni variantes. La tarjeta de variantes de Sprint 3 migrará esos valores a una variante inicial por cada producto existente y ajustará el contrato de lectura y edición. El diagrama representa el modelo objetivo posterior a esa migración.
+El alta básica de Sprint 2 conserva temporalmente precio de referencia y disponibilidad en `Producto`, sin exigir características ni variantes. Sprint 2 también permite definir `Caracteristica` y asociar valores en `Producto_Caracteristica` durante el alta de producto. La tarjeta de variantes de Sprint 3 migrará precio y disponibilidad a una variante inicial por cada producto existente y ajustará el contrato de lectura y edición. El diagrama representa el modelo objetivo posterior a esa migración.
 
 ## Suscripciones y consentimiento
 
@@ -86,8 +86,8 @@ El backend aplica la autorización; ocultar controles en React no reemplaza las 
 
 ## Separación de implementación
 
-- **Sprint 2 — catálogo básico:** categorías y productos con sus datos esenciales, relaciones, estado y precio de referencia. Las migraciones y tarjetas deben reflejar que no existe entidad `Marca`.
-- **Sprint 3 — variantes, atributos e imágenes:** `VarianteProducto`, `Caracteristica`, `Producto_Caracteristica`, `Variante_Caracteristica` e imágenes múltiples con selección de principal, según tarjetas separadas de catálogo.
+- **Sprint 2 — catálogo básico y características de producto:** categorías y productos con sus datos esenciales, relaciones, estado y precio de referencia; `Caracteristica` y `Producto_Caracteristica` para valores por producto. `Marca` se crea como característica desde la API, sin entidad ni carga inicial propia.
+- **Sprint 3 — variantes e imágenes:** `VarianteProducto`, `Variante_Caracteristica` e imágenes múltiples con selección de principal, según tarjetas separadas de catálogo.
 - **Sprints posteriores:** promociones; captura, consulta y exportación de suscripciones; métricas y panel. Cada grupo requiere tarjetas y migraciones separadas. Las fechas de baja se incluyen en la tabla de suscripción desde su primera migración, aunque la automatización de bajas se agregue después.
 - **Fuera de V1:** pedidos persistidos, detalle de pedido, pagos online y stock integrado.
 

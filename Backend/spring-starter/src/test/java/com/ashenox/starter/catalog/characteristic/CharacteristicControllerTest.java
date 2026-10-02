@@ -1,6 +1,7 @@
 package com.ashenox.starter.catalog.characteristic;
 
 import com.ashenox.starter.catalog.characteristic.repository.CharacteristicRepository;
+import com.ashenox.starter.catalog.characteristic.model.Characteristic;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +25,23 @@ class CharacteristicControllerTest {
     private static final String PATH = "/api/catalog/characteristics";
     @Autowired MockMvc mvc;
     @Autowired CharacteristicRepository repository;
+
+    @Test
+    void emptyListAndAlphabeticalOrderAreStable() throws Exception {
+        repository.deleteAll();
+        mvc.perform(get(PATH).with(user("reader").roles("USER")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+        String suffix = java.util.UUID.randomUUID().toString();
+        repository.saveAndFlush(Characteristic.builder().nombre("Zeta " + suffix)
+                .nombreNormalizado("zeta-" + suffix).build());
+        repository.saveAndFlush(Characteristic.builder().nombre("Alfa " + suffix)
+                .nombreNormalizado("alfa-" + suffix).build());
+        mvc.perform(get(PATH).with(user("reader").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombre").value("Alfa " + suffix))
+                .andExpect(jsonPath("$[1].nombre").value("Zeta " + suffix));
+    }
 
     @Test
     void createsListsAndGetsDefinitionsForEveryCatalogRole() throws Exception {
