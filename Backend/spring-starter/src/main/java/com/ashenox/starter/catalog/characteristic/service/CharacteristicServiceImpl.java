@@ -68,4 +68,14 @@ public class CharacteristicServiceImpl implements CharacteristicService {
         return CharacteristicResponse.from(repository.saveAndFlush(definition),
                 productCharacteristicRepository.countByCharacteristic_Id(id));
     }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        Characteristic definition = repository.lockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe."));
+        productCharacteristicRepository.deleteByCharacteristicId(id);
+        repository.delete(definition);
+        repository.flush();
+    }
 }

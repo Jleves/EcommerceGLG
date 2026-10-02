@@ -11,4 +11,5 @@ public interface CharacteristicService {
     List<CharacteristicResponse> list();
     CharacteristicResponse getById(Long id);
     CharacteristicResponse update(Long id, UpdateCharacteristicRequest request);
+    void delete(Long id);
 }

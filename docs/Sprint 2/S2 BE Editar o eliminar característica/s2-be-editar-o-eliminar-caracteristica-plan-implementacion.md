@@ -1,6 +1,6 @@
 # S2 BE — Editar o eliminar característica: plan de implementación
 
-**Estado:** tandas 1–2 completas; tandas 3–4 planificadas.
+**Estado:** tandas 1–3 completas; tanda 4 planificada.
 
 **Fuentes:** [tarjeta BE](https://trello.com/c/4NeAHpsb), [tarjeta de creación de características](https://trello.com/c/uxJ6ZOVZ), `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md` y decisiones técnicas acordadas para esta tarjeta. La tarjeta de frontend asociada es [S2 FE Editar o eliminar característica](https://trello.com/c/CWk4KFiC).
 
@@ -100,7 +100,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 1 | Conteo de asociaciones y consulta de producto por ID | Código actual | Completa |
 | 2 | Renombrado de característica | Tanda 1 | Completa |
-| 3 | Eliminación transaccional y concurrencia | Tanda 2 | Planificada |
+| 3 | Eliminación transaccional y concurrencia | Tanda 2 | Completa |
 | 4 | Edición atómica de valores de producto | Tanda 3 | Planificada |
 
 ```text
@@ -381,7 +381,21 @@ TRATAMIENTO: probar ambos flujos concurrentes en la tanda 4.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. [Detalle de la tanda 3](tanda-3-resultado.md).
+
+**Cambios realizados:** `DELETE /api/catalog/characteristics/{id}` devuelve 204 sin cuerpo. El servicio bloquea la definición, elimina sus asociaciones y después elimina la definición en una transacción. Un ID inexistente devuelve 404.
+
+**Diferencias respecto del plan:** `JpaRepository` no ofrece `deleteAndFlush`; se usaron `delete` y `flush` consecutivos. La prueba de rollback MySQL habilita la creación de un trigger de fallo únicamente en su contenedor de test.
+
+**Tests ejecutados y exitosos:** 53 en la corrida final: 7 nuevos de eliminación (4 MySQL y 3 HTTP/H2) y 46 de regresión relacionada de características, productos y errores. Sin fallos, errores ni omitidos en la corrida final.
+
+**Tests fallidos:** ninguno pendiente. **Incidentes:** `INC-004` red restringida para Maven, `INC-005` método `deleteAndFlush` inexistente e `INC-006` privilegio MySQL insuficiente para el trigger del test. Los tres se resolvieron; ver detalle en el resultado.
+
+**Tests faltantes:** ninguno de los previstos para esta tanda. **Riesgos residuales:** los tests de concurrencia fijan ambos órdenes de commit con dos transacciones, pero no cubren cargas masivas ni la carrera con edición de valores, reservada para la tanda 4.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CharacteristicController`, `CharacteristicService`, `CharacteristicServiceImpl`, `ProductCharacteristicRepository` y este plan. **Archivos nuevos:** `CharacteristicDeleteTest`, `CharacteristicDeleteMySqlTest` y `tanda-3-resultado.md`.
 
 ## Tanda 4 — Editar valores de características del producto
 
@@ -483,16 +497,14 @@ Ante un defecto o test fallido relevante, registrar `INC-XXX` con tanda, context
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO TRAS TANDA 1
+IMPLEMENTADO TRAS TANDA 3
 Alta y consulta de características → alta de producto con valores
                                    → edición básica que conserva valores
                                    → conteo de uso y GET de producto por ID
+                                   → renombrado que conserva asociaciones
+                                   → eliminación transaccional de definición y asociaciones
 
 OBJETIVO PENDIENTE
-Renombrado que conserva asociaciones
-        ↓
-Eliminación transaccional de definición y asociaciones
-        ↓
 Edición atómica del conjunto de valores del producto
 ```
 

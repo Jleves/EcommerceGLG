@@ -3,6 +3,7 @@ package com.ashenox.starter.catalog.characteristic.repository;
 import com.ashenox.starter.catalog.characteristic.model.ProductCharacteristic;
 import com.ashenox.starter.catalog.characteristic.model.ProductCharacteristicId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,4 +17,8 @@ public interface ProductCharacteristicRepository extends JpaRepository<ProductCh
     List<Object[]> countAllByCharacteristic();
 
     long countByCharacteristic_Id(Long characteristicId);
+
+    @Modifying
+    @Query("delete from ProductCharacteristic pc where pc.characteristic.id = :characteristicId")
+    void deleteByCharacteristicId(@Param("characteristicId") Long characteristicId);
 }
