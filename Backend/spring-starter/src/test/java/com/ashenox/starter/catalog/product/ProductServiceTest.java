@@ -3,6 +3,7 @@ package com.ashenox.starter.catalog.product;
 import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
+import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
@@ -78,7 +79,84 @@ class ProductServiceTest {
         verifyNoInteractions(products);
     }
 
+    @Test
+    void updateChangesBasicDataAndKeepsServerOwnedStates() {
+        Category previous = Category.builder().id(7L).activo(true).build();
+        Category destination = Category.builder().id(8L).activo(false).build();
+        Product product = Product.builder().id(11L).category(previous).nombre("Original")
+                .descripcion("Anterior").precioReferencia(new BigDecimal("10.00"))
+                .disponible(false).activo(false).destacado(true).build();
+        when(products.lockById(11L)).thenReturn(Optional.of(product));
+        when(categories.findById(8L)).thenReturn(Optional.of(destination));
+        when(products.saveAndFlush(product)).thenReturn(product);
+
+        var response = service.update(11L, new UpdateProductRequest(
+                "  Arena fina  ", 8L, null, new BigDecimal("125.50"), true));
+
+        verify(products).saveAndFlush(argThat(saved -> saved.getCategory() == destination
+                && saved.getNombre().equals("Arena fina") && saved.getDescripcion() == null
+                && saved.getPrecioReferencia().compareTo(new BigDecimal("125.50")) == 0
+                && saved.isDisponible() && !saved.isActivo() && saved.isDestacado()));
+        verify(categories).findById(8L);
+        verify(categories, never()).lockById(8L);
+        assertThat(response.id()).isEqualTo(11L);
+        assertThat(response.categoriaId()).isEqualTo(8L);
+        assertThat(response.nombre()).isEqualTo("Arena fina");
+        assertThat(response.descripcion()).isNull();
+        assertThat(response.precioReferencia()).isEqualByComparingTo("125.50");
+        assertThat(response.disponible()).isTrue();
+        assertThat(response.activo()).isFalse();
+        assertThat(response.destacado()).isTrue();
+    }
+
+    @Test
+    void missingProductDoesNotLookUpCategoryOrSave() {
+        assertThatThrownBy(() -> service.update(99L, updateRequest("Arena", 7L)))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(products).lockById(99L);
+        verifyNoInteractions(categories);
+        verify(products, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void missingCategoryDoesNotSaveOrChangeProduct() {
+        Category previous = Category.builder().id(7L).activo(true).build();
+        Product product = Product.builder().id(11L).category(previous).nombre("Original")
+                .descripcion("Anterior").precioReferencia(new BigDecimal("10.00"))
+                .disponible(false).activo(true).destacado(false).build();
+        when(products.lockById(11L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> service.update(11L, updateRequest("Nuevo", 99L)))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(categories).findById(99L);
+        verify(products, never()).saveAndFlush(any());
+        assertThat(product.getCategory()).isSameAs(previous);
+        assertThat(product.getNombre()).isEqualTo("Original");
+        assertThat(product.getDescripcion()).isEqualTo("Anterior");
+    }
+
+    @Test
+    void updateAllowsNameAlreadyUsedByAnotherProduct() {
+        Product product = Product.builder().id(11L).category(Category.builder().id(7L).build())
+                .nombre("Original").descripcion("Antes").precioReferencia(new BigDecimal("10.00"))
+                .disponible(false).build();
+        when(products.lockById(11L)).thenReturn(Optional.of(product));
+        when(categories.findById(7L)).thenReturn(Optional.of(product.getCategory()));
+        when(products.saveAndFlush(product)).thenReturn(product);
+
+        service.update(11L, updateRequest("Arena", 7L));
+
+        verify(products).lockById(11L);
+        verify(products).saveAndFlush(argThat(saved -> saved.getNombre().equals("Arena")));
+        verifyNoMoreInteractions(products);
+    }
+
     private CreateProductRequest request(String name, Long categoryId) {
         return new CreateProductRequest(name, categoryId, "Material de obra", new BigDecimal("125.50"), false);
+    }
+
+    private UpdateProductRequest updateRequest(String name, Long categoryId) {
+        return new UpdateProductRequest(name, categoryId, "Material de obra", new BigDecimal("125.50"), false);
     }
 }

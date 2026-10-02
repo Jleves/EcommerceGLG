@@ -4,6 +4,7 @@ import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
 import com.ashenox.starter.catalog.product.dto.ProductResponse;
+import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
@@ -36,6 +37,22 @@ public class ProductServiceImpl implements ProductService {
                 .activo(true)
                 .destacado(false)
                 .build();
+        return ProductResponse.from(productRepository.saveAndFlush(product));
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse update(Long id, UpdateProductRequest request) {
+        Product product = productRepository.lockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
+        Category category = categoryRepository.findById(request.categoriaId())
+                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+
+        product.setCategory(category);
+        product.setNombre(request.nombre().strip());
+        product.setDescripcion(request.descripcion());
+        product.setPrecioReferencia(request.precioReferencia());
+        product.setDisponible(request.disponible());
         return ProductResponse.from(productRepository.saveAndFlush(product));
     }
 }
