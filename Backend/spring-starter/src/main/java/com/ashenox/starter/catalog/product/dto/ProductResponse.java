@@ -3,13 +3,15 @@ package com.ashenox.starter.catalog.product.dto;
 import com.ashenox.starter.catalog.product.model.Product;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record ProductResponse(Long id, String nombre, Long categoriaId, String descripcion,
-                              BigDecimal precioReferencia, boolean disponible, boolean activo, boolean destacado) {
+                              BigDecimal precioReferencia, boolean disponible, boolean activo, boolean destacado,
+                              List<ProductCharacteristicResponse> caracteristicas) {
 
-    public static ProductResponse from(Product product) {
+    public static ProductResponse from(Product product, List<ProductCharacteristicResponse> caracteristicas) {
         return new ProductResponse(product.getId(), product.getNombre(), product.getCategory().getId(),
                 product.getDescripcion(), product.getPrecioReferencia(), product.isDisponible(),
-                product.isActivo(), product.isDestacado());
+                product.isActivo(), product.isDestacado(), caracteristicas);
     }
 }

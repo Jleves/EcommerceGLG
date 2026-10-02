@@ -2,15 +2,28 @@ package com.ashenox.starter.catalog.product.service;
 
 import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
+import com.ashenox.starter.catalog.characteristic.model.Characteristic;
+import com.ashenox.starter.catalog.characteristic.model.ProductCharacteristic;
+import com.ashenox.starter.catalog.characteristic.model.ProductCharacteristicId;
+import com.ashenox.starter.catalog.characteristic.repository.CharacteristicRepository;
+import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
 import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
+import com.ashenox.starter.catalog.product.dto.ProductCharacteristicRequest;
+import com.ashenox.starter.catalog.product.dto.ProductCharacteristicResponse;
 import com.ashenox.starter.catalog.product.dto.ProductResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
+import com.ashenox.starter.shared.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +31,8 @@ public class ProductServiceImpl implements ProductService {
 
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final CharacteristicRepository characteristicRepository;
+    private final ProductCharacteristicRepository productCharacteristicRepository;
 
     @Override
     @Transactional
@@ -26,6 +41,25 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         if (!category.isActivo()) {
             throw new ProductCategoryInactiveException();
+        }
+
+        List<ProductCharacteristicRequest> requested = request.caracteristicas() == null
+                ? List.of() : request.caracteristicas();
+        Set<Long> ids = new HashSet<>();
+        for (ProductCharacteristicRequest item : requested) {
+            if (item == null || item.caracteristicaId() == null || item.caracteristicaId() <= 0
+                    || item.valor() == null || item.valor().isBlank() || item.valor().length() > 500
+                    || item.unidad() != null && item.unidad().length() > 100) {
+                throw new BusinessException("Hay datos inválidos en las características del producto.");
+            }
+            if (!ids.add(item.caracteristicaId())) {
+                throw new BusinessException("Una característica no puede repetirse en el producto.");
+            }
+        }
+        List<Characteristic> definitions = new ArrayList<>();
+        for (Long id : ids.stream().sorted().toList()) {
+            definitions.add(characteristicRepository.lockById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe.")));
         }
 
         Product product = Product.builder()
@@ -37,7 +71,22 @@ public class ProductServiceImpl implements ProductService {
                 .activo(true)
                 .destacado(false)
                 .build();
-        return ProductResponse.from(productRepository.saveAndFlush(product));
+        Product saved = productRepository.saveAndFlush(product);
+        List<ProductCharacteristic> associations = new ArrayList<>();
+        for (ProductCharacteristicRequest item : requested) {
+            Characteristic definition = definitions.stream()
+                    .filter(candidate -> candidate.getId().equals(item.caracteristicaId())).findFirst().orElseThrow();
+            String unit = item.unidad() == null ? null : item.unidad().strip();
+            associations.add(ProductCharacteristic.builder()
+                    .id(new ProductCharacteristicId(saved.getId(), definition.getId()))
+                    .product(saved).characteristic(definition).valor(item.valor().strip())
+                    .unidad(unit == null || unit.isEmpty() ? null : unit).build());
+        }
+        if (!associations.isEmpty()) {
+            productCharacteristicRepository.saveAllAndFlush(associations);
+        }
+        return ProductResponse.from(saved, associations.stream()
+                .map(ProductCharacteristicResponse::from).toList());
     }
 
     @Override
@@ -53,7 +102,7 @@ public class ProductServiceImpl implements ProductService {
         product.setDescripcion(request.descripcion());
         product.setPrecioReferencia(request.precioReferencia());
         product.setDisponible(request.disponible());
-        return ProductResponse.from(productRepository.saveAndFlush(product));
+        return response(productRepository.saveAndFlush(product));
     }
 
     @Override
@@ -72,6 +121,12 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
         product.setActivo(active);
-        return ProductResponse.from(productRepository.saveAndFlush(product));
+        return response(productRepository.saveAndFlush(product));
+    }
+
+    private ProductResponse response(Product product) {
+        return ProductResponse.from(product, productCharacteristicRepository
+                .findByProductIdWithCharacteristic(product.getId()).stream()
+                .map(ProductCharacteristicResponse::from).toList());
     }
 }

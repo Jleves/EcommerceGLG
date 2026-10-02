@@ -2,6 +2,8 @@ package com.ashenox.starter.catalog.product;
 
 import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
+import com.ashenox.starter.catalog.characteristic.repository.CharacteristicRepository;
+import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
 import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
@@ -22,7 +24,9 @@ import static org.mockito.Mockito.*;
 class ProductServiceTest {
     private final CategoryRepository categories = mock(CategoryRepository.class);
     private final ProductRepository products = mock(ProductRepository.class);
-    private final ProductServiceImpl service = new ProductServiceImpl(categories, products);
+    private final CharacteristicRepository characteristics = mock(CharacteristicRepository.class);
+    private final ProductCharacteristicRepository values = mock(ProductCharacteristicRepository.class);
+    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values);
 
     @Test
     void trimsNamePreservesDataAndSetsServerOwnedStates() {

@@ -391,7 +391,27 @@ TRATAMIENTO: dejar el bloqueo de característica y exigir el test de ambos órde
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** `CreateProductRequest` admite arreglo opcional validado; el servicio rechaza IDs repetidos, bloquea definiciones en orden ascendente después de la categoría, inserta producto y asociaciones en una transacción y responde con nombre actual, valor y unidad. `ProductResponse` incluye siempre `caracteristicas`; editar, desactivar y reactivar leen las asociaciones existentes. Se conserva el constructor Java previo de cinco argumentos para los tests y callers existentes.
+
+**Diferencias respecto del plan:** se añadió un test de rollback con fallo inyectado en el repositorio de asociaciones para demostrar atomicidad después del INSERT del producto.
+
+**Tests ejecutados/exitosos:** `ProductServiceTest` (regresión unitaria de alta/edición/estado), `ProductCharacteristicServiceIntegrationTest` (H2: alta básica, arreglo vacío, dos productos con una definición y valores distintos, IDs repetidos e inexistentes sin INSERT, respuestas de edición/estado), `ProductCharacteristicAtomicityIntegrationTest` (H2: rollback tras fallo del guardado de valores), `ProductCharacteristicAtomicityMySqlTest` (mismo rollback en MySQL 8.4), `CharacteristicPersistenceMySqlTest` (unicidad de pareja y FK). PASS.
+
+**Tests fallidos:** ninguno tras la corrección de aislamiento de pruebas descrita en INC-002 de la tanda 4.
+
+**Incidentes:** ninguno de implementación de servicio; INC-002 afectó la regresión conjunta y se registra en tanda 4.
+
+**Tests faltantes:** no hay carrera con eliminación porque ese endpoint aún no existe; riesgo de que una implementación futura de borrado omita el bloqueo compartido. Se exige prueba de ambos órdenes en la tarjeta de eliminación.
+
+**Riesgos residuales:** futura eliminación de característica debe bloquear la misma fila antes de quitar asociaciones.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** DTOs de producto, `ProductServiceImpl`, test unitario de servicio y tests H2/MySQL de valores y atomicidad.
+
+**Criterio de cierre:** [x] altas omitidas, vacías y con valores; [x] unicidad, referencias y rollback en MySQL; [x] respuestas de edición/estado coherentes; [x] riesgo de eliminación registrado.
 
 ## Tanda 4 — Contrato HTTP y recorrido integral
 
