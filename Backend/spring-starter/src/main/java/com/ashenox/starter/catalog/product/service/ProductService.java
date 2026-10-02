@@ -7,6 +7,8 @@ import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 public interface ProductService {
     ProductResponse create(CreateProductRequest request);
 
+    ProductResponse getById(Long id);
+
     ProductResponse update(Long id, UpdateProductRequest request);
 
     ProductResponse deactivate(Long id);

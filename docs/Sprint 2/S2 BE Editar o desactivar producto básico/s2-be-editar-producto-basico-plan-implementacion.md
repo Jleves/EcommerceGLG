@@ -2,7 +2,7 @@
 
 **Fuentes de diseño:** [tarjeta BE de Trello](https://trello.com/c/t6Sy1vOk), [tarjeta de listados](https://trello.com/c/hW6oiQ3S), [tarjeta FE asociada](https://trello.com/c/DQGDVmWT), `docs/modelo-inicial.md`, `docs/Sprint 2/S2 BE Crear producto básico/s2-be-crear-producto-basico-plan-implementacion.md` y las decisiones acordadas para esta tarjeta. La tarjeta BE menciona características y ubica la reactivación en listados; las decisiones actuales difieren características a Sprint 3 y adelantan la reactivación a este backend.
 
-**Alcance acordado:** editar nombre, categoría, descripción, precio de referencia y disponibilidad; desactivar y reactivar mediante baja lógica. No implementar características, variantes, fotos, promociones, control de `destacado`, listados, consulta por ID, formulario React ni ficha pública. Las tandas 1 y 2 están completas; la tanda 3 sigue pendiente.
+**Alcance acordado:** editar nombre, categoría, descripción, precio de referencia y disponibilidad; desactivar y reactivar mediante baja lógica. No implementar características, variantes, fotos, promociones, control de `destacado`, listados, consulta por ID, formulario React ni ficha pública. Las tres tandas están completas.
 
 ## Estado al planificar — COMPROBADO EN EL CÓDIGO
 
@@ -12,7 +12,7 @@
 - `ProductResponse.from(...)` devuelve ID, campos básicos y ambos estados. `GlobalExceptionHandler` ya traduce validación y JSON inválido a 400, recurso inexistente a 404 y el conflicto de categoría inactiva del alta a 409, con `ApiError` y `requestId`.
 - Existen `ProductServiceTest`, `ProductServiceIntegrationTest`, `ProductControllerTest`, pruebas de persistencia H2/MySQL y `ProductCategoryConcurrencyMySqlTest`. Cubren el alta, la regla de categoría activa, autorización y conservación del producto al desactivar su categoría; no cubren edición ni transiciones de estado del producto.
 
-## Contrato objetivo — implementación parcial
+## Contrato objetivo — implementado
 
 | Ruta | Método propuesto | Contrato y resultado |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ sequenceDiagram
 
 ### Flujo objetivo completo
 
-`ProductServiceImpl.update(...)`, `UpdateProductRequest` y `ProductRepository.lockById(...)` quedaron **IMPLEMENTADOS EN LA TANDA 1**. `ProductServiceImpl.deactivate(...)` y `reactivate(...)` quedaron **IMPLEMENTADOS EN LA TANDA 2**. Los tres métodos nuevos de `ProductController` siguen **PROPUESTOS**; `ProductController`, `CategoryRepository`, `SecurityConfig`, `ProductResponse` y `GlobalExceptionHandler` ya existían.
+`ProductServiceImpl.update(...)`, `UpdateProductRequest` y `ProductRepository.lockById(...)` quedaron **IMPLEMENTADOS EN LA TANDA 1**. `ProductServiceImpl.deactivate(...)` y `reactivate(...)` quedaron **IMPLEMENTADOS EN LA TANDA 2**. Los tres métodos nuevos de `ProductController` quedaron **IMPLEMENTADOS EN LA TANDA 3**; se reutilizaron `CategoryRepository`, `SecurityConfig`, `ProductResponse` y `GlobalExceptionHandler`.
 
 ```mermaid
 sequenceDiagram
@@ -102,7 +102,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 1 | Edición básica en servicio y persistencia | Producto básico existente | Completa |
 | 2 | Desactivación y reactivación idempotentes | Tanda 1 | Completa |
-| 3 | Rutas HTTP, seguridad y verificación integral | Tandas 1 y 2 | Planificada |
+| 3 | Rutas HTTP, seguridad y verificación integral | Tandas 1 y 2 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3
@@ -396,14 +396,34 @@ TRATAMIENTO: tarjetas FE/listados y Sprint 3; no ampliar esta tarjeta.
 
 ### Criterio de cierre
 
-- [ ] Tres rutas responden según contrato y persisten cambios.
-- [ ] Roles, sesión, CSRF, validaciones y errores verificados por HTTP.
-- [ ] Baja lógica y reactivación conservan ID y referencias.
-- [ ] Regresión de alta/categoría ejecutada; incidentes, faltantes y riesgos registrados.
+- [x] Tres rutas responden según contrato y persisten cambios.
+- [x] Roles, sesión, CSRF, validaciones y errores verificados por HTTP.
+- [x] Baja lógica y reactivación conservan ID y referencias.
+- [x] Regresión de alta/categoría ejecutada; incidentes, faltantes y riesgos registrados.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (02/10/2026). Detalle en [tanda-3-resultado.md](tanda-3-resultado.md).
+
+**Cambios realizados:** `ProductController` expone `PUT /{id}` con `@Valid UpdateProductRequest` y `POST /{id}/deactivate` y `/reactivate`; delega en los servicios implementados en tandas anteriores y devuelve `200 ProductResponse`. Se añadieron cinco pruebas HTTP en `ProductControllerTest`.
+
+**Diferencias respecto del plan:** ninguna funcional. El matcher, CSRF y los mapeos de `ApiError` existentes cubrieron las rutas nuevas; no se modificaron seguridad, errores, persistencia ni migraciones.
+
+**Tests ejecutados:** selección Maven de `ProductControllerTest`, `CategoryControllerTest`, `ProductServiceTest`, `ProductServiceIntegrationTest`, `ProductStatusConcurrencyMySqlTest` y `ProductCategoryConcurrencyMySqlTest`. Reportes Surefire: **34 pruebas, 0 fallos, 0 errores y 0 omisiones**.
+
+**Tests exitosos:** 10 pruebas HTTP de producto (5 nuevas y 5 de alta/regresión), 7 HTTP de categoría, 10 unitarias de servicio, 4 de integración H2/Flyway y 3 de concurrencia MySQL. Los casos nuevos comprueban roles, sesión, CSRF, validación, errores, idempotencia, edición de producto inactivo y categoría inactiva, y el recorrido completo con recarga de la fila.
+
+**Tests fallidos:** ninguno.
+
+**Incidentes:** ninguno durante la tanda. Se reutilizaron las variables de entorno de Testcontainers documentadas en `INC-T2-001`; `docker ps` confirmó que no quedaron contenedores en ejecución.
+
+**Tests faltantes:** ninguno de los planificados para esta tanda. No se ejecutó una suite global del backend ni pruebas de UI, lectura administrativa, ficha pública o características futuras; están fuera de su alcance.
+
+**Riesgos residuales:** las ediciones concurrentes siguen con semántica de última escritura válida; la selección prueba componentes relacionados, no todo el backend. La UI y lecturas para mostrar estos cambios dependen de otras tarjetas. Sprint 3 deberá preservar las referencias al incorporar características y variantes.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `ProductController.java`, `ProductControllerTest.java`, este plan y `tanda-3-resultado.md`.
 
 ## Registro global de decisiones pendientes
 
@@ -420,17 +440,15 @@ IMPLEMENTADO — ALTA EXISTENTE
 POST /api/catalog/products → ProductController.create → ProductServiceImpl.create
 → categoría activa y bloqueada → products INSERT → 201 ProductResponse
 
-IMPLEMENTADO — TANDA 1, SOLO SERVICIO
-ProductServiceImpl.update → producto bloqueado → categoría existente
-→ products UPDATE de cinco datos básicos → ProductResponse
+IMPLEMENTADO — TANDAS 1 Y 3, EDICIÓN
+PUT /api/catalog/products/{id} → sesión / CSRF / roles → @Valid UpdateProductRequest
+→ ProductServiceImpl.update → producto bloqueado → categoría existente
+→ products UPDATE de cinco datos básicos → 200 ProductResponse o ApiError
 
-IMPLEMENTADO — TANDA 2, SOLO SERVICIO
-ProductServiceImpl.deactivate/reactivate → producto bloqueado
-→ activo=false/true sin borrado → ProductResponse
-
-PENDIENTE — TANDA 3
-PUT y dos POST privados → @Valid / sesión / CSRF / roles
-→ servicios anteriores → 200 ProductResponse o ApiError
+IMPLEMENTADO — TANDAS 2 Y 3, ESTADO
+POST /api/catalog/products/{id}/deactivate|reactivate → sesión / CSRF / roles
+→ ProductServiceImpl.deactivate/reactivate → producto bloqueado
+→ activo=false/true sin borrado → 200 ProductResponse o ApiError
 ```
 
 ## Resumen final

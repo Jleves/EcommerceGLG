@@ -11,4 +11,9 @@ import java.util.List;
 public interface ProductCharacteristicRepository extends JpaRepository<ProductCharacteristic, ProductCharacteristicId> {
     @Query("select pc from ProductCharacteristic pc join fetch pc.characteristic where pc.product.id = :productId order by pc.characteristic.id")
     List<ProductCharacteristic> findByProductIdWithCharacteristic(@Param("productId") Long productId);
+
+    @Query("select pc.characteristic.id, count(pc) from ProductCharacteristic pc group by pc.characteristic.id")
+    List<Object[]> countAllByCharacteristic();
+
+    long countByCharacteristic_Id(Long characteristicId);
 }

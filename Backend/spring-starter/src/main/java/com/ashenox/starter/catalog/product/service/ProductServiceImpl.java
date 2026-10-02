@@ -90,6 +90,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ProductResponse getById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
+        return response(product);
+    }
+
+    @Override
     @Transactional
     public ProductResponse update(Long id, UpdateProductRequest request) {
         Product product = productRepository.lockById(id)
