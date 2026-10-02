@@ -125,6 +125,8 @@ public class SecurityConfig  {
 
                         .requestMatchers("/api/catalog/categories", "/api/catalog/categories/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
+                        .requestMatchers("/api/catalog/characteristics", "/api/catalog/characteristics/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
                         .requestMatchers("/api/catalog/products", "/api/catalog/products/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
 

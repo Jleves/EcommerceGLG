@@ -304,7 +304,27 @@ TRATAMIENTO: tanda 3 conecta el alta; eliminación corresponde a la tarjeta BE d
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** DTO de alta y respuesta, servicio y controlador para POST/GET lista/GET por ID; nombre recortado y clave normalizada con `Locale.ROOT`; conflicto específico, regla de seguridad explícita y traducción a `ApiError`.
+
+**Diferencias respecto del plan:** el conflicto por carrera se deja a la restricción única y al manejador global de integridad. No se añadió una prueba de dos requests simultáneos; la restricción se probó directamente en MySQL en tanda 1.
+
+**Tests ejecutados/exitosos:** `CharacteristicControllerTest` (201, 200, 404, 400, 409, JSON malformado, tres roles, anónimo, rol ajeno, CSRF y acceso denegado de `USER` a usuarios admin); `CharacteristicPersistenceMySqlTest` (unicidad normalizada real). PASS.
+
+**Tests fallidos:** ninguno en la última ejecución.
+
+**Incidentes:** ninguno propio de esta tanda.
+
+**Tests faltantes:** lista vacía y orden estable no tienen aserción directa; la carrera concurrente de dos altas no tiene test de hilos. Riesgo residual: cambios futuros en la consulta de listado u orquestación concurrente podrían escapar a esta suite; recomendación: añadir casos dedicados cuando se amplíe el catálogo.
+
+**Riesgos residuales:** una definición creada todavía no aporta valores a productos hasta la tanda 3.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** controlador, servicio, DTO y excepción de característica; `SecurityConfig`, `GlobalExceptionHandler`, test HTTP.
+
+**Criterio de cierre:** [x] alta y consultas cumplen contrato y permisos; [x] unicidad probada en API y MySQL, errores `ApiError`; [x] resultados y faltantes registrados.
 
 ## Tanda 3 — Valores de características en el alta de producto
 
