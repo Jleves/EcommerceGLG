@@ -1,6 +1,6 @@
 # S2 BE — Editar o eliminar característica: plan de implementación
 
-**Estado:** tanda 1 completa; tandas 2–4 planificadas.
+**Estado:** tandas 1–2 completas; tandas 3–4 planificadas.
 
 **Fuentes:** [tarjeta BE](https://trello.com/c/4NeAHpsb), [tarjeta de creación de características](https://trello.com/c/uxJ6ZOVZ), `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md` y decisiones técnicas acordadas para esta tarjeta. La tarjeta de frontend asociada es [S2 FE Editar o eliminar característica](https://trello.com/c/CWk4KFiC).
 
@@ -99,7 +99,7 @@ sequenceDiagram
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Conteo de asociaciones y consulta de producto por ID | Código actual | Completa |
-| 2 | Renombrado de característica | Tanda 1 | Planificada |
+| 2 | Renombrado de característica | Tanda 1 | Completa |
 | 3 | Eliminación transaccional y concurrencia | Tanda 2 | Planificada |
 | 4 | Edición atómica de valores de producto | Tanda 3 | Planificada |
 
@@ -282,7 +282,21 @@ TRATAMIENTO: la restricción única y el manejador de integridad deben devolver 
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. [Detalle de la tanda 2](tanda-2-resultado.md).
+
+**Cambios realizados:** `PUT /api/catalog/characteristics/{id}` recibe `nombre`, valida el request y devuelve `CharacteristicResponse` con el mismo ID y `cantidadProductos`. El servicio bloquea la definición, recorta y normaliza el nombre, excluye el propio ID de la comprobación de duplicados y guarda la definición sin modificar asociaciones.
+
+**Diferencias respecto del plan:** la prueba de carrera MySQL usa dos transacciones JDBC con comprobaciones previas separadas para forzar el caso de unicidad; el mapeo `DataIntegrityViolationException` → 409 se verifica mediante la regresión existente del manejador. No hay diferencia funcional.
+
+**Tests ejecutados:** 3 tests nuevos HTTP/integración H2, 1 nuevo MySQL de carrera y 38 de regresión relacionada (características, consultas, producto y errores). **Tests exitosos:** 42. **Tests fallidos:** ninguno en la corrida final; un primer intento tuvo 1 fallo de preparación del test, corregido y registrado.
+
+**Incidentes:** `INC-002`, Maven bloqueado por red del sandbox; `INC-003`, PUT anónimo sin CSRF en un test nuevo esperaba 401 y recibió 403. Ambos resueltos sin modificar código productivo por el incidente.
+
+**Tests faltantes:** ninguno de los previstos. La carrera se comprueba en la restricción MySQL; no se fuerza un fallo de unicidad dentro de dos requests HTTP concurrentes. **Riesgos residuales:** el conteo sigue siendo informativo; el camino HTTP concurrente depende del manejador general de integridad, probado por separado. Eliminación y escrituras concurrentes de asociaciones corresponden a las tandas posteriores.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CharacteristicController`, `CharacteristicService`, `CharacteristicServiceImpl`, `CharacteristicRepository` y este plan. **Archivos nuevos:** `UpdateCharacteristicRequest`, `CharacteristicRenameTest`, `CharacteristicRenameMySqlTest` y `tanda-2-resultado.md`.
 
 ## Tanda 3 — Eliminar característica con sus asociaciones
 

@@ -2,6 +2,7 @@ package com.ashenox.starter.catalog.characteristic.service;
 
 import com.ashenox.starter.catalog.characteristic.dto.CharacteristicResponse;
 import com.ashenox.starter.catalog.characteristic.dto.CreateCharacteristicRequest;
+import com.ashenox.starter.catalog.characteristic.dto.UpdateCharacteristicRequest;
 import com.ashenox.starter.catalog.characteristic.model.Characteristic;
 import com.ashenox.starter.catalog.characteristic.repository.CharacteristicRepository;
 import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
@@ -50,5 +51,21 @@ public class CharacteristicServiceImpl implements CharacteristicService {
         Characteristic definition = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe."));
         return CharacteristicResponse.from(definition, productCharacteristicRepository.countByCharacteristic_Id(id));
+    }
+
+    @Override
+    @Transactional
+    public CharacteristicResponse update(Long id, UpdateCharacteristicRequest request) {
+        Characteristic definition = repository.lockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe."));
+        String nombre = request.nombre().strip();
+        String normalized = nombre.toLowerCase(Locale.ROOT);
+        if (repository.existsByNombreNormalizadoAndIdNot(normalized, id)) {
+            throw new CharacteristicConflictException();
+        }
+        definition.setNombre(nombre);
+        definition.setNombreNormalizado(normalized);
+        return CharacteristicResponse.from(repository.saveAndFlush(definition),
+                productCharacteristicRepository.countByCharacteristic_Id(id));
     }
 }

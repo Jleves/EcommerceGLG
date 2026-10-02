@@ -2,6 +2,7 @@ package com.ashenox.starter.catalog.characteristic.controller;
 
 import com.ashenox.starter.catalog.characteristic.dto.CharacteristicResponse;
 import com.ashenox.starter.catalog.characteristic.dto.CreateCharacteristicRequest;
+import com.ashenox.starter.catalog.characteristic.dto.UpdateCharacteristicRequest;
 import com.ashenox.starter.catalog.characteristic.service.CharacteristicService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,5 +33,10 @@ public class CharacteristicController {
     @GetMapping("/{id}")
     public CharacteristicResponse getById(@PathVariable Long id) {
         return service.getById(id);
+    }
+
+    @PutMapping("/{id}")
+    public CharacteristicResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCharacteristicRequest request) {
+        return service.update(id, request);
     }
 }

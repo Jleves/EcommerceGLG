@@ -11,6 +11,7 @@ import java.util.Optional;
 
 public interface CharacteristicRepository extends JpaRepository<Characteristic, Long> {
     boolean existsByNombreNormalizado(String nombreNormalizado);
+    boolean existsByNombreNormalizadoAndIdNot(String nombreNormalizado, Long id);
 
     List<Characteristic> findAllByOrderByNombreAscIdAsc();
 
