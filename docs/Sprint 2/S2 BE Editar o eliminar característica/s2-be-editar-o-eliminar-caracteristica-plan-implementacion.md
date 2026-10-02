@@ -1,6 +1,6 @@
 # S2 BE — Editar o eliminar característica: plan de implementación
 
-**Estado:** tandas 1–3 completas; tanda 4 planificada.
+**Estado:** tandas 1–4 completas.
 
 **Fuentes:** [tarjeta BE](https://trello.com/c/4NeAHpsb), [tarjeta de creación de características](https://trello.com/c/uxJ6ZOVZ), `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md` y decisiones técnicas acordadas para esta tarjeta. La tarjeta de frontend asociada es [S2 FE Editar o eliminar característica](https://trello.com/c/CWk4KFiC).
 
@@ -101,7 +101,7 @@ sequenceDiagram
 | 1 | Conteo de asociaciones y consulta de producto por ID | Código actual | Completa |
 | 2 | Renombrado de característica | Tanda 1 | Completa |
 | 3 | Eliminación transaccional y concurrencia | Tanda 2 | Completa |
-| 4 | Edición atómica de valores de producto | Tanda 3 | Planificada |
+| 4 | Edición atómica de valores de producto | Tanda 3 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3 → Tanda 4
@@ -484,7 +484,23 @@ TRATAMIENTO: aceptar conteo informativo; la tarjeta frontend refrescará las con
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. [Detalle de la tanda 4](tanda-4-resultado.md).
+
+**Cambios realizados:** `UpdateProductRequest` distingue `caracteristicas` omitidas de `null` explícito y conserva el constructor previo. `ProductServiceImpl.update` valida lista e IDs únicos, bloquea definiciones solicitadas en orden ascendente, sincroniza asociaciones y guarda campos básicos en una transacción. La respuesta de PUT y el GET por ID muestran el conjunto final.
+
+**Diferencias respecto del plan:** no fue necesario modificar `ProductCharacteristicRepository`: la lectura, eliminación y guardado heredados de `JpaRepository` cubren la sincronización. Se cambió el DTO de record a clase para detectar presencia de la propiedad JSON sin añadir dependencias.
+
+**Tests ejecutados:** 8 nuevos (2 integración H2, 2 HTTP/H2 y 4 MySQL) y 47 de regresión relacionada. **Tests exitosos:** 55, sin fallos, errores ni omisiones en la corrida final.
+
+**Tests fallidos:** ninguno pendiente. La primera corrida de regresión tuvo 10 errores de preparación en `ProductControllerTest` por asociaciones dejadas por los tests nuevos; se corrigió el aislamiento y se repitió la suite completa.
+
+**Incidentes:** `INC-007`, Maven sin acceso a dependencias en el sandbox; `INC-008`, contaminación de datos H2 entre tests. Ambos resueltos; ver detalle en el resultado.
+
+**Tests faltantes:** ninguno de los grupos previstos. **Riesgos residuales:** los tests concurrentes fuerzan órdenes concretos de commit y no miden carga masiva; el conteo de uso continúa siendo informativo. Frontend y listado general de productos permanecen fuera de alcance.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `UpdateProductRequest`, `ProductServiceImpl` y este plan. **Archivos nuevos:** `ProductCharacteristicUpdateTest`, `ProductCharacteristicUpdateHttpTest`, `ProductCharacteristicUpdateMySqlTest` y `tanda-4-resultado.md`.
 
 ## Registro global de decisiones pendientes
 
@@ -497,15 +513,13 @@ Ante un defecto o test fallido relevante, registrar `INC-XXX` con tanda, context
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO TRAS TANDA 3
+IMPLEMENTADO TRAS TANDA 4
 Alta y consulta de características → alta de producto con valores
                                    → edición básica que conserva valores
                                    → conteo de uso y GET de producto por ID
                                    → renombrado que conserva asociaciones
                                    → eliminación transaccional de definición y asociaciones
-
-OBJETIVO PENDIENTE
-Edición atómica del conjunto de valores del producto
+                                   → edición atómica del conjunto de valores del producto
 ```
 
 ## Resumen final

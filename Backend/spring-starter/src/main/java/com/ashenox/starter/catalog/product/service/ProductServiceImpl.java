@@ -23,7 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -104,6 +107,50 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
         Category category = categoryRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+
+        if (request.caracteristicasPresentes()) {
+            List<ProductCharacteristicRequest> requested = request.caracteristicas();
+            if (requested == null) {
+                throw new BusinessException("Las características no pueden ser null.");
+            }
+            Set<Long> ids = new HashSet<>();
+            for (ProductCharacteristicRequest item : requested) {
+                if (item == null || item.caracteristicaId() == null || item.caracteristicaId() <= 0
+                        || item.valor() == null || item.valor().isBlank() || item.valor().length() > 500
+                        || item.unidad() != null && item.unidad().length() > 100) {
+                    throw new BusinessException("Hay datos inválidos en las características del producto.");
+                }
+                if (!ids.add(item.caracteristicaId())) {
+                    throw new BusinessException("Una característica no puede repetirse en el producto.");
+                }
+            }
+            Map<Long, Characteristic> definitions = new java.util.HashMap<>();
+            for (Long characteristicId : ids.stream().sorted().toList()) {
+                definitions.put(characteristicId, characteristicRepository.lockById(characteristicId)
+                        .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe.")));
+            }
+            Map<Long, ProductCharacteristic> existing = productCharacteristicRepository
+                    .findByProductIdWithCharacteristic(id).stream()
+                    .collect(Collectors.toMap(value -> value.getCharacteristic().getId(), Function.identity()));
+            List<ProductCharacteristic> removed = existing.entrySet().stream()
+                    .filter(entry -> !ids.contains(entry.getKey())).map(Map.Entry::getValue).toList();
+            productCharacteristicRepository.deleteAll(removed);
+            List<ProductCharacteristic> changed = new ArrayList<>();
+            for (ProductCharacteristicRequest item : requested) {
+                ProductCharacteristic association = existing.get(item.caracteristicaId());
+                if (association == null) {
+                    association = ProductCharacteristic.builder()
+                            .id(new ProductCharacteristicId(id, item.caracteristicaId()))
+                            .product(product).characteristic(definitions.get(item.caracteristicaId())).build();
+                }
+                association.setValor(item.valor().strip());
+                String unit = item.unidad() == null ? null : item.unidad().strip();
+                association.setUnidad(unit == null || unit.isEmpty() ? null : unit);
+                changed.add(association);
+            }
+            productCharacteristicRepository.flush();
+            productCharacteristicRepository.saveAllAndFlush(changed);
+        }
 
         product.setCategory(category);
         product.setNombre(request.nombre().strip());
