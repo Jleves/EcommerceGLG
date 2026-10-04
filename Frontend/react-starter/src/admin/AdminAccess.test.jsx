@@ -8,9 +8,28 @@ vi.mock('./pages/UserListPage.jsx', () => ({ UserListPage: () => <p>Listado de u
 vi.mock('./pages/UserDetailPage.jsx', () => ({ UserDetailPage: () => <p>Detalle de usuario</p> }))
 vi.mock('./pages/CreateUserPage.jsx', () => ({ CreateUserPage: () => <p>Formulario de alta</p> }))
 vi.mock('../app/ProfilePage.jsx', () => ({ ProfilePage: () => <p>Perfil privado</p> }))
+vi.mock('../catalog/categories/pages/CategoryManagementPage.jsx', () => ({ CategoryManagementPage: () => <p>Listado de categorías</p> }))
 vi.mock('../auth/pages/LoginPage.jsx', () => ({ LoginPage: () => <p>Ingresar</p> }))
 
 describe('Acceso administrativo', () => {
+  it('permite categorías a los tres roles y redirige anónimos a login', () => {
+    for (const role of ['SUPER_ADMIN', 'ADMIN', 'USER', null]) {
+      render(
+        <AuthContext.Provider value={{ user: role ? { role } : null, status: role ? 'authenticated' : 'anonymous', isAuthenticated: Boolean(role) }}>
+          <MemoryRouter initialEntries={['/app/catalog/categories']}><AppRouter /></MemoryRouter>
+        </AuthContext.Provider>,
+      )
+      if (role) {
+        expect(screen.getByText('Listado de categorías')).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: 'Categorías' })).toHaveAttribute('href', '/app/catalog/categories')
+      } else {
+        expect(screen.queryByText('Listado de categorías')).not.toBeInTheDocument()
+        expect(screen.getByText('Ingresar')).toBeInTheDocument()
+      }
+      cleanup()
+    }
+  })
+
   it.each([
     ['/app/admin/users', 'Listado de usuarios'],
     ['/app/admin/users/7', 'Detalle de usuario'],

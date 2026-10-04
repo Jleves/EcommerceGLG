@@ -35,6 +35,7 @@ export function AppLayout() {
         <aside className="flex bg-emerald-950 px-4 py-2 md:flex-col md:py-8" aria-label="Navegación principal">
           <p className="mx-3 mb-3 hidden text-xs font-extrabold tracking-[.12em] text-emerald-200/75 uppercase md:block">Cuenta</p>
           <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/profile">Perfil</NavLink>
+          <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/catalog/categories">Categorías</NavLink>
           {user?.role === 'SUPER_ADMIN' && (
             <>
               <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/admin/users" end>Usuarios</NavLink>

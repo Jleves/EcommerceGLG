@@ -1,6 +1,6 @@
 # S2 FE Gestionar categorías — plan de implementación
 
-**Estado:** tanda 1 completa; tandas 2 a 4 pendientes.
+**Estado:** tandas 1 y 2 completas; tandas 3 y 4 pendientes.
 
 ## Propósito y decisiones cerradas
 
@@ -146,7 +146,7 @@ Frontend/react-starter/package.json / package-lock.json [MODIFICADOS]
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Endpoints y servicio frontend, con contrato HTTP probado | API de categorías existente | Completa |
-| 2 | Tabler, registro de claves, ruta, navegación y listado con carga, vacío y error | 1 | Planificada |
+| 2 | Tabler, registro de claves, ruta, navegación y listado con carga, vacío y error | 1 | Completa |
 | 3 | Alta y edición con selector visual, validaciones y conflictos | 2 | Planificada |
 | 4 | Desactivación/reactivación, consulta de resultados inciertos y recorrido integral | 3 | Planificada |
 
@@ -319,15 +319,33 @@ TRATAMIENTO: completar en las tandas 3 y 4.
 
 ### Criterio de cierre
 
-- [ ] Los tres roles acceden y un anónimo no.
-- [ ] Lista, vacío, carga y error son visibles y verificables.
-- [ ] Claves conocidas se dibujan; una clave antigua o desconocida usa respaldo sin cambiar el dato.
-- [ ] La gestión de usuarios conserva su autorización anterior.
-- [ ] Tests, lint y build del frontend pasan; incidentes y riesgos quedan registrados.
+- [x] Los tres roles acceden y un anónimo no.
+- [x] Lista, vacío, carga y error son visibles y verificables.
+- [x] Claves conocidas se dibujan; una clave antigua o desconocida usa respaldo sin cambiar el dato.
+- [x] La gestión de usuarios conserva su autorización anterior.
+- [x] Tests, lint y build del frontend pasan; incidentes y riesgos quedan registrados.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. [Detalle de la tanda 2](tanda-2-resultado.md).
+
+**Cambios realizados:** ruta autenticada `/app/catalog/categories`, enlace para los tres roles, dependencia Tabler, registro curado de ocho claves, respaldo para claves desconocidas y listado de solo lectura con carga, vacío, error y reintento. Se cancelan e ignoran lecturas al desmontar la pantalla.
+
+**Diferencias respecto del plan:** ninguna funcional. El reintento se ofrece tras error de lectura; en ese estado no queda una lectura simultánea pendiente.
+
+**Tests ejecutados y exitosos:** 40/40 pruebas relacionadas (acceso, listado, registro, servicio y regresión de usuarios); suite completa frontend 148/148; `npm run lint` y `npm run build` exitosos. El código usa importaciones estáticas de los nueve componentes Tabler declarados y el build de producción finalizó correctamente.
+
+**Tests fallidos:** ninguno por expectativa. Vitest y Vite no pudieron iniciar dentro del sandbox por la restricción de lectura de `vite.config.js`; fuera de él pasaron sin cambios de código.
+
+**Incidentes:** `INC-002` (instalación npm bloqueada por el sandbox y Vite sin acceso a su configuración; resuelto mediante ejecución fuera del sandbox). Detalle en `tanda-2-resultado.md`.
+
+**Tests faltantes:** ninguno de los planificados para esta tanda. No hubo prueba integrada con backend/MySQL ni navegador real; queda para la validación final.
+
+**Riesgos residuales:** el listado depende del contrato real de la API y aún no permite mutaciones, previstas para las tandas 3 y 4.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `package.json`, `package-lock.json`, `AppRouter.jsx`, `AppLayout.jsx`, `AdminAccess.test.jsx`; nuevos `categoryIcons.js`, `categoryIcons.test.js`, `CategoryIcon.jsx`, `CategoryManagementPage.jsx`, `CategoryManagementPage.test.jsx`, este plan y `tanda-2-resultado.md`.
 
 ---
 
@@ -544,15 +562,15 @@ Registrar solo fallos relevantes como `INC-XXX`: tanda, contexto, test o comport
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO TRAS LA TANDA 1
-Login y sesión → AppLayout → perfil / gestión de usuarios
+IMPLEMENTADO TRAS LA TANDA 2
+Login y sesión → AppLayout → perfil / gestión de usuarios / categorías
 Backend de categorías → MySQL categories
 ENDPOINTS.CATALOG → categoryService → apiRequest → API de categorías
-
-PENDIENTE (TANDAS 2 A 4)
-Login y sesión → AppLayout → /app/catalog/categories
-  → listado de activas e inactivas
+AppLayout → /app/catalog/categories → listado de activas e inactivas
   → clave icono del backend → registro GLG → componente Tabler o respaldo
+
+PENDIENTE (TANDAS 3 Y 4)
+AppLayout → /app/catalog/categories
   → alta / edición / desactivación / reactivación
   → categoryService → apiRequest → CategoryController
   → CategoryServiceImpl → CategoryRepository → MySQL categories
