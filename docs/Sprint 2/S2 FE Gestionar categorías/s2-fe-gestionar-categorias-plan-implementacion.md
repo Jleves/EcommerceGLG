@@ -1,6 +1,6 @@
 # S2 FE Gestionar categorías — plan de implementación
 
-**Estado:** tandas 1 y 2 completas; tandas 3 y 4 pendientes.
+**Estado:** tandas 1, 2 y 3 completas; tanda 4 pendiente.
 
 ## Propósito y decisiones cerradas
 
@@ -438,16 +438,36 @@ TRATAMIENTO: completar en la tanda 4.
 
 ### Criterio de cierre
 
-- [ ] Crear y editar actualizan el listado y mantienen su orden del servidor.
-- [ ] El selector guarda claves GLG y permite reemplazar o conservar un valor anterior desconocido.
-- [ ] Conflictos y errores por campo se muestran sin borrar entradas.
-- [ ] Una respuesta incierta bloquea nuevos envíos hasta consultar el estado actual.
-- [ ] No ocurre un doble envío; tests, lint y build pasan.
-- [ ] Incidentes y riesgos restantes quedan registrados.
+- [x] Crear y editar actualizan el listado y mantienen su orden del servidor.
+- [x] El selector guarda claves GLG y permite reemplazar o conservar un valor anterior desconocido.
+- [x] Conflictos y errores por campo se muestran sin borrar entradas.
+- [x] Una respuesta incierta bloquea nuevos envíos hasta consultar el estado actual.
+- [x] No ocurre un doble envío; tests, lint y build pasan.
+- [x] Incidentes y riesgos restantes quedan registrados.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. [Detalle de la tanda 3](tanda-3-resultado.md).
+
+**Cambios realizados:** formulario controlado de alta/edición, selector visual de ocho claves GLG agrupadas, conservación explícita de claves desconocidas, errores por campo y generales, recarga posterior a mutaciones exitosas, bloqueo de doble envío y revisión obligatoria tras red/5xx. Por pedido posterior, el alta se abre en un modal mediante **Crear categoría**; la edición permanece en la página.
+
+**Diferencias respecto del plan:** el alta pasó del panel siempre visible a un modal por pedido del usuario del 5 de octubre de 2026. El servicio de alta/edición ya existía desde la tanda 1; solo se conectó a la página.
+
+**Tests ejecutados:** 13 pruebas de página para lectura, apertura/cancelación del modal, formulario, alta, edición, compatibilidad, errores e incertidumbre; 18 de contrato del servicio y 10 del registro; regresión frontend completa de 157 pruebas, `npm run lint` y `npm run build`.
+
+**Tests exitosos:** 157/157, lint y build.
+
+**Tests fallidos:** dos expectativas ambiguas de pruebas tras incorporar el selector; corregidas sin cambiar el comportamiento productivo. Lint detectó una variable JSX no reconocida dentro de un callback; corregida extrayendo el componente de opción. Ver incidentes en el detalle.
+
+**Incidentes:** `INC-003` a `INC-005` en `tanda-3-resultado.md`.
+
+**Tests faltantes:** ninguna prueba planificada de la tanda quedó sin ejecutar. No se verificó persistencia real con backend/MySQL ni navegación manual; pertenece a la validación final.
+
+**Riesgos residuales:** la recarga puede fallar tras una mutación confirmada; se mantiene el aviso y se exige reintentar la lectura antes de otro envío. Una consulta posterior a red/5xx muestra el estado actual pero no demuestra si la mutación anterior se aplicó.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CategoryManagementPage.jsx`, `CategoryManagementPage.test.jsx`, nuevos `CategoryForm.jsx` y `CategoryIconPicker.jsx`, este plan y `tanda-3-resultado.md`.
 
 ---
 
