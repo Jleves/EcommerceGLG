@@ -1,6 +1,6 @@
 # S2 FE Gestionar categorías — plan de implementación
 
-**Estado:** tandas 1, 2 y 3 completas; tanda 4 pendiente.
+**Estado:** tandas 1, 2, 3 y 4 completas.
 
 ## Propósito y decisiones cerradas
 
@@ -557,15 +557,35 @@ TRATAMIENTO: mostrar el error y permitir recargar; la persistencia y reglas de b
 
 ### Criterio de cierre
 
-- [ ] El recorrido completo funciona para los tres roles autorizados.
-- [ ] La desactivación es reversible y no usa borrado físico.
-- [ ] Los resultados inciertos no provocan reintentos automáticos.
-- [ ] Tests, lint y build pasan; validación manual y límites se registran.
-- [ ] Incidentes, diferencias del plan y riesgos residuales quedan visibles.
+- [x] El recorrido completo funciona en pruebas de interfaz; el acceso para los tres roles está cubierto por pruebas de ruta.
+- [x] La desactivación es reversible y no usa borrado físico.
+- [x] Los resultados inciertos no provocan reintentos automáticos.
+- [x] Tests, lint y build pasan; validación manual y límites se registran.
+- [x] Incidentes, diferencias del plan y riesgos residuales quedan visibles.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. [Detalle de la tanda 4](tanda-4-resultado.md).
+
+**Cambios realizados:** confirmación con nombre para desactivar y reactivar, bloqueo de acciones simultáneas, recarga de lista tras éxito, error cierto 404/409 con consulta disponible, y bloqueo con revisión obligatoria tras red/5xx. Si falla la recarga posterior a un éxito, se conserva la confirmación y se informa que la lista está desactualizada. A pedido del usuario, los botones de estado y Crear categoría tienen efecto hover, la edición comparte el modal de alta y Reactivar usa verde frente al ámbar de Desactivar.
+
+**Diferencias respecto del plan:** el servicio de desactivación/reactivación ya existía desde la tanda 1; esta tanda lo conectó a la página. No se agregaron archivos productivos. La edición pasó al modal por pedido explícito posterior del usuario.
+
+**Tests ejecutados:** 23 pruebas de página, 18 de servicio y regresión frontend completa; `npm run lint` y `npm run build`.
+
+**Tests exitosos:** 167/167 en 17 archivos, lint y build.
+
+**Tests fallidos:** ninguno por comportamiento. El primer intento de Vitest no inició por restricción del sandbox al leer `vite.config.js`; fuera del sandbox pasó sin cambios.
+
+**Incidentes:** `INC-006` de entorno, documentado en `tanda-4-resultado.md`.
+
+**Tests faltantes:** ninguno de los automatizados planificados. No se ejecutó validación manual integrada con backend/MySQL ni concurrencia entre navegadores; se documentan como límites.
+
+**Riesgos residuales:** el estado puede cambiar entre la lectura y la acción; 404/409 requieren consultar de nuevo. Una lectura posterior a red/5xx muestra el estado actual, pero no prueba si la mutación anterior se aplicó.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `CategoryManagementPage.jsx`, `CategoryManagementPage.test.jsx`, este plan y `tanda-4-resultado.md`.
 
 ## Registro global de decisiones pendientes
 
@@ -589,7 +609,7 @@ ENDPOINTS.CATALOG → categoryService → apiRequest → API de categorías
 AppLayout → /app/catalog/categories → listado de activas e inactivas
   → clave icono del backend → registro GLG → componente Tabler o respaldo
 
-PENDIENTE (TANDAS 3 Y 4)
+IMPLEMENTADO TRAS LA TANDA 4
 AppLayout → /app/catalog/categories
   → alta / edición / desactivación / reactivación
   → categoryService → apiRequest → CategoryController

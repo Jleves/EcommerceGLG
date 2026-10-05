@@ -32,7 +32,7 @@ export function AppLayout() {
         </div>
       </header>
       <div className="grid min-h-[calc(100vh-4.5rem)] md:grid-cols-[15rem_1fr]">
-        <aside className="flex bg-emerald-950 px-4 py-2 md:flex-col md:py-8" aria-label="Navegación principal">
+        <aside className="flex gap-2 bg-emerald-950 px-4 py-2 md:flex-col md:py-8" aria-label="Navegación principal">
           <p className="mx-3 mb-3 hidden text-xs font-extrabold tracking-[.12em] text-emerald-200/75 uppercase md:block">Cuenta</p>
           <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/profile">Perfil</NavLink>
           <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/catalog/categories">Categorías</NavLink>
