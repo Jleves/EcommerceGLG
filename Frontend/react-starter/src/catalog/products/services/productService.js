@@ -20,3 +20,11 @@ export function createProduct(payload) {
 export function updateProduct(id, payload) {
   return apiRequest(ENDPOINTS.CATALOG.PRODUCT(id), { ...mutationOptions, method: 'PUT', body: payload })
 }
+
+export function deactivateProduct(id) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_DEACTIVATE(id), { ...mutationOptions, method: 'POST' })
+}
+
+export function reactivateProduct(id) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_REACTIVATE(id), { ...mutationOptions, method: 'POST' })
+}

@@ -1,6 +1,6 @@
 # S2 BE Listar productos para administración — plan de implementación
 
-**Estado:** planificación completa; tandas 1 y 2 ejecutadas y completas.
+**Estado:** planificación completa; tandas 1 a 4 ejecutadas y completas.
 
 **Fuentes:** decisión de esta tarjeta, `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`, código actual del catálogo y pantalla existente de categorías.
 
@@ -112,7 +112,7 @@ El alta reemplaza `getProduct/updateProduct` por `createProduct` → `ProductCon
 | 1 | API paginada de resúmenes con búsqueda por nombre | API de productos actual | Completa |
 | 2 | Adaptador frontend, ruta, navegación y listado | 1 | Completa |
 | 3 | Alta y edición en modales con características | 2 | Completa |
-| 4 | Desactivación, reactivación y recorrido integral | 3 | Planificada |
+| 4 | Desactivación, reactivación y recorrido integral | 3 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3 → Tanda 4
@@ -563,7 +563,33 @@ TRATAMIENTO: medir con datos reales cuando existan; registrar incidentes y decid
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** se agregaron los endpoints y servicios de desactivación/reactivación con POST sin reintentos, confirmación con nombre y acción, bloqueo de acciones durante la solicitud, recarga de la página actual y consulta explícita del estado tras fallos de red/5xx. La fila permanece al alternar estado. Se verificó que Productos y Categorías estén bajo `ProtectedRoute` y Usuarios, además, bajo `requiredRole="SUPER_ADMIN"`.
+
+**Diferencias respecto del plan:** ninguna funcional. Las rutas ya estaban protegidas por la implementación anterior, por lo que no hubo que cambiar `AppRouter`.
+
+**Tests ejecutados:** contrato HTTP de transiciones y ausencia de reintentos ante 401, CSRF inválido, red y 503; interfaz de confirmación/cancelación, bloqueo, recuperación y recorrido buscar → crear → editar característica → desactivar → reactivar; regresión de rutas, categorías y suite frontend completa. Tras agregar una prueba de navegación Productos → Categorías, se ejecutó nuevamente ese archivo (6/6). ESLint y build de producción.
+
+**Tests exitosos:** 198/198 pruebas en 21 archivos en la suite completa y 6/6 en la corrida focal posterior de rutas; `npm run lint` y `npm run build` correctos. El acceso anónimo no consulta productos; los tres roles autenticados sí, y Usuarios conserva `SUPER_ADMIN` exclusivo.
+
+**Tests fallidos:** ninguno pendiente. El primer test nuevo de red esperaba `status: null` cuando el contrato real de `ApiClientError` es `status: 0`; se corrigió esa expectativa tras comprobar la causa.
+
+**Incidentes:** INC-401 (expectativa incorrecta del test) e INC-402 (sandbox impidió inicialmente iniciar Vitest y build). Detalle en `s2-be-listar-productos-administracion-tanda-4-resultado.md`.
+
+**Tests faltantes:** prueba manual con navegador y backend reales, medición de rendimiento con volumen de producción y concurrencia entre sesiones. El recorrido integral automatizado usa servicios simulados.
+
+**Riesgos residuales:** rendimiento de búsqueda con catálogo grande; edición concurrente sin versión; tras respuesta incierta la lectura posterior permite revisar el estado, pero no prueba por sí sola si la solicitud anterior se aplicó.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `ProductManagementPage.jsx` y su test, `productService.js` y su test, `endpoints.js`, este plan y el resultado separado de tanda 4.
+
+**Criterio de cierre:**
+
+- [x] Búsqueda, alta, edición de características, desactivación y reactivación demostradas en el recorrido automatizado.
+- [x] Permisos, errores, resultado incierto y regresión de categorías verificados.
+- [x] Tests faltantes, incidentes y riesgos residuales documentados.
 
 ## Registro global de decisiones pendientes
 
@@ -614,7 +640,7 @@ Nav Productos
 
 ### Orden de implementación
 
-Primero la API de listado, luego la lectura React, después los modales y finalmente las transiciones de estado. Cada tanda tiene un commit sugerido independiente y no se ejecuta durante esta planificación.
+Se ejecutaron en orden la API de listado, la lectura React, los modales y las transiciones de estado. Cada tanda conserva su resultado de ejecución.
 
 ### Decisiones pendientes
 

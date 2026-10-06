@@ -1,11 +1,14 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../auth/context/AuthContext.js'
 import { listProducts } from '../catalog/products/services/productService.js'
+import { listCategories } from '../catalog/categories/services/categoryService.js'
 import { AppRouter } from './AppRouter.jsx'
 
 vi.mock('../catalog/products/services/productService.js', () => ({ listProducts: vi.fn() }))
+vi.mock('../catalog/categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
 vi.mock('../auth/pages/LoginPage.jsx', () => ({ LoginPage: () => <p>Ingreso público</p> }))
 vi.mock('../admin/pages/UserListPage.jsx', () => ({ UserListPage: () => <p>Administración de usuarios</p> }))
 
@@ -22,6 +25,7 @@ describe('rutas administrativas del catálogo', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     listProducts.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
+    listCategories.mockResolvedValue([])
   })
 
   it.each(['SUPER_ADMIN', 'ADMIN', 'USER'])('permite consultar productos con sesión %s', async (role) => {
@@ -49,5 +53,13 @@ describe('rutas administrativas del catálogo', () => {
 
     renderRoute('/app/admin/users', 'SUPER_ADMIN')
     expect(screen.getByText('Administración de usuarios')).toBeInTheDocument()
+  })
+
+  it('vuelve de Productos a Categorías dentro de las rutas protegidas', async () => {
+    renderRoute('/app/catalog/products', 'ADMIN')
+    await screen.findByRole('heading', { name: 'Productos' })
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Categorías' }))
+    expect(await screen.findByRole('heading', { name: 'Categorías' })).toBeInTheDocument()
+    expect(listCategories).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
   })
 })

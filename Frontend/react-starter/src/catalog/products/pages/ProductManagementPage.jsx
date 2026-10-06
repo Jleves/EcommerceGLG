@@ -4,7 +4,7 @@ import { RequestError } from '../../../auth/components/RequestError.jsx'
 import { listCategories } from '../../categories/services/categoryService.js'
 import { ProductForm } from '../components/ProductForm.jsx'
 import { listCharacteristics } from '../services/characteristicService.js'
-import { createProduct, getProduct, listProducts, updateProduct } from '../services/productService.js'
+import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 
 export function ProductManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -23,6 +23,8 @@ export function ProductManagementPage() {
   const [formData, setFormData] = useState(null)
   const [formError, setFormError] = useState(null)
   const [mutationError, setMutationError] = useState(null)
+  const [statusError, setStatusError] = useState(null)
+  const [confirming, setConfirming] = useState(null)
   const [pending, setPending] = useState(false)
   const [needsReview, setNeedsReview] = useState(false)
   const [notice, setNotice] = useState('')
@@ -87,7 +89,7 @@ export function ProductManagementPage() {
   }, [formTarget])
 
   function openForm(target) {
-    if (inFlight.current || needsReview || currentState.loading || currentState.error) return
+    if (inFlight.current || needsReview || confirming || currentState.loading || currentState.error) return
     setFormData(null)
     setFormError(null)
     setMutationError(null)
@@ -123,8 +125,37 @@ export function ProductManagementPage() {
     }
   }
 
+  function requestStatusChange(product) {
+    if (inFlight.current || needsReview || formTarget || confirming || currentState.loading || currentState.error) return
+    setStatusError(null)
+    setNotice('')
+    setConfirming(product)
+  }
+
+  async function confirmStatusChange() {
+    if (!confirming || inFlight.current || needsReview || currentState.loading || currentState.error) return
+    const product = confirming
+    inFlight.current = true
+    setPending(true)
+    setConfirming(null)
+    setStatusError(null)
+    try {
+      if (product.activo) await deactivateProduct(product.id)
+      else await reactivateProduct(product.id)
+      setNotice(product.activo ? 'Producto desactivado.' : 'Producto reactivado.')
+      setVersion((value) => value + 1)
+    } catch (error) {
+      setStatusError(error)
+      if (!error?.status || error.status >= 500) setNeedsReview(true)
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+
   function reviewCurrentState() {
     reviewing.current = true
+    setStatusError(null)
     setVersion((value) => value + 1)
     setState({ key, version: version + 1, loading: true, data: null, error: null })
   }
@@ -159,12 +190,21 @@ export function ProductManagementPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Productos</h1>
         <p className="mt-2 text-slate-600">Productos activos e inactivos del catálogo.</p>
-        <button className="mt-4 rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget)} onClick={() => openForm('create')} type="button">Crear producto</button>
+        <button className="mt-4 rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">Crear producto</button>
       </header>
       {notice && <p role="status" className="mb-4 rounded bg-emerald-50 p-3">{notice}</p>}
       {needsReview && <div className="mb-4 grid justify-items-start gap-3 rounded border border-amber-300 bg-amber-50 p-4">
         <p role="status">No pudimos confirmar el resultado. Consultá el estado actual antes de enviar otro cambio; la lista no confirma por sí sola si la solicitud anterior se aplicó.</p>
         <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className="rounded bg-amber-800 px-4 py-2 text-white disabled:opacity-50">Consultar estado actual</button>
+      </div>}
+      {statusError && <div className="mb-4 grid justify-items-start gap-3"><RequestError error={statusError} />{!needsReview && <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className="rounded bg-amber-800 px-4 py-2 text-white disabled:opacity-50">Consultar estado actual</button>}</div>}
+      {confirming && <div role="dialog" aria-labelledby="product-status-title" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <h2 id="product-status-title" className="font-bold">{confirming.activo ? 'Desactivar' : 'Reactivar'} {confirming.nombre}</h2>
+        <p className="mt-2">¿Confirmás {confirming.activo ? 'la desactivación' : 'la reactivación'} de {confirming.nombre}?</p>
+        <div className="mt-4 flex gap-3">
+          <button type="button" onClick={() => setConfirming(null)} className="rounded border px-4 py-2">Cancelar</button>
+          <button type="button" onClick={confirmStatusChange} className="rounded bg-amber-800 px-4 py-2 text-white">Confirmar {confirming.activo ? 'desactivación' : 'reactivación'}</button>
+        </div>
       </div>}
       {formTarget && <dialog ref={dialog} aria-labelledby="product-form-title" onCancel={(event) => { if (inFlight.current) event.preventDefault(); else closeForm() }} className="m-auto max-h-[90vh] w-[min(94vw,42rem)] overflow-y-auto rounded-xl border-0 p-0 shadow-2xl backdrop:bg-slate-950/60">
         {needsReview && <p role="status" className="m-4 rounded bg-amber-50 p-3">Resultado incierto. Consultá el estado actual antes de guardar otra vez.</p>}
@@ -178,8 +218,8 @@ export function ProductManagementPage() {
             <label className="font-semibold text-slate-800" htmlFor="product-name-search">Nombre</label>
             <input aria-describedby={(searchError || invalidUrlNombre) ? 'product-name-search-error' : undefined} aria-invalid={Boolean(searchError || invalidUrlNombre)} className="rounded-lg border border-slate-300 bg-white px-3 py-2" id="product-name-search" value={draft} onChange={(event) => { setDraft(event.target.value); setSearchError('') }} />
           </div>
-          <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white" type="submit">Buscar</button>
-          <button className="rounded-lg border border-slate-300 px-4 py-2 font-semibold" onClick={clearSearch} type="button">Limpiar búsqueda</button>
+          <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white" disabled={pending || Boolean(confirming)} type="submit">Buscar</button>
+          <button className="rounded-lg border border-slate-300 px-4 py-2 font-semibold" disabled={pending || Boolean(confirming)} onClick={clearSearch} type="button">Limpiar búsqueda</button>
         </div>
         {(searchError || invalidUrlNombre) && <p className="mt-1 text-sm text-red-700" id="product-name-search-error" role="alert">Ingresá un nombre para buscar.</p>}
       </form>
@@ -200,15 +240,18 @@ export function ProductManagementPage() {
                   {product.descripcion && <p className="mt-1 text-slate-700">{product.descripcion}</p>}
                   <p className="mt-2 text-sm text-slate-600">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
                   <p className="mt-1 text-sm text-slate-600">Precio de referencia: {product.precioReferencia} · {product.destacado ? 'Destacado' : 'No destacado'}</p>
-                  <button aria-label={`Editar ${product.nombre}`} className="mt-3 rounded bg-slate-800 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-700 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50" disabled={needsReview || Boolean(formTarget) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
+                  <div className="mt-3 flex gap-2">
+                    <button aria-label={`Editar ${product.nombre}`} className="rounded bg-slate-800 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
+                    <button aria-label={`${product.activo ? 'Desactivar' : 'Reactivar'} ${product.nombre}`} className="rounded bg-amber-800 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => requestStatusChange(product)} type="button">{product.activo ? 'Desactivar' : 'Reactivar'}</button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
           <nav aria-label="Páginas de productos" className="mt-6 flex items-center gap-4">
-            <button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" disabled={page === 0} onClick={() => goToPage(page - 1)} type="button">Anterior</button>
+            <button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" disabled={page === 0 || pending || Boolean(confirming)} onClick={() => goToPage(page - 1)} type="button">Anterior</button>
             <span>Página {page + 1} de {Math.max(1, currentState.data.totalPages)} · {currentState.data.totalElements} productos</span>
-            <button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" disabled={page + 1 >= currentState.data.totalPages} onClick={() => goToPage(page + 1)} type="button">Siguiente</button>
+            <button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" disabled={page + 1 >= currentState.data.totalPages || pending || Boolean(confirming)} onClick={() => goToPage(page + 1)} type="button">Siguiente</button>
           </nav>
         </>
       )}

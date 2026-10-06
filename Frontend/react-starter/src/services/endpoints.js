@@ -15,6 +15,8 @@ export const ENDPOINTS = Object.freeze({
     CATEGORY_REACTIVATE: (id) => `/api/catalog/categories/${encodeURIComponent(id)}/reactivate`,
     PRODUCTS: '/api/catalog/products',
     PRODUCT: (id) => `/api/catalog/products/${encodeURIComponent(id)}`,
+    PRODUCT_DEACTIVATE: (id) => `/api/catalog/products/${encodeURIComponent(id)}/deactivate`,
+    PRODUCT_REACTIVATE: (id) => `/api/catalog/products/${encodeURIComponent(id)}/reactivate`,
     CHARACTERISTICS: '/api/catalog/characteristics',
   }),
   AUTH: Object.freeze({

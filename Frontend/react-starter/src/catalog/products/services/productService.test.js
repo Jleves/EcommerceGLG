@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetApiClientForTests } from '../../../services/apiClient.js'
-import { createProduct, getProduct, listProducts, updateProduct } from './productService.js'
+import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from './productService.js'
 import { listCharacteristics } from './characteristicService.js'
 
 function jsonResponse(data) {
@@ -50,6 +50,42 @@ describe('productService', () => {
       ['POST', 'include', 'token'], ['PUT', 'include', 'token'],
     ])
     expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({ nombre: 'Cal nueva', caracteristicas: [] })
+    document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
+  })
+
+  it('envía ambas transiciones con cookies y CSRF al endpoint correcto', async () => {
+    document.cookie = 'XSRF-TOKEN=token; Path=/'
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ activo: false }))
+    vi.stubGlobal('fetch', fetchMock)
+    await deactivateProduct(7)
+    await reactivateProduct(7)
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method, options.credentials, options.headers.get('X-XSRF-TOKEN')])).toEqual([
+      ['/api/catalog/products/7/deactivate', 'POST', 'include', 'token'],
+      ['/api/catalog/products/7/reactivate', 'POST', 'include', 'token'],
+    ])
+    document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
+  })
+
+  it.each([
+    [401, { message: 'Sesión vencida' }],
+    [403, { code: 'CSRF_TOKEN_INVALID', message: 'CSRF inválido' }],
+    [503, { message: 'Servidor no disponible' }],
+  ])('no repite la transición ante HTTP %s', async (status, data) => {
+    document.cookie = 'XSRF-TOKEN=token; Path=/'
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(deactivateProduct(7)).rejects.toMatchObject({ status })
+    expect(fetchMock).toHaveBeenCalledTimes(status === 403 ? 2 : 1)
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/catalog/products/7/deactivate')).toHaveLength(1)
+    document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
+  })
+
+  it('no repite la transición ante falla de red', async () => {
+    document.cookie = 'XSRF-TOKEN=token; Path=/'
+    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(reactivateProduct(7)).rejects.toMatchObject({ status: 0 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
   })
 })
