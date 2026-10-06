@@ -6,6 +6,15 @@ import { ProductForm } from '../components/ProductForm.jsx'
 import { listCharacteristics } from '../services/characteristicService.js'
 import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 
+const buttonInteraction = 'shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
+const greenButton = `${buttonInteraction} bg-emerald-700 text-white enabled:hover:bg-emerald-800 focus-visible:outline-emerald-700`
+const amberButton = `${buttonInteraction} bg-amber-800 text-white enabled:hover:bg-amber-900 focus-visible:outline-amber-800`
+const lightButton = `${buttonInteraction} border border-slate-300 bg-white text-slate-800 enabled:hover:border-slate-400 enabled:hover:bg-slate-50 focus-visible:outline-slate-500`
+const deactivateButton = `${buttonInteraction} bg-[#B42318] text-white enabled:hover:bg-[#912018] focus-visible:outline-[#B42318]`
+const reactivateButton = `${buttonInteraction} bg-[#047857] text-white enabled:hover:bg-[#065F46] focus-visible:outline-[#047857]`
+const activeCard = 'border-[#A7F3D0] bg-[#ECFDF5] text-[#064E3B]'
+const inactiveCard = 'border-[#FECDD3] bg-[#FFF1F2] text-[#881337]'
+
 export function ProductManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawPage = searchParams.get('page')
@@ -31,9 +40,16 @@ export function ProductManagementPage() {
   const inFlight = useRef(false)
   const reviewing = useRef(false)
   const dialog = useRef(null)
+  const confirmDialog = useRef(null)
   const loadingForm = formTarget !== null && formData === null && !formError
   const currentState = state.key === key && state.version === version
     ? state : { loading: true, data: null, error: null }
+
+  useEffect(() => {
+    if (!notice) return undefined
+    const timeout = window.setTimeout(() => setNotice(''), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [notice])
 
   useEffect(() => {
     setDraft(nombre ?? '')
@@ -87,6 +103,13 @@ export function ProductManagementPage() {
       else dialog.current.setAttribute('open', '')
     }
   }, [formTarget])
+
+  useEffect(() => {
+    if (confirming && confirmDialog.current && !confirmDialog.current.open) {
+      if (confirmDialog.current.showModal) confirmDialog.current.showModal()
+      else confirmDialog.current.setAttribute('open', '')
+    }
+  }, [confirming])
 
   function openForm(target) {
     if (inFlight.current || needsReview || confirming || currentState.loading || currentState.error) return
@@ -190,26 +213,28 @@ export function ProductManagementPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Productos</h1>
         <p className="mt-2 text-slate-600">Productos activos e inactivos del catálogo.</p>
-        <button className="mt-4 rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">Crear producto</button>
+        <button className={`mt-4 rounded-lg px-4 py-2 font-semibold ${greenButton}`} disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">Crear producto</button>
       </header>
       {notice && <p role="status" className="mb-4 rounded bg-emerald-50 p-3">{notice}</p>}
       {needsReview && <div className="mb-4 grid justify-items-start gap-3 rounded border border-amber-300 bg-amber-50 p-4">
         <p role="status">No pudimos confirmar el resultado. Consultá el estado actual antes de enviar otro cambio; la lista no confirma por sí sola si la solicitud anterior se aplicó.</p>
-        <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className="rounded bg-amber-800 px-4 py-2 text-white disabled:opacity-50">Consultar estado actual</button>
+        <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className={`rounded-lg px-4 py-2 font-semibold ${amberButton}`}>Consultar estado actual</button>
       </div>}
-      {statusError && <div className="mb-4 grid justify-items-start gap-3"><RequestError error={statusError} />{!needsReview && <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className="rounded bg-amber-800 px-4 py-2 text-white disabled:opacity-50">Consultar estado actual</button>}</div>}
-      {confirming && <div role="dialog" aria-labelledby="product-status-title" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-        <h2 id="product-status-title" className="font-bold">{confirming.activo ? 'Desactivar' : 'Reactivar'} {confirming.nombre}</h2>
-        <p className="mt-2">¿Confirmás {confirming.activo ? 'la desactivación' : 'la reactivación'} de {confirming.nombre}?</p>
-        <div className="mt-4 flex gap-3">
-          <button type="button" onClick={() => setConfirming(null)} className="rounded border px-4 py-2">Cancelar</button>
-          <button type="button" onClick={confirmStatusChange} className="rounded bg-amber-800 px-4 py-2 text-white">Confirmar {confirming.activo ? 'desactivación' : 'reactivación'}</button>
+      {statusError && <div className="mb-4 grid justify-items-start gap-3"><RequestError error={statusError} />{!needsReview && <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className={`rounded-lg px-4 py-2 font-semibold ${amberButton}`}>Consultar estado actual</button>}</div>}
+      {confirming && <dialog ref={confirmDialog} aria-labelledby="product-status-title" aria-describedby="product-status-description" onCancel={() => setConfirming(null)} className="m-auto w-[min(92vw,27rem)] rounded-2xl border-0 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50">
+        <div className={`border-t-4 p-5 sm:p-6 ${confirming.activo ? 'border-[#B42318]' : 'border-[#047857]'}`}>
+          <h2 id="product-status-title" className="text-lg font-bold">{confirming.activo ? 'Desactivar' : 'Reactivar'} {confirming.nombre}</h2>
+          <p id="product-status-description" className="mt-2 text-sm text-slate-700">¿Confirmás {confirming.activo ? 'la desactivación' : 'la reactivación'} de {confirming.nombre}?</p>
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            <button type="button" onClick={() => setConfirming(null)} className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`}>Cancelar</button>
+            <button type="button" onClick={confirmStatusChange} className={`rounded-lg px-4 py-2 font-semibold ${confirming.activo ? deactivateButton : reactivateButton}`}>Confirmar {confirming.activo ? 'desactivación' : 'reactivación'}</button>
+          </div>
         </div>
-      </div>}
+      </dialog>}
       {formTarget && <dialog ref={dialog} aria-labelledby="product-form-title" onCancel={(event) => { if (inFlight.current) event.preventDefault(); else closeForm() }} className="m-auto max-h-[90vh] w-[min(94vw,42rem)] overflow-y-auto rounded-xl border-0 p-0 shadow-2xl backdrop:bg-slate-950/60">
         {needsReview && <p role="status" className="m-4 rounded bg-amber-50 p-3">Resultado incierto. Consultá el estado actual antes de guardar otra vez.</p>}
         {loadingForm && <p role="status" className="p-5">Cargando formulario…</p>}
-        {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className="justify-self-start rounded border px-4 py-2">Cerrar</button></div>}
+        {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className={`justify-self-start rounded-lg px-4 py-2 font-semibold ${lightButton}`}>Cerrar</button></div>}
         {formData && <ProductForm initialValues={formData.product} categories={formData.categories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />}
       </dialog>}
       <form className="mb-6" onSubmit={search}>
@@ -218,8 +243,8 @@ export function ProductManagementPage() {
             <label className="font-semibold text-slate-800" htmlFor="product-name-search">Nombre</label>
             <input aria-describedby={(searchError || invalidUrlNombre) ? 'product-name-search-error' : undefined} aria-invalid={Boolean(searchError || invalidUrlNombre)} className="rounded-lg border border-slate-300 bg-white px-3 py-2" id="product-name-search" value={draft} onChange={(event) => { setDraft(event.target.value); setSearchError('') }} />
           </div>
-          <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white" disabled={pending || Boolean(confirming)} type="submit">Buscar</button>
-          <button className="rounded-lg border border-slate-300 px-4 py-2 font-semibold" disabled={pending || Boolean(confirming)} onClick={clearSearch} type="button">Limpiar búsqueda</button>
+          <button className={`rounded-lg px-4 py-2 font-semibold ${greenButton}`} disabled={pending || Boolean(confirming)} type="submit">Buscar</button>
+          <button className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`} disabled={pending || Boolean(confirming)} onClick={clearSearch} type="button">Limpiar búsqueda</button>
         </div>
         {(searchError || invalidUrlNombre) && <p className="mt-1 text-sm text-red-700" id="product-name-search-error" role="alert">Ingresá un nombre para buscar.</p>}
       </form>
@@ -228,30 +253,30 @@ export function ProductManagementPage() {
       ) : currentState.error ? (
         <div className="grid justify-items-start gap-3">
           <RequestError error={currentState.error} />
-          <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white" onClick={() => setVersion((value) => value + 1)} type="button">Reintentar</button>
+          <button className={`rounded-lg px-4 py-2 font-semibold ${greenButton}`} onClick={() => setVersion((value) => value + 1)} type="button">Reintentar</button>
         </div>
       ) : (
         <>
           {currentState.data.content.length === 0 ? <p role="status">No hay productos en esta página.</p> : (
             <ul className="grid gap-3">
               {currentState.data.content.map((product) => (
-                <li className="rounded-xl border border-slate-200 bg-white p-4" key={product.id}>
-                  <h2 className="font-bold text-slate-900">{product.nombre}</h2>
-                  {product.descripcion && <p className="mt-1 text-slate-700">{product.descripcion}</p>}
-                  <p className="mt-2 text-sm text-slate-600">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
-                  <p className="mt-1 text-sm text-slate-600">Precio de referencia: {product.precioReferencia} · {product.destacado ? 'Destacado' : 'No destacado'}</p>
+                <li className={`rounded-xl border p-4 ${product.activo ? activeCard : inactiveCard}`} key={product.id}>
+                  <h2 className="font-bold">{product.nombre}</h2>
+                  {product.descripcion && <p className="mt-1">{product.descripcion}</p>}
+                  <p className="mt-2 text-sm">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
+                  <p className="mt-1 text-sm">Precio de referencia: {product.precioReferencia} · {product.destacado ? 'Destacado' : 'No destacado'}</p>
                   <div className="mt-3 flex gap-2">
-                    <button aria-label={`Editar ${product.nombre}`} className="rounded bg-slate-800 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
-                    <button aria-label={`${product.activo ? 'Desactivar' : 'Reactivar'} ${product.nombre}`} className="rounded bg-amber-800 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => requestStatusChange(product)} type="button">{product.activo ? 'Desactivar' : 'Reactivar'}</button>
+                    <button aria-label={`Editar ${product.nombre}`} className={`rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white enabled:hover:bg-slate-700 focus-visible:outline-slate-800 ${buttonInteraction}`} disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
+                    <button aria-label={`${product.activo ? 'Desactivar' : 'Reactivar'} ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${product.activo ? deactivateButton : reactivateButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => requestStatusChange(product)} type="button">{product.activo ? 'Desactivar' : 'Reactivar'}</button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
           <nav aria-label="Páginas de productos" className="mt-6 flex items-center gap-4">
-            <button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" disabled={page === 0 || pending || Boolean(confirming)} onClick={() => goToPage(page - 1)} type="button">Anterior</button>
+            <button className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`} disabled={page === 0 || pending || Boolean(confirming)} onClick={() => goToPage(page - 1)} type="button">Anterior</button>
             <span>Página {page + 1} de {Math.max(1, currentState.data.totalPages)} · {currentState.data.totalElements} productos</span>
-            <button className="rounded-lg border border-slate-300 px-4 py-2 disabled:opacity-50" disabled={page + 1 >= currentState.data.totalPages || pending || Boolean(confirming)} onClick={() => goToPage(page + 1)} type="button">Siguiente</button>
+            <button className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`} disabled={page + 1 >= currentState.data.totalPages || pending || Boolean(confirming)} onClick={() => goToPage(page + 1)} type="button">Siguiente</button>
           </nav>
         </>
       )}

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -40,6 +40,14 @@ describe('ProductManagementPage', () => {
     expect(screen.getByText(/ID 1 · Categoría 3 · Activo · Disponible/)).toBeInTheDocument()
     expect(screen.getByText(/ID 2 · Categoría 4 · Inactivo · No disponible/)).toBeInTheDocument()
     expect(screen.getByText(/Precio de referencia: 500 · Destacado/)).toBeInTheDocument()
+    const activeCard = screen.getByRole('heading', { name: 'Arena' }).closest('li')
+    const inactiveCard = screen.getByRole('heading', { name: 'Cemento' }).closest('li')
+    expect(activeCard).toHaveClass('bg-[#ECFDF5]', 'border-[#A7F3D0]', 'text-[#064E3B]')
+    expect(inactiveCard).toHaveClass('bg-[#FFF1F2]', 'border-[#FECDD3]', 'text-[#881337]')
+    expect(within(activeCard).getByRole('button', { name: 'Editar Arena' })).toHaveClass('bg-slate-800', 'text-white')
+    expect(within(inactiveCard).getByRole('button', { name: 'Editar Cemento' })).toHaveClass('bg-slate-800', 'text-white')
+    expect(within(activeCard).getByRole('button', { name: 'Desactivar Arena' })).toHaveClass('bg-[#B42318]', 'text-white')
+    expect(within(inactiveCard).getByRole('button', { name: 'Reactivar Cemento' })).toHaveClass('bg-[#047857]', 'text-white')
     expect(listProducts).toHaveBeenCalledWith(0, 'arena', { signal: expect.any(AbortSignal) })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(await screen.findByText('No hay productos en esta página.')).toBeInTheDocument()
@@ -118,6 +126,7 @@ describe('ProductManagementPage', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
     await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
     await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, descripcion: '', precioReferencia: '12.50', disponible: true, caracteristicas: [] }))
+    expect(await screen.findByText('Producto creado.')).toBeInTheDocument()
     await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(2))
   })
 
@@ -163,6 +172,7 @@ describe('ProductManagementPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Valor' }), '25')
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(updateProduct).toHaveBeenCalledWith(2, expect.objectContaining({ categoriaId: 4, caracteristicas: [{ caracteristicaId: 8, valor: '25', unidad: '' }] })))
+    expect(await screen.findByText('Producto actualizado.')).toBeInTheDocument()
     expect(updateProduct.mock.calls[0][1]).not.toHaveProperty('activo')
     expect(updateProduct.mock.calls[0][1]).not.toHaveProperty('destacado')
   })
@@ -272,8 +282,16 @@ describe('ProductManagementPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Arena' })
     await user.click(screen.getByRole('button', { name: 'Desactivar Arena' }))
+    expect(screen.getByRole('dialog').tagName).toBe('DIALOG')
+    expect(screen.getByRole('dialog')).toHaveAttribute('open')
     expect(screen.getByRole('dialog')).toHaveTextContent('¿Confirmás la desactivación de Arena?')
+    expect(screen.getByRole('button', { name: 'Confirmar desactivación' })).toHaveClass('bg-[#B42318]', 'text-white')
     await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(deactivateProduct).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Desactivar Arena' }))
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { bubbles: true, cancelable: true }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(deactivateProduct).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Desactivar Arena' }))
     await user.click(screen.getByRole('button', { name: 'Confirmar desactivación' }))
@@ -282,10 +300,70 @@ describe('ProductManagementPage', () => {
     expect(await screen.findByRole('button', { name: 'Reactivar Arena' })).toBeInTheDocument()
     expect(screen.getByText(/ID 1 · Categoría 3 · Inactivo/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Reactivar Arena' }))
+    expect(screen.getByRole('button', { name: 'Reactivar Arena' })).toHaveClass('bg-[#047857]', 'text-white')
+    expect(screen.getByRole('button', { name: 'Confirmar reactivación' })).toHaveClass('bg-[#047857]', 'text-white')
     await user.click(screen.getByRole('button', { name: 'Confirmar reactivación' }))
     await waitFor(() => expect(reactivateProduct).toHaveBeenCalledWith(1))
     expect(await screen.findByRole('button', { name: 'Desactivar Arena' })).toBeInTheDocument()
     expect(listProducts).toHaveBeenCalledTimes(3)
+  })
+
+  it('oculta el aviso a los 4 segundos y reinicia el plazo con una nueva operación', async () => {
+    vi.useFakeTimers()
+    try {
+      listProducts.mockResolvedValueOnce(makePage(0, [active]))
+        .mockResolvedValueOnce(makePage(0, [{ ...active, activo: false }]))
+        .mockResolvedValueOnce(makePage(0, [active]))
+      deactivateProduct.mockResolvedValue({})
+      reactivateProduct.mockResolvedValue({})
+
+      await act(async () => { renderPage() })
+      fireEvent.click(screen.getByRole('button', { name: 'Desactivar Arena' }))
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Confirmar desactivación' })) })
+      expect(screen.getByText('Producto desactivado.')).toBeInTheDocument()
+
+      act(() => { vi.advanceTimersByTime(2000) })
+      fireEvent.click(screen.getByRole('button', { name: 'Reactivar Arena' }))
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Confirmar reactivación' })) })
+      expect(screen.getByText('Producto reactivado.')).toBeInTheDocument()
+
+      act(() => { vi.advanceTimersByTime(2000) })
+      expect(screen.getByText('Producto reactivado.')).toBeInTheDocument()
+      act(() => { vi.advanceTimersByTime(1999) })
+      expect(screen.getByText('Producto reactivado.')).toBeInTheDocument()
+      act(() => { vi.advanceTimersByTime(1) })
+      expect(screen.queryByText('Producto reactivado.')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('incluye hover y transición en los botones de lista, confirmación y formulario', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.className).toContain('enabled:hover:')
+      expect(button.className).toContain('transition')
+    }
+    const previous = screen.getByRole('button', { name: 'Anterior' })
+    expect(previous).toBeDisabled()
+    expect(previous.className).not.toMatch(/(?<!enabled:)hover:/)
+
+    await user.click(screen.getByRole('button', { name: 'Desactivar Arena' }))
+    for (const button of within(screen.getByRole('dialog')).getAllByRole('button')) {
+      expect(button.className).toContain('enabled:hover:')
+      expect(button.className).toContain('transition')
+    }
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    for (const button of form.getAllByRole('button')) {
+      expect(button.className).toContain('enabled:hover:')
+      expect(button.className).toContain('transition')
+    }
   })
 
   it('bloquea acciones duplicadas durante la transición y exige lectura exitosa tras 5xx', async () => {
