@@ -1,11 +1,15 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listProducts } from '../services/productService.js'
+import { listCategories } from '../../categories/services/categoryService.js'
+import { listCharacteristics } from '../services/characteristicService.js'
+import { createProduct, getProduct, listProducts, updateProduct } from '../services/productService.js'
 import { ProductManagementPage } from './ProductManagementPage.jsx'
 
-vi.mock('../services/productService.js', () => ({ listProducts: vi.fn() }))
+vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), updateProduct: vi.fn() }))
+vi.mock('../../categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
+vi.mock('../services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
 
 const active = { id: 1, nombre: 'Arena', categoriaId: 3, descripcion: 'Fina', precioReferencia: 250, disponible: true, activo: true, destacado: false }
 const inactive = { id: 2, nombre: 'Cemento', categoriaId: 4, descripcion: '', precioReferencia: 500, disponible: false, activo: false, destacado: true }
@@ -21,7 +25,11 @@ function renderPage(path = '/app/catalog/products') {
 }
 
 describe('ProductManagementPage', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    listCategories.mockResolvedValue([{ id: 3, nombre: 'Áridos', activo: true }, { id: 4, nombre: 'Vieja', activo: false }])
+    listCharacteristics.mockResolvedValue([{ id: 7, nombre: 'Color' }, { id: 8, nombre: 'Peso' }])
+  })
 
   it('carga productos activos e inactivos, permite recorrer páginas y conserva el filtro', async () => {
     listProducts.mockResolvedValue(makePage(0, [active, inactive]))
@@ -93,5 +101,164 @@ describe('ProductManagementPage', () => {
     expect(await screen.findByRole('heading', { name: 'Cemento' })).toBeInTheDocument()
     await act(async () => finishOld(makePage(0, [active])))
     expect(screen.queryByRole('heading', { name: 'Arena' })).not.toBeInTheDocument()
+  })
+
+  it('crea sin características y recarga la lista', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    createProduct.mockResolvedValue({ id: 3 })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    expect(screen.queryByRole('option', { name: 'Vieja' })).not.toBeInTheDocument()
+    await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(screen.getByRole('textbox', { name: 'Precio de referencia' }), '12.50')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
+    await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, descripcion: '', precioReferencia: '12.50', disponible: true, caracteristicas: [] }))
+    await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(2))
+  })
+
+  it('crea con varias características sin repetir IDs', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    createProduct.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(form.getByRole('textbox', { name: 'Precio de referencia' }), '12')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(form.getByRole('button', { name: 'Agregar característica' }))
+    await user.selectOptions(form.getByRole('combobox', { name: 'Característica' }), '7')
+    await user.type(form.getByRole('textbox', { name: 'Valor' }), 'Rojo')
+    await user.click(form.getByRole('button', { name: 'Agregar característica' }))
+    await user.selectOptions(form.getAllByRole('combobox', { name: 'Característica' })[1], '8')
+    await user.type(form.getAllByRole('textbox', { name: 'Valor' })[1], '25')
+    await user.type(form.getAllByRole('textbox', { name: 'Unidad' })[1], 'kg')
+    await user.click(form.getByRole('button', { name: 'Guardar producto' }))
+    await waitFor(() => expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({ caracteristicas: [
+      { caracteristicaId: 7, valor: 'Rojo', unidad: '' }, { caracteristicaId: 8, valor: '25', unidad: 'kg' },
+    ] })))
+  })
+
+  it('edita conservando categoría inactiva y envía la lista completa al quitar y agregar características', async () => {
+    listProducts.mockResolvedValue(makePage(0, [inactive]))
+    getProduct.mockResolvedValue({ ...inactive, caracteristicas: [{ caracteristicaId: 7, nombre: 'Color', valor: 'Gris', unidad: '' }] })
+    updateProduct.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Cemento' })
+    await user.click(screen.getByRole('button', { name: 'Editar Cemento' }))
+    expect(await screen.findByRole('heading', { name: 'Editar Cemento' })).toBeInTheDocument()
+    expect(getProduct).toHaveBeenCalledWith(2, { signal: expect.any(AbortSignal) })
+    expect(screen.getByRole('option', { name: 'Vieja (inactiva actual)' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Quitar característica' }))
+    await user.click(screen.getByRole('button', { name: 'Agregar característica' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Característica' }), '8')
+    await user.type(screen.getByRole('textbox', { name: 'Valor' }), '25')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(updateProduct).toHaveBeenCalledWith(2, expect.objectContaining({ categoriaId: 4, caracteristicas: [{ caracteristicaId: 8, valor: '25', unidad: '' }] })))
+    expect(updateProduct.mock.calls[0][1]).not.toHaveProperty('activo')
+    expect(updateProduct.mock.calls[0][1]).not.toHaveProperty('destacado')
+  })
+
+  it('conserva el formulario ante 400 y evita escritura al cancelar', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    createProduct.mockRejectedValue({ status: 400, message: 'Dato inválido', fieldErrors: [{ field: 'nombre', message: 'Nombre repetido' }] })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(screen.getByRole('textbox', { name: 'Precio de referencia' }), '12')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
+    expect(await screen.findByText('Nombre repetido')).toBeInTheDocument()
+    expect(form.getByRole('textbox', { name: 'Nombre' })).toHaveValue('Cal')
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(createProduct).toHaveBeenCalledTimes(1)
+  })
+
+  it('mantiene el modal ante 404 del detalle y permite cerrarlo sin mutar', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    getProduct.mockRejectedValue({ status: 404, message: 'Producto no encontrado' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Editar Arena' }))
+    expect(await screen.findByText('Producto no encontrado')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(updateProduct).not.toHaveBeenCalled()
+  })
+
+  it('conserva valores ante 404 de categoría o característica al guardar', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    createProduct.mockRejectedValue({ status: 404, message: 'Categoría o característica no encontrada' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(form.getByRole('textbox', { name: 'Precio de referencia' }), '12')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(form.getByRole('button', { name: 'Guardar producto' }))
+    expect(await screen.findByText('Categoría o característica no encontrada')).toBeInTheDocument()
+    expect(form.getByRole('textbox', { name: 'Nombre' })).toHaveValue('Cal')
+    expect(form.getByRole('button', { name: 'Guardar producto' })).toBeEnabled()
+  })
+
+  it('bloquea doble envío y cancelación mientras guarda; exige consulta tras fallo incierto', async () => {
+    listProducts.mockResolvedValue(makePage(0, [active]))
+    let rejectMutation
+    createProduct.mockImplementation(() => new Promise((_, reject) => { rejectMutation = reject }))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(form.getByRole('textbox', { name: 'Precio de referencia' }), '12')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(form.getByRole('button', { name: 'Guardar producto' }))
+    expect(form.getByRole('button', { name: 'Guardar producto' })).toBeDisabled()
+    expect(form.getByRole('button', { name: 'Cancelar' })).toBeDisabled()
+    expect(createProduct).toHaveBeenCalledTimes(1)
+    await act(async () => rejectMutation({ status: 503, message: 'Sin respuesta' }))
+    expect(await screen.findByText('Sin respuesta')).toBeInTheDocument()
+    expect(form.getByRole('button', { name: 'Guardar producto' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Consultar estado actual' }))
+    await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(form.getByRole('button', { name: 'Guardar producto' })).toBeEnabled())
+    expect(createProduct).toHaveBeenCalledTimes(1)
+  })
+
+  it('vuelve a la última página disponible cuando la recarga queda fuera del total', async () => {
+    listProducts.mockResolvedValueOnce(makePage(2, [active], 3))
+      .mockResolvedValueOnce({ content: [], page: 2, size: 20, totalElements: 20, totalPages: 1 })
+      .mockResolvedValueOnce(makePage(0, [active], 1))
+    createProduct.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage('/app/catalog/products?page=2')
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const form = within(await screen.findByRole('dialog'))
+    await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(form.getByRole('textbox', { name: 'Precio de referencia' }), '12')
+    await user.selectOptions(form.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(form.getByRole('button', { name: 'Guardar producto' }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('page=0'))
+    await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(3))
   })
 })

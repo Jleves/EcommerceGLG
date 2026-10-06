@@ -6,3 +6,17 @@ export function listProducts(page = 0, nombre, { signal } = {}) {
   if (nombre !== undefined) query.set('nombre', nombre)
   return apiRequest(`${ENDPOINTS.CATALOG.PRODUCTS}?${query}`, { signal })
 }
+
+const mutationOptions = { retryAuth: false, retryCsrf: false }
+
+export function getProduct(id, { signal } = {}) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT(id), { signal })
+}
+
+export function createProduct(payload) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCTS, { ...mutationOptions, method: 'POST', body: payload })
+}
+
+export function updateProduct(id, payload) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT(id), { ...mutationOptions, method: 'PUT', body: payload })
+}

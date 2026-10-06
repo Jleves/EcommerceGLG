@@ -111,7 +111,7 @@ El alta reemplaza `getProduct/updateProduct` por `createProduct` → `ProductCon
 | --- | --- | --- | --- |
 | 1 | API paginada de resúmenes con búsqueda por nombre | API de productos actual | Completa |
 | 2 | Adaptador frontend, ruta, navegación y listado | 1 | Completa |
-| 3 | Alta y edición en modales con características | 2 | Planificada |
+| 3 | Alta y edición en modales con características | 2 | Completa |
 | 4 | Desactivación, reactivación y recorrido integral | 3 | Planificada |
 
 ```text
@@ -452,7 +452,33 @@ TRATAMIENTO: cubrir en tanda 4.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** `ProductForm` de alta y edición, lectura de detalle y selectores, servicios `GET`/`POST`/`PUT`, recarga de lista tras guardar y retorno a la última página disponible. La edición envía siempre la lista completa de características. Categorías activas disponibles para alta; en edición también se conserva la categoría inactiva actual. En errores 400/404 el formulario queda abierto; durante el envío se impiden duplicados y cierre. Red/5xx bloquea nuevas mutaciones hasta consultar el estado actual. Las rutas de catálogo permanecen bajo `ProtectedRoute` y las de usuarios siguen limitadas a `SUPER_ADMIN`.
+
+**Diferencias respecto del plan:** ninguna funcional. El precio se envía como cadena decimal JSON para preservar la precisión del contrato `BigDecimal`.
+
+**Tests ejecutados:** pruebas de formulario, página, contrato de servicios y seguridad de rutas; suite completa frontend, ESLint y build. Detalle en `s2-be-listar-productos-administracion-tanda-3-resultado.md`.
+
+**Tests exitosos:** suite completa final: 190/190; corrida focal de productos y rutas: 23/23. `npm run lint` y `npm run build` finalizaron correctamente.
+
+**Tests fallidos:** ninguno pendiente.
+
+**Incidentes:** INC-301 (consulta ambigua en test), INC-302 (etiqueta accesible ante error), INC-303 (validación inicial de precio fraccionario), INC-304 (restricción de sandbox para Vitest/build). Documentados en el resultado separado.
+
+**Tests faltantes:** prueba manual con backend y navegador reales. No se ejecutó una prueba de rendimiento ni de concurrencia entre sesiones, que excede esta tanda.
+
+**Riesgos residuales:** un cambio concurrente del producto entre detalle y guardado no tiene control de versión; un resultado incierto requiere revisión humana tras consultar el estado. Las transiciones de estado son de tanda 4.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `ProductManagementPage.jsx`, `productService.js`, `endpoints.js` y tests asociados; nuevos `ProductForm.jsx`, `ProductForm.test.jsx`, `characteristicService.js` y resultado separado de tanda 3.
+
+**Criterio de cierre:**
+
+- [x] Alta y edición completas con características y categorías elegibles.
+- [x] Errores, cancelación y envíos duplicados comprobados.
+- [x] Tests de lectura, seguridad de rutas y regresión ejecutados; incidentes registrados.
 
 ---
 

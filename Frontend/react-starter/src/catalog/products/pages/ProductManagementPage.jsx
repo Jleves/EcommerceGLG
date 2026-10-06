@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { RequestError } from '../../../auth/components/RequestError.jsx'
-import { listProducts } from '../services/productService.js'
+import { listCategories } from '../../categories/services/categoryService.js'
+import { ProductForm } from '../components/ProductForm.jsx'
+import { listCharacteristics } from '../services/characteristicService.js'
+import { createProduct, getProduct, listProducts, updateProduct } from '../services/productService.js'
 
 export function ProductManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -16,6 +19,17 @@ export function ProductManagementPage() {
   const [searchError, setSearchError] = useState('')
   const [version, setVersion] = useState(0)
   const [state, setState] = useState({ key, version, loading: true, data: null, error: null })
+  const [formTarget, setFormTarget] = useState(null)
+  const [formData, setFormData] = useState(null)
+  const [formError, setFormError] = useState(null)
+  const [mutationError, setMutationError] = useState(null)
+  const [pending, setPending] = useState(false)
+  const [needsReview, setNeedsReview] = useState(false)
+  const [notice, setNotice] = useState('')
+  const inFlight = useRef(false)
+  const reviewing = useRef(false)
+  const dialog = useRef(null)
+  const loadingForm = formTarget !== null && formData === null && !formError
   const currentState = state.key === key && state.version === version
     ? state : { loading: true, data: null, error: null }
 
@@ -29,13 +43,91 @@ export function ProductManagementPage() {
     const controller = new AbortController()
     let current = true
     listProducts(page, nombre, { signal: controller.signal }).then(
-      (data) => { if (current) setState({ key, version, loading: false, data, error: null }) },
+      (data) => {
+        if (!current) return
+        if (page > 0 && data.content.length === 0 && page >= data.totalPages) {
+          const lastPage = Math.max(0, data.totalPages - 1)
+          setSearchParams(nombre === undefined ? { page: String(lastPage) } : { nombre, page: String(lastPage) })
+        } else {
+          setState({ key, version, loading: false, data, error: null })
+          if (reviewing.current) {
+            reviewing.current = false
+            setNeedsReview(false)
+            setNotice('Estado actual consultado. Revisá la lista antes de enviar otra solicitud.')
+          }
+        }
+      },
       (error) => {
         if (current && error.name !== 'AbortError') setState({ key, version, loading: false, data: null, error })
       },
     )
     return () => { current = false; controller.abort() }
-  }, [page, nombre, key, version, invalidUrlNombre])
+  }, [page, nombre, key, version, invalidUrlNombre, setSearchParams])
+
+  useEffect(() => {
+    if (!formTarget) return undefined
+    const controller = new AbortController()
+    let current = true
+    Promise.all([
+      listCategories({ signal: controller.signal }),
+      listCharacteristics({ signal: controller.signal }),
+      formTarget === 'create' ? Promise.resolve(null) : getProduct(formTarget, { signal: controller.signal }),
+    ]).then(
+      ([categories, characteristics, product]) => { if (current) setFormData({ categories, characteristics, product }) },
+      (error) => { if (current && error.name !== 'AbortError') setFormError(error) },
+    )
+    return () => { current = false; controller.abort() }
+  }, [formTarget])
+
+  useEffect(() => {
+    if (formTarget && dialog.current && !dialog.current.open) {
+      if (dialog.current.showModal) dialog.current.showModal()
+      else dialog.current.setAttribute('open', '')
+    }
+  }, [formTarget])
+
+  function openForm(target) {
+    if (inFlight.current || needsReview || currentState.loading || currentState.error) return
+    setFormData(null)
+    setFormError(null)
+    setMutationError(null)
+    setNotice('')
+    setFormTarget(target)
+  }
+
+  function closeForm() {
+    if (inFlight.current) return
+    setFormTarget(null)
+    setFormData(null)
+    setMutationError(null)
+  }
+
+  async function submitProduct(payload) {
+    if (inFlight.current || needsReview || !formData || currentState.loading || currentState.error) return
+    inFlight.current = true
+    setPending(true)
+    setMutationError(null)
+    try {
+      if (formTarget === 'create') await createProduct(payload)
+      else await updateProduct(formTarget, payload)
+      setNotice(formTarget === 'create' ? 'Producto creado.' : 'Producto actualizado.')
+      setFormTarget(null)
+      setFormData(null)
+      setVersion((value) => value + 1)
+    } catch (error) {
+      setMutationError(error)
+      if (!error?.status || error.status >= 500) setNeedsReview(true)
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+
+  function reviewCurrentState() {
+    reviewing.current = true
+    setVersion((value) => value + 1)
+    setState({ key, version: version + 1, loading: true, data: null, error: null })
+  }
 
   function search(event) {
     event.preventDefault()
@@ -67,7 +159,19 @@ export function ProductManagementPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Productos</h1>
         <p className="mt-2 text-slate-600">Productos activos e inactivos del catálogo.</p>
+        <button className="mt-4 rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget)} onClick={() => openForm('create')} type="button">Crear producto</button>
       </header>
+      {notice && <p role="status" className="mb-4 rounded bg-emerald-50 p-3">{notice}</p>}
+      {needsReview && <div className="mb-4 grid justify-items-start gap-3 rounded border border-amber-300 bg-amber-50 p-4">
+        <p role="status">No pudimos confirmar el resultado. Consultá el estado actual antes de enviar otro cambio; la lista no confirma por sí sola si la solicitud anterior se aplicó.</p>
+        <button type="button" disabled={currentState.loading} onClick={reviewCurrentState} className="rounded bg-amber-800 px-4 py-2 text-white disabled:opacity-50">Consultar estado actual</button>
+      </div>}
+      {formTarget && <dialog ref={dialog} aria-labelledby="product-form-title" onCancel={(event) => { if (inFlight.current) event.preventDefault(); else closeForm() }} className="m-auto max-h-[90vh] w-[min(94vw,42rem)] overflow-y-auto rounded-xl border-0 p-0 shadow-2xl backdrop:bg-slate-950/60">
+        {needsReview && <p role="status" className="m-4 rounded bg-amber-50 p-3">Resultado incierto. Consultá el estado actual antes de guardar otra vez.</p>}
+        {loadingForm && <p role="status" className="p-5">Cargando formulario…</p>}
+        {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className="justify-self-start rounded border px-4 py-2">Cerrar</button></div>}
+        {formData && <ProductForm initialValues={formData.product} categories={formData.categories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />}
+      </dialog>}
       <form className="mb-6" onSubmit={search}>
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid min-w-48 grow gap-1">
@@ -96,6 +200,7 @@ export function ProductManagementPage() {
                   {product.descripcion && <p className="mt-1 text-slate-700">{product.descripcion}</p>}
                   <p className="mt-2 text-sm text-slate-600">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
                   <p className="mt-1 text-sm text-slate-600">Precio de referencia: {product.precioReferencia} · {product.destacado ? 'Destacado' : 'No destacado'}</p>
+                  <button aria-label={`Editar ${product.nombre}`} className="mt-3 rounded bg-slate-800 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-700 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50" disabled={needsReview || Boolean(formTarget) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
                 </li>
               ))}
             </ul>
