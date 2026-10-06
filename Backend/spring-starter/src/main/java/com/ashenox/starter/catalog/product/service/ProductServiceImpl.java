@@ -11,12 +11,16 @@ import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
 import com.ashenox.starter.catalog.product.dto.ProductCharacteristicRequest;
 import com.ashenox.starter.catalog.product.dto.ProductCharacteristicResponse;
 import com.ashenox.starter.catalog.product.dto.ProductResponse;
+import com.ashenox.starter.catalog.product.dto.ProductPageResponse;
+import com.ashenox.starter.catalog.product.dto.ProductSummaryResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import com.ashenox.starter.shared.error.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +40,26 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CharacteristicRepository characteristicRepository;
     private final ProductCharacteristicRepository productCharacteristicRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductPageResponse list(int page, int size, String nombre) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new BusinessException("La página o el tamaño solicitado no es válido.");
+        }
+        String pattern = null;
+        if (nombre != null) {
+            String trimmed = nombre.strip();
+            if (trimmed.isEmpty()) {
+                throw new BusinessException("El nombre de búsqueda no puede estar vacío.");
+            }
+            pattern = "%" + trimmed.replace("!", "!!").replace("%", "!%")
+                    .replace("_", "!_") + "%";
+        }
+        Page<Product> result = productRepository.findPageByName(pattern, PageRequest.of(page, size));
+        return new ProductPageResponse(result.getContent().stream().map(ProductSummaryResponse::from).toList(),
+                page, size, result.getTotalElements(), result.getTotalPages());
+    }
 
     @Override
     @Transactional

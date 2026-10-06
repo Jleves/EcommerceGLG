@@ -2,6 +2,7 @@ package com.ashenox.starter.catalog.product.controller;
 
 import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
 import com.ashenox.starter.catalog.product.dto.ProductResponse;
+import com.ashenox.starter.catalog.product.dto.ProductPageResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.service.ProductService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,6 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductController {
 
     private final ProductService productService;
+
+    @GetMapping
+    public ProductPageResponse list(@RequestParam(defaultValue = "0") int page,
+                                    @RequestParam(defaultValue = "20") int size,
+                                    @RequestParam(required = false) String nombre) {
+        return productService.list(page, size, nombre);
+    }
 
     @PostMapping
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
