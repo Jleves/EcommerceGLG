@@ -1,6 +1,6 @@
 # S2 BE Listar productos para administración — plan de implementación
 
-**Estado:** planificación completa; tanda 1 ejecutada y completa.
+**Estado:** planificación completa; tandas 1 y 2 ejecutadas y completas.
 
 **Fuentes:** decisión de esta tarjeta, `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`, código actual del catálogo y pantalla existente de categorías.
 
@@ -110,7 +110,7 @@ El alta reemplaza `getProduct/updateProduct` por `createProduct` → `ProductCon
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | API paginada de resúmenes con búsqueda por nombre | API de productos actual | Completa |
-| 2 | Adaptador frontend, ruta, navegación y listado | 1 | Planificada |
+| 2 | Adaptador frontend, ruta, navegación y listado | 1 | Completa |
 | 3 | Alta y edición en modales con características | 2 | Planificada |
 | 4 | Desactivación, reactivación y recorrido integral | 3 | Planificada |
 
@@ -321,7 +321,33 @@ TRATAMIENTO: cubrir en tandas 3 y 4.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** se agregó el enlace y la ruta protegida `/app/catalog/products`, el adaptador `listProducts` y la pantalla de resúmenes con búsqueda por nombre, paginación en la URL, estados de carga/vacío/error y reintento. La ruta usa el `ProtectedRoute` existente: requiere sesión y permite `SUPER_ADMIN`, `ADMIN` y `USER`. La búsqueda vacía no llama a la API; `nombre=` en un enlace directo muestra validación y permite limpiar el filtro.
+
+**Diferencias respecto del plan:** ninguna funcional. No se modificó el backend ni se abrió una ruta pública.
+
+**Tests ejecutados:** 12 pruebas nuevas de contrato HTTP, interfaz y rutas; suite completa del frontend (`npm test -- --maxWorkers=2`), `npm run lint` y `npm run build`.
+
+**Tests exitosos:** 179/179 en la suite final. Los tests nuevos comprobaron codificación, cookies, señal de cancelación, resúmenes activos/inactivos, búsqueda y URL, paginación, error/reintento y entrada directa protegida para los tres roles. La suite incluyó regresión de categorías, usuarios y autenticación. Lint y build finalizaron sin errores.
+
+**Tests fallidos:** ninguno en la corrida final. Dos fallos iniciales provinieron de la preparación del test nuevo; una corrida completa mostró una falla intermitente de sincronización en un test MFA existente, que pasó aislado y en la suite final.
+
+**Incidentes:** INC-001, INC-002 e INC-003 documentados en el resultado separado de la tanda 2. La primera invocación de Vitest también requirió ejecutarse fuera del sandbox por una restricción de lectura del entorno.
+
+**Tests faltantes:** ninguno de los grupos previstos. No se hizo una prueba manual con backend y navegador reales; la pantalla se comprobó con tests de componentes y contrato HTTP simulado.
+
+**Riesgos residuales:** la prueba MFA observada puede volver a fallar bajo alta concurrencia por su comprobación inmediata de navegación. El rendimiento real del listado depende del volumen de catálogo y sigue sin medición de producción.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `AppRouter.jsx`, `AppLayout.jsx`, `endpoints.js`, el plan vivo; nuevos `ProductManagementPage.jsx`, `productService.js`, tres archivos de tests y el resultado separado de tanda 2.
+
+**Criterio de cierre:**
+
+- [x] Listado y búsqueda navegables con los roles previstos y sin acceso anónimo.
+- [x] Tests de contrato, interfaz, seguridad de rutas y regresión ejecutados.
+- [x] Incidentes y riesgos residuales registrados.
 
 ---
 
