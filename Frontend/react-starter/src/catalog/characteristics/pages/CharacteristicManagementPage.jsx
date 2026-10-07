@@ -1,29 +1,120 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RequestError } from '../../../auth/components/RequestError.jsx'
-import { listCharacteristics } from '../services/characteristicService.js'
+import { CharacteristicForm } from '../components/CharacteristicForm.jsx'
+import { createCharacteristic, getCharacteristic, listCharacteristics, updateCharacteristic } from '../services/characteristicService.js'
 
 export function CharacteristicManagementPage() {
   const [version, setVersion] = useState(0)
   const [state, setState] = useState({ loading: true, data: null, error: null })
+  const [form, setForm] = useState(null)
+  const [mutationError, setMutationError] = useState(null)
+  const [pending, setPending] = useState(false)
+  const [needsReview, setNeedsReview] = useState(false)
+  const [notice, setNotice] = useState(null)
+  const inFlight = useRef(false)
+  const reviewing = useRef(false)
+  const detailController = useRef(null)
+  const dialog = useRef(null)
+
+  useEffect(() => {
+    if (!notice || notice.persistent) return undefined
+    const timeout = window.setTimeout(() => setNotice(null), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [notice])
+
+  useEffect(() => {
+    if (form && dialog.current && !dialog.current.open) {
+      if (dialog.current.showModal) dialog.current.showModal()
+      else dialog.current.setAttribute('open', '')
+    }
+  }, [form])
 
   useEffect(() => {
     const controller = new AbortController()
     let current = true
-
     listCharacteristics({ signal: controller.signal }).then(
-      (data) => { if (current) setState({ loading: false, data, error: null }) },
+      (data) => {
+        if (!current) return
+        setState({ loading: false, data, error: null })
+        if (reviewing.current) {
+          reviewing.current = false
+          setNeedsReview(false)
+          setNotice({ text: 'Estado actual consultado. Revisá la lista antes de enviar otra solicitud.', persistent: true })
+        }
+      },
       (error) => {
-        if (current && error.name !== 'AbortError') setState({ loading: false, data: null, error })
+        if (current && error?.name !== 'AbortError') setState({ loading: false, data: null, error })
       },
     )
-
     return () => { current = false; controller.abort() }
   }, [version])
 
-  function retry() {
+  useEffect(() => () => detailController.current?.abort(), [])
+
+  function reload() {
     setState({ loading: true, data: null, error: null })
     setVersion((value) => value + 1)
   }
+
+  function reviewCurrentState() {
+    if (state.loading) return
+    reviewing.current = true
+    reload()
+  }
+
+  function openCreate() {
+    if (inFlight.current || needsReview || state.loading || state.error || form) return
+    setMutationError(null)
+    setNotice(null)
+    setForm({ mode: 'create' })
+  }
+
+  async function openEdit(id) {
+    if (inFlight.current || needsReview || state.loading || state.error || form) return
+    const controller = new AbortController()
+    detailController.current = controller
+    setMutationError(null)
+    setNotice(null)
+    setForm({ mode: 'edit', id, loading: true })
+    try {
+      const detail = await getCharacteristic(id, { signal: controller.signal })
+      if (!controller.signal.aborted) setForm({ mode: 'edit', id, detail })
+    } catch (error) {
+      if (!controller.signal.aborted && error?.name !== 'AbortError') setForm({ mode: 'edit', id, error })
+    }
+  }
+
+  function closeForm() {
+    if (inFlight.current) return
+    detailController.current?.abort()
+    detailController.current = null
+    setForm(null)
+    setMutationError(null)
+  }
+
+  async function submit(values) {
+    if (inFlight.current || needsReview || state.loading || state.error || !form || form.loading || form.error) return
+    const currentForm = form
+    inFlight.current = true
+    setPending(true)
+    setMutationError(null)
+    try {
+      if (currentForm.mode === 'edit') await updateCharacteristic(currentForm.id, values)
+      else await createCharacteristic(values)
+      setForm(null)
+      setNotice({ text: currentForm.mode === 'edit' ? 'Característica actualizada.' : 'Característica creada.' })
+      reload()
+    } catch (error) {
+      setMutationError(error)
+      if (!error?.status || error.status >= 500) setNeedsReview(true)
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+
+  const unavailable = pending || needsReview || state.loading || Boolean(state.error) || Boolean(form)
+  const stale = form?.error?.status === 404 || mutationError?.status === 404
 
   return (
     <section className="mx-auto max-w-5xl">
@@ -32,17 +123,43 @@ export function CharacteristicManagementPage() {
         <p className="mt-2 text-slate-600">Características disponibles para los productos del catálogo.</p>
       </header>
 
+      {notice && <p role="status" className="mb-4 rounded-xl bg-emerald-50 p-3 text-emerald-900">{notice.text}</p>}
+      {needsReview && !form && <div className="mb-4 grid justify-items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <p role="status">No pudimos confirmar el resultado. Consultá el estado actual antes de enviar otro cambio; la lista no confirma por sí sola si la solicitud anterior se aplicó.</p>
+        <button type="button" disabled={state.loading} onClick={reviewCurrentState} className="rounded-lg bg-amber-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Consultar estado actual</button>
+      </div>}
+
       <div className="mb-5 flex justify-end">
-        <button aria-label="Crear característica" className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" disabled type="button">
+        <button aria-label="Crear característica" className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={unavailable} onClick={openCreate} type="button">
           <span className="sm:hidden" aria-hidden="true">+</span>
           <span className="hidden sm:inline" aria-hidden="true">Crear característica</span>
         </button>
       </div>
 
+      {form && <dialog ref={dialog} aria-labelledby="characteristic-form-title" onCancel={(event) => { event.preventDefault(); closeForm() }} className="m-auto w-[min(94vw,38rem)] max-h-[90vh] overflow-y-auto rounded-2xl border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/60">
+        {form.loading ? <div className="p-5"><h2 id="characteristic-form-title" className="text-xl font-bold">Editar característica</h2><p role="status">Cargando característica…</p></div> : form.error ? <div className="grid justify-items-start gap-3 p-5">
+          <h2 id="characteristic-form-title" className="text-xl font-bold">Editar característica</h2>
+          <RequestError error={form.error} />
+          {form.error.status === 404 && <p>La característica ya no está disponible. Actualizá la lista.</p>}
+          <div className="flex gap-3">
+            {form.error.status === 404 && <button type="button" onClick={() => { closeForm(); reload() }} className="rounded-lg bg-amber-800 px-4 py-2 font-semibold text-white">Actualizar lista</button>}
+            <button type="button" onClick={closeForm} className="rounded-lg border border-slate-300 px-4 py-2 font-semibold">Cerrar</button>
+          </div>
+        </div> : <>
+          {needsReview && <div className="grid justify-items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <p role="status">Consultá el estado actual antes de enviar otro cambio. La lista no confirma por sí sola si la solicitud anterior se aplicó.</p>
+            <button type="button" disabled={state.loading} onClick={reviewCurrentState} className="rounded-lg bg-amber-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Consultar estado actual</button>
+          </div>}
+          {state.error && <div className="p-4"><RequestError error={state.error} /></div>}
+          {stale && <div className="grid justify-items-start gap-3 p-5 pb-0"><p role="status">La característica ya no está disponible. Actualizá la lista.</p><button type="button" onClick={() => { closeForm(); reload() }} className="rounded-lg bg-amber-800 px-4 py-2 font-semibold text-white">Actualizar lista</button></div>}
+          <CharacteristicForm key={form.mode === 'edit' ? `edit-${form.id}` : 'create'} initialValues={form.detail} onSubmit={submit} onCancel={closeForm} pending={pending || state.loading || Boolean(state.error)} blocked={needsReview || stale} error={mutationError} />
+        </>}
+      </dialog>}
+
       {state.loading ? <p role="status">Cargando características…</p> : state.error ? (
         <div className="grid justify-items-start gap-3">
           <RequestError error={state.error} />
-          <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700" onClick={retry} type="button">Reintentar</button>
+          <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700" onClick={needsReview ? reviewCurrentState : reload} type="button">Reintentar</button>
         </div>
       ) : state.data.length === 0 ? <p role="status">No hay características.</p> : (
         <ul className="grid gap-3">
@@ -50,6 +167,7 @@ export function CharacteristicManagementPage() {
             <li className="rounded-xl border border-slate-200 bg-white p-4" key={characteristic.id}>
               <h2 className="font-bold text-slate-900">{characteristic.nombre}</h2>
               <p className="mt-2 text-sm text-slate-600">{characteristic.cantidadProductos} {characteristic.cantidadProductos === 1 ? 'producto' : 'productos'}</p>
+              <button type="button" aria-label={`Editar ${characteristic.nombre}`} disabled={unavailable} onClick={() => openEdit(characteristic.id)} className="mt-3 rounded-lg bg-[#1E293B] px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-slate-700 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E293B] disabled:cursor-not-allowed disabled:opacity-50">Editar</button>
             </li>
           ))}
         </ul>

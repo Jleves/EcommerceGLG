@@ -1,6 +1,6 @@
 # S2 FE Gestionar características — plan de implementación
 
-**Estado:** tandas 1 y 2 completas; tandas 3 y 4 pendientes de ejecución.
+**Estado:** tandas 1, 2 y 3 completas; tanda 4 pendiente de ejecución.
 
 **Fuentes:** [tarjeta S2 FE Gestionar características](https://trello.com/c/vDSn5tdO), `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`, planes de gestión de categorías y productos, `docs/prompt-colores-cards-por-estado.md` y código vigente del repositorio.
 
@@ -135,7 +135,7 @@ El alta sigue `CharacteristicManagementPage → characteristicService.createChar
 | --- | --- | --- | --- |
 | 1 | Centralizar y probar el contrato HTTP | API existente | Completa |
 | 2 | Ruta, navegación y listado | 1 | Completa |
-| 3 | Alta y edición | 2 | Planificada |
+| 3 | Alta y edición | 2 | Completa |
 | 4 | Eliminación y recorrido integral | 3 | Planificada |
 
 ```text
@@ -379,7 +379,33 @@ TRATAMIENTO: tanda 4.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** botón de alta habilitado; formulario modal con nombre obligatorio, máximo 160 y envío recortado; edición con GET por ID, carga y error del detalle; POST y PUT únicos, bloqueo mientras se envían y recarga tras éxito. Errores 400/409 conservan el valor; 404 pide actualizar la lista; red/5xx bloquea nuevas mutaciones hasta una lectura exitosa mediante **Consultar estado actual**. Aviso de éxito de cuatro segundos. [Resultado detallado de la tanda 3](s2-fe-gestionar-caracteristicas-tanda-3-resultado.md).
+
+**Diferencias respecto del plan:** ninguna funcional. La conservación real de asociaciones depende del contrato backend existente y no se demuestra con mocks de UI.
+
+**Tests ejecutados:** formulario (3), página de características (12), servicio de características, rutas, navegación, Productos y Categorías; 83 tests relacionados en total. También `npm run lint` y `npm run build`.
+
+**Tests exitosos:** 83/83; lint y build correctos. Cubren validación, precarga por ID, alta/edición, errores 400/404/409, red/5xx, cancelación/Escape, bloqueo, revisión posterior, avisos y regresión relacionada.
+
+**Tests fallidos:** ninguno pendiente. Hubo fallas iniciales de entorno y de implementación de tests, analizadas y corregidas en el informe detallado.
+
+**Incidentes:** INC-003 (lectura denegada a esbuild en sandbox) e INC-004 (expectativas de test sobre accesibilidad, eventos y temporizadores).
+
+**Tests faltantes:** no falta ninguna prueba automatizada planificada para esta tanda. No se verificó en un navegador con backend real que las asociaciones persistan tras PUT ni la apariencia visual del modal; queda para el recorrido integral de la tanda 4.
+
+**Riesgos residuales:** la consulta posterior a red/5xx habilita nuevas mutaciones, pero no determina si la anterior se aplicó. No hay control de versión para edición concurrente. El conteo y las asociaciones reales no fueron comprobados contra backend en esta tanda.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `catalog/characteristics/components/CharacteristicForm.jsx` y su test; `catalog/characteristics/pages/CharacteristicManagementPage.jsx` y su test; este plan y el resultado separado.
+
+**Criterio de cierre:**
+
+- [x] Alta y edición con precarga correcta funcionan para los roles permitidos.
+- [x] Validación, errores, cancelación y resultado incierto comprobados.
+- [x] Tests ejecutados, incidentes y riesgos registrados.
 
 ## Tanda 4 — Eliminación y recorrido integral
 
