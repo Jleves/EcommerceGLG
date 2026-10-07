@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../auth/context/AuthContext.js'
 import { listProducts } from '../catalog/products/services/productService.js'
 import { listCategories } from '../catalog/categories/services/categoryService.js'
+import { listCharacteristics } from '../catalog/characteristics/services/characteristicService.js'
 import { AppRouter } from './AppRouter.jsx'
 
 vi.mock('../catalog/products/services/productService.js', () => ({ listProducts: vi.fn() }))
 vi.mock('../catalog/categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
+vi.mock('../catalog/characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
 vi.mock('../auth/pages/LoginPage.jsx', () => ({ LoginPage: () => <p>Ingreso público</p> }))
 vi.mock('../admin/pages/UserListPage.jsx', () => ({ UserListPage: () => <p>Administración de usuarios</p> }))
 
@@ -26,6 +28,7 @@ describe('rutas administrativas del catálogo', () => {
     vi.resetAllMocks()
     listProducts.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
     listCategories.mockResolvedValue([])
+    listCharacteristics.mockResolvedValue([])
   })
 
   it.each(['SUPER_ADMIN', 'ADMIN', 'USER'])('permite consultar productos con sesión %s', async (role) => {
@@ -39,6 +42,20 @@ describe('rutas administrativas del catálogo', () => {
     renderRoute('/app/catalog/products?nombre=arena&page=1', null)
     expect(screen.getByText('Ingreso público')).toBeInTheDocument()
     expect(listProducts).not.toHaveBeenCalled()
+  })
+
+  it.each(['SUPER_ADMIN', 'ADMIN', 'USER'])('permite consultar características con sesión %s', async (role) => {
+    renderRoute('/app/catalog/characteristics', role)
+    expect(await screen.findByRole('heading', { name: 'Características' })).toBeInTheDocument()
+    expect(listCharacteristics).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
+    expect(screen.getByRole('link', { name: 'Características' })).toHaveAttribute('href', '/app/catalog/characteristics')
+    expect(Boolean(screen.queryByRole('link', { name: 'Usuarios' }))).toBe(role === 'SUPER_ADMIN')
+  })
+
+  it('redirige el acceso directo anónimo a características sin consultar la API', () => {
+    renderRoute('/app/catalog/characteristics', null)
+    expect(screen.getByText('Ingreso público')).toBeInTheDocument()
+    expect(listCharacteristics).not.toHaveBeenCalled()
   })
 
   it('mantiene categorías bajo sesión y usuarios solo para SUPER_ADMIN', () => {
@@ -61,5 +78,13 @@ describe('rutas administrativas del catálogo', () => {
     await userEvent.setup().click(screen.getByRole('link', { name: 'Categorías' }))
     expect(await screen.findByRole('heading', { name: 'Categorías' })).toBeInTheDocument()
     expect(listCategories).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
+  })
+
+  it('navega de Productos a Características dentro de la sesión', async () => {
+    renderRoute('/app/catalog/products', 'ADMIN')
+    await screen.findByRole('heading', { name: 'Productos' })
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Características' }))
+    expect(await screen.findByRole('heading', { name: 'Características' })).toBeInTheDocument()
+    expect(listCharacteristics).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
   })
 })

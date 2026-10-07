@@ -7,6 +7,7 @@ import { LoginPage } from '../auth/pages/LoginPage.jsx'
 import { MfaLoginPage } from '../auth/pages/MfaLoginPage.jsx'
 import { ResetPasswordPage } from '../auth/pages/ResetPasswordPage.jsx'
 import { CategoryManagementPage } from '../catalog/categories/pages/CategoryManagementPage.jsx'
+import { CharacteristicManagementPage } from '../catalog/characteristics/pages/CharacteristicManagementPage.jsx'
 import { ProductManagementPage } from '../catalog/products/pages/ProductManagementPage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { ProfilePage } from './ProfilePage.jsx'
@@ -28,6 +29,7 @@ export function AppRouter() {
           <Route index element={<Navigate to="profile" replace />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="catalog/categories" element={<CategoryManagementPage />} />
+          <Route path="catalog/characteristics" element={<CharacteristicManagementPage />} />
           <Route path="catalog/products" element={<ProductManagementPage />} />
           <Route element={<ProtectedRoute requiredRole="SUPER_ADMIN" />}>
             <Route path="admin/users" element={<UserListPage />} />

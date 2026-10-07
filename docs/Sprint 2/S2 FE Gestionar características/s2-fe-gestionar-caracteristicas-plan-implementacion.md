@@ -1,6 +1,6 @@
 # S2 FE Gestionar características — plan de implementación
 
-**Estado:** tanda 1 completa; tandas 2 a 4 pendientes de ejecución.
+**Estado:** tandas 1 y 2 completas; tandas 3 y 4 pendientes de ejecución.
 
 **Fuentes:** [tarjeta S2 FE Gestionar características](https://trello.com/c/vDSn5tdO), `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`, planes de gestión de categorías y productos, `docs/prompt-colores-cards-por-estado.md` y código vigente del repositorio.
 
@@ -134,7 +134,7 @@ El alta sigue `CharacteristicManagementPage → characteristicService.createChar
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Centralizar y probar el contrato HTTP | API existente | Completa |
-| 2 | Ruta, navegación y listado | 1 | Planificada |
+| 2 | Ruta, navegación y listado | 1 | Completa |
 | 3 | Alta y edición | 2 | Planificada |
 | 4 | Eliminación y recorrido integral | 3 | Planificada |
 
@@ -293,7 +293,33 @@ TRATAMIENTO: tandas 3 y 4.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** ruta protegida `/app/catalog/characteristics`, enlace de navegación para los tres roles autenticados y página de listado con carga, cards neutras, nombre, `cantidadProductos`, vacío, error, reintento y cancelación del GET al desmontar. [Resultado detallado de la tanda 2](s2-fe-gestionar-caracteristicas-tanda-2-resultado.md).
+
+**Diferencias respecto del plan:** el botón de alta se muestra en el extremo derecho, con `+` en móvil y texto en escritorio, pero permanece deshabilitado hasta implementar su acción en la tanda 3. La pantalla de esta tanda es de solo lectura.
+
+**Tests ejecutados:** `CharacteristicManagementPage.test.jsx` (4), `AppRouter.products.test.jsx` (11), `AppLayout.test.jsx` (1), `characteristicService.test.js` (15) y `ProductManagementPage.test.jsx` (18). Además, `npm run lint` y `npm run build`.
+
+**Tests exitosos:** 49/49; lint y build correctos. Se comprobó orden recibido, conteos, estados de consulta, reintento, cancelación, rutas y enlace por rol, ausencia de GET anónimo y regresión de Productos.
+
+**Tests fallidos:** ninguno de comportamiento. Los primeros intentos de Vitest y build fallaron por lectura denegada a esbuild en el sandbox; ambos pasaron fuera de él.
+
+**Incidentes:** INC-002, restricción de lectura del entorno de pruebas. Detalle en el resultado separado.
+
+**Tests faltantes:** ninguno de los automatizados previstos. La apariencia real en móvil/escritorio y la integración con backend y navegador reales no se verificaron; las pruebas de interfaz comprobaron clases responsive y estructura DOM.
+
+**Riesgos residuales:** la pantalla sigue siendo de solo lectura hasta las tandas 3 y 4. La respuesta del servicio está simulada en los tests de UI; queda verificación visual y con backend real.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `app/AppRouter.jsx`, `app/AppLayout.jsx`, `app/AppRouter.products.test.jsx`, `catalog/characteristics/pages/CharacteristicManagementPage.jsx` y su test; este plan y el resultado separado.
+
+**Criterio de cierre:**
+
+- [x] Ruta protegida, navegación y listado operables.
+- [x] Carga, vacío, error y reintento comprobados.
+- [x] Tests ejecutados, incidente y riesgos registrados.
 
 ## Tanda 3 — Alta y edición
 
