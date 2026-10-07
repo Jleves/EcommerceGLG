@@ -18,6 +18,7 @@ export const ENDPOINTS = Object.freeze({
     PRODUCT_DEACTIVATE: (id) => `/api/catalog/products/${encodeURIComponent(id)}/deactivate`,
     PRODUCT_REACTIVATE: (id) => `/api/catalog/products/${encodeURIComponent(id)}/reactivate`,
     CHARACTERISTICS: '/api/catalog/characteristics',
+    CHARACTERISTIC: (id) => `/api/catalog/characteristics/${encodeURIComponent(id)}`,
   }),
   AUTH: Object.freeze({
     CHANGE_PASSWORD: `${authBase}/change-password`,

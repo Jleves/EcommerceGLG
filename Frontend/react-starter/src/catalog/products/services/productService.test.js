@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetApiClientForTests } from '../../../services/apiClient.js'
 import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from './productService.js'
-import { listCharacteristics } from './characteristicService.js'
+import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 
 function jsonResponse(data) {
   return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } })

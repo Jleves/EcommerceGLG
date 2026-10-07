@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listCategories } from '../../categories/services/categoryService.js'
-import { listCharacteristics } from '../services/characteristicService.js'
+import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 import { ProductManagementPage } from './ProductManagementPage.jsx'
 
 vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn() }))
 vi.mock('../../categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
-vi.mock('../services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
+vi.mock('../../characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
 
 const active = { id: 1, nombre: 'Arena', categoriaId: 3, descripcion: 'Fina', precioReferencia: 250, disponible: true, activo: true, destacado: false }
 const inactive = { id: 2, nombre: 'Cemento', categoriaId: 4, descripcion: '', precioReferencia: 500, disponible: false, activo: false, destacado: true }
