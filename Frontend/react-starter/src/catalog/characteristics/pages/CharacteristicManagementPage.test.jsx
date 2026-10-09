@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createCharacteristic, getCharacteristic, listCharacteristics, updateCharacteristic } from '../services/characteristicService.js'
+import { createCharacteristic, deleteCharacteristic, getCharacteristic, listCharacteristics, updateCharacteristic } from '../services/characteristicService.js'
 import { CharacteristicManagementPage } from './CharacteristicManagementPage.jsx'
 
 vi.mock('../services/characteristicService.js', () => ({
@@ -9,6 +9,7 @@ vi.mock('../services/characteristicService.js', () => ({
   getCharacteristic: vi.fn(),
   createCharacteristic: vi.fn(),
   updateCharacteristic: vi.fn(),
+  deleteCharacteristic: vi.fn(),
 }))
 
 describe('CharacteristicManagementPage', () => {
@@ -226,5 +227,115 @@ describe('CharacteristicManagementPage', () => {
       setTimeoutSpy.mockRestore()
       clearTimeoutSpy.mockRestore()
     }
+  })
+
+  it.each([0, 3])('consulta detalle y explica el impacto de eliminar con %i productos', async (count) => {
+    let resolveDetail
+    listCharacteristics.mockResolvedValue([{ id: 4, nombre: 'Nombre de lista', cantidadProductos: 99 }])
+    getCharacteristic.mockImplementation(() => new Promise((resolve) => { resolveDetail = resolve }))
+    render(<CharacteristicManagementPage />)
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Eliminar Nombre de lista' }))
+    expect(getCharacteristic).toHaveBeenCalledWith(4, { signal: expect.any(AbortSignal) })
+    expect(screen.getByText('Consultando característica…')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirmar eliminación' })).not.toBeInTheDocument()
+    resolveDetail({ id: 4, nombre: 'Nombre de detalle', cantidadProductos: count })
+    const dialog = await screen.findByRole('dialog')
+    await within(dialog).findByText('Nombre de detalle')
+    expect(dialog).toHaveTextContent(`${count} productos`)
+    expect(dialog).toHaveTextContent('Se quitarán los valores y unidades asociados, pero no se borrarán los productos')
+    expect(dialog).toHaveTextContent('La cantidad puede cambiar')
+    expect(dialog).toHaveClass('m-auto', 'w-[min(92vw,27rem)]')
+    expect(within(dialog).getByRole('button', { name: 'Confirmar eliminación' })).toHaveClass('bg-[#B42318]', 'enabled:hover:bg-[#912018]', 'focus-visible:outline-[#B42318]', 'disabled:opacity-50')
+    expect(screen.getByRole('listitem')).toHaveClass('bg-white', 'border-slate-200')
+    expect(screen.getByRole('button', { name: 'Editar Nombre de lista' })).toHaveClass('bg-[#1E293B]')
+    expect(screen.getByRole('button', { name: 'Eliminar Nombre de lista' })).toHaveClass('bg-[#B42318]', 'enabled:hover:bg-[#912018]', 'focus-visible:outline-[#B42318]', 'disabled:opacity-50')
+  })
+
+  it('Cancelar y Escape cierran sin eliminar', async () => {
+    listCharacteristics.mockResolvedValue([{ id: 4, nombre: 'Color', cantidadProductos: 0 }])
+    getCharacteristic.mockResolvedValue({ id: 4, nombre: 'Color', cantidadProductos: 0 })
+    const user = userEvent.setup()
+    render(<CharacteristicManagementPage />)
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Color' }))
+    await screen.findByRole('button', { name: 'Confirmar eliminación' })
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Eliminar Color' }))
+    await screen.findByRole('button', { name: 'Confirmar eliminación' })
+    const cancel = new Event('cancel', { cancelable: true })
+    fireEvent(screen.getByRole('dialog'), cancel)
+    expect(cancel.defaultPrevented).toBe(true)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(deleteCharacteristic).not.toHaveBeenCalled()
+  })
+
+  it('confirma una sola vez, bloquea el cierre y recarga tras 204', async () => {
+    let resolveDelete
+    listCharacteristics.mockResolvedValueOnce([{ id: 4, nombre: 'Color', cantidadProductos: 2 }]).mockResolvedValueOnce([])
+    getCharacteristic.mockResolvedValue({ id: 4, nombre: 'Color', cantidadProductos: 2 })
+    deleteCharacteristic.mockImplementation(() => new Promise((resolve) => { resolveDelete = resolve }))
+    const user = userEvent.setup()
+    render(<CharacteristicManagementPage />)
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Color' }))
+    const confirm = await screen.findByRole('button', { name: 'Confirmar eliminación' })
+    await user.click(confirm)
+    expect(deleteCharacteristic).toHaveBeenCalledExactlyOnceWith(4)
+    expect(confirm).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled()
+    const cancel = new Event('cancel', { cancelable: true })
+    fireEvent(screen.getByRole('dialog'), cancel)
+    expect(cancel.defaultPrevented).toBe(true)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    resolveDelete(null)
+    expect(await screen.findByText('No hay características.')).toBeInTheDocument()
+    expect(screen.getByText('Característica eliminada.')).toBeInTheDocument()
+    expect(listCharacteristics).toHaveBeenCalledTimes(2)
+  })
+
+  it('404 en detalle y en DELETE exige actualizar la lista', async () => {
+    listCharacteristics.mockResolvedValue([{ id: 4, nombre: 'Color', cantidadProductos: 0 }])
+    getCharacteristic.mockRejectedValueOnce({ status: 404, message: 'No existe' }).mockResolvedValueOnce({ id: 4, nombre: 'Color', cantidadProductos: 0 })
+    deleteCharacteristic.mockRejectedValue({ status: 404, message: 'No existe' })
+    const user = userEvent.setup()
+    render(<CharacteristicManagementPage />)
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Color' }))
+    expect(await screen.findByText('La característica ya no está disponible. Actualizá la lista.')).toBeInTheDocument()
+    expect(deleteCharacteristic).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Actualizar lista' }))
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Color' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirmar eliminación' }))
+    expect(await screen.findByRole('button', { name: 'Actualizar lista' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar eliminación' })).toBeDisabled()
+    expect(deleteCharacteristic).toHaveBeenCalledTimes(1)
+  })
+
+  it('muestra un fallo del GET de detalle sin habilitar DELETE', async () => {
+    listCharacteristics.mockResolvedValue([{ id: 4, nombre: 'Color', cantidadProductos: 0 }])
+    getCharacteristic.mockRejectedValue({ status: 503, message: 'Detalle no disponible' })
+    render(<CharacteristicManagementPage />)
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Eliminar Color' }))
+    expect(await screen.findByText('Detalle no disponible')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirmar eliminación' })).not.toBeInTheDocument()
+    expect(deleteCharacteristic).not.toHaveBeenCalled()
+  })
+
+  it.each([{ label: 'red', error: { message: 'Sin conexión al eliminar' } }, { label: '5xx', error: { status: 503, message: 'Servidor no disponible' } }])('%s bloquea nuevas mutaciones hasta consultar correctamente', async ({ error }) => {
+    listCharacteristics.mockResolvedValueOnce([{ id: 4, nombre: 'Color', cantidadProductos: 1 }]).mockRejectedValueOnce(new Error('Sin conexión')).mockResolvedValueOnce([{ id: 4, nombre: 'Color', cantidadProductos: 1 }])
+    getCharacteristic.mockResolvedValue({ id: 4, nombre: 'Color', cantidadProductos: 1 })
+    deleteCharacteristic.mockRejectedValue(error)
+    const user = userEvent.setup()
+    render(<CharacteristicManagementPage />)
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Color' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirmar eliminación' }))
+    expect(await screen.findByText(error.message)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar eliminación' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Consultar estado actual' }))
+    expect(await within(screen.getByRole('dialog')).findByText('Sin conexión')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar eliminación' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Consultar estado actual' }))
+    expect(await screen.findByText(/Estado actual consultado/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Eliminar Color' })).toBeEnabled()
+    expect(deleteCharacteristic).toHaveBeenCalledTimes(1)
   })
 })

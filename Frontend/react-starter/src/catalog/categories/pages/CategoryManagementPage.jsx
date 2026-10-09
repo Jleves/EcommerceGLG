@@ -142,8 +142,14 @@ export function CategoryManagementPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Categorías</h1>
         <p className="mt-2 text-slate-600">Categorías activas e inactivas del catálogo.</p>
-        <button type="button" disabled={pending || needsReview || state.loading || Boolean(state.error) || Boolean(confirming) || Boolean(editing)} onClick={() => { setMutationError(null); setNotice(''); setCreating(true) }} className="mt-4 rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50">Crear categoría</button>
       </header>
+
+      <div className="mb-5 flex justify-end">
+        <button type="button" aria-label="Crear categoría" disabled={pending || needsReview || state.loading || Boolean(state.error) || Boolean(confirming) || Boolean(editing)} onClick={() => { setMutationError(null); setNotice(''); setCreating(true) }} className="rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50">
+          <span className="sm:hidden" aria-hidden="true">+</span>
+          <span className="hidden sm:inline" aria-hidden="true">Crear categoría</span>
+        </button>
+      </div>
 
       <div className="mb-6 grid gap-4">
         {notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-emerald-900">{notice}</p>}

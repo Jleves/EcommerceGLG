@@ -5,12 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../auth/context/AuthContext.js'
 import { listProducts } from '../catalog/products/services/productService.js'
 import { listCategories } from '../catalog/categories/services/categoryService.js'
-import { listCharacteristics } from '../catalog/characteristics/services/characteristicService.js'
+import { createCharacteristic, deleteCharacteristic, getCharacteristic, listCharacteristics, updateCharacteristic } from '../catalog/characteristics/services/characteristicService.js'
 import { AppRouter } from './AppRouter.jsx'
 
 vi.mock('../catalog/products/services/productService.js', () => ({ listProducts: vi.fn() }))
 vi.mock('../catalog/categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
-vi.mock('../catalog/characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
+vi.mock('../catalog/characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn(), getCharacteristic: vi.fn(), createCharacteristic: vi.fn(), updateCharacteristic: vi.fn(), deleteCharacteristic: vi.fn() }))
 vi.mock('../auth/pages/LoginPage.jsx', () => ({ LoginPage: () => <p>Ingreso público</p> }))
 vi.mock('../admin/pages/UserListPage.jsx', () => ({ UserListPage: () => <p>Administración de usuarios</p> }))
 
@@ -86,5 +86,38 @@ describe('rutas administrativas del catálogo', () => {
     await userEvent.setup().click(screen.getByRole('link', { name: 'Características' }))
     expect(await screen.findByRole('heading', { name: 'Características' })).toBeInTheDocument()
     expect(listCharacteristics).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
+  })
+
+  it('recorre listar, crear, renombrar y eliminar antes de volver a Productos y Categorías', async () => {
+    listCharacteristics.mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 7, nombre: 'Color', cantidadProductos: 0 }])
+      .mockResolvedValueOnce([{ id: 7, nombre: 'Tono', cantidadProductos: 0 }])
+      .mockResolvedValueOnce([])
+    createCharacteristic.mockResolvedValue({ id: 7, nombre: 'Color', cantidadProductos: 0 })
+    getCharacteristic.mockResolvedValueOnce({ id: 7, nombre: 'Color', cantidadProductos: 0 })
+      .mockResolvedValueOnce({ id: 7, nombre: 'Tono', cantidadProductos: 0 })
+    updateCharacteristic.mockResolvedValue({ id: 7, nombre: 'Tono', cantidadProductos: 0 })
+    deleteCharacteristic.mockResolvedValue(null)
+    const user = userEvent.setup()
+    renderRoute('/app/catalog/characteristics', 'ADMIN')
+    await screen.findByText('No hay características.')
+    await user.click(screen.getByRole('button', { name: 'Crear característica' }))
+    await user.type(screen.getByRole('textbox', { name: 'Nombre' }), 'Color')
+    await user.click(screen.getByRole('button', { name: 'Guardar característica' }))
+    await user.click(await screen.findByRole('button', { name: 'Editar Color' }))
+    const name = await screen.findByRole('textbox', { name: 'Nombre' })
+    await user.clear(name)
+    await user.type(name, 'Tono')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await user.click(await screen.findByRole('button', { name: 'Eliminar Tono' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirmar eliminación' }))
+    await screen.findByText('No hay características.')
+    expect(createCharacteristic).toHaveBeenCalledWith({ nombre: 'Color' })
+    expect(updateCharacteristic).toHaveBeenCalledWith(7, { nombre: 'Tono' })
+    expect(deleteCharacteristic).toHaveBeenCalledExactlyOnceWith(7)
+    await user.click(screen.getByRole('link', { name: 'Productos' }))
+    expect(await screen.findByRole('heading', { name: 'Productos' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Categorías' }))
+    expect(await screen.findByRole('heading', { name: 'Categorías' })).toBeInTheDocument()
   })
 })

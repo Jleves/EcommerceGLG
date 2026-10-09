@@ -213,8 +213,13 @@ export function ProductManagementPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Productos</h1>
         <p className="mt-2 text-slate-600">Productos activos e inactivos del catálogo.</p>
-        <button className={`mt-4 rounded-lg px-4 py-2 font-semibold ${greenButton}`} disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">Crear producto</button>
       </header>
+      <div className="mb-5 flex justify-end">
+        <button aria-label="Crear producto" className={`rounded-lg px-4 py-2 font-semibold ${greenButton}`} disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">
+          <span className="sm:hidden" aria-hidden="true">+</span>
+          <span className="hidden sm:inline" aria-hidden="true">Crear producto</span>
+        </button>
+      </div>
       {notice && <p role="status" className="mb-4 rounded bg-emerald-50 p-3">{notice}</p>}
       {needsReview && <div className="mb-4 grid justify-items-start gap-3 rounded border border-amber-300 bg-amber-50 p-4">
         <p role="status">No pudimos confirmar el resultado. Consultá el estado actual antes de enviar otro cambio; la lista no confirma por sí sola si la solicitud anterior se aplicó.</p>

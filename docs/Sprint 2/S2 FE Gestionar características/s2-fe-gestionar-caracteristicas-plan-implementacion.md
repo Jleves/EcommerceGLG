@@ -1,6 +1,6 @@
 # S2 FE Gestionar características — plan de implementación
 
-**Estado:** tandas 1, 2 y 3 completas; tanda 4 pendiente de ejecución.
+**Estado:** tandas 1, 2, 3 y 4 completas.
 
 **Fuentes:** [tarjeta S2 FE Gestionar características](https://trello.com/c/vDSn5tdO), `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`, planes de gestión de categorías y productos, `docs/prompt-colores-cards-por-estado.md` y código vigente del repositorio.
 
@@ -136,7 +136,7 @@ El alta sigue `CharacteristicManagementPage → characteristicService.createChar
 | 1 | Centralizar y probar el contrato HTTP | API existente | Completa |
 | 2 | Ruta, navegación y listado | 1 | Completa |
 | 3 | Alta y edición | 2 | Completa |
-| 4 | Eliminación y recorrido integral | 3 | Planificada |
+| 4 | Eliminación y recorrido integral | 3 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3 → Tanda 4
@@ -471,7 +471,33 @@ TRATAMIENTO: registrar la limitación y verificar manualmente cuando exista ese 
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** eliminación desde cada card mediante GET por ID previo al diálogo; advertencia con nombre, conteo fresco, eliminación de valores/unidades y conservación de productos; cancelación y Escape sin DELETE; envío único, bloqueo durante la solicitud y recarga después de 204. Errores 404 orientan a actualizar la lista. Red/5xx bloquea mutaciones hasta consultar el estado; después de una lectura correcta se cierra la confirmación anterior para revisar la lista antes de otra decisión. [Resultado detallado de la tanda 4](s2-fe-gestionar-caracteristicas-tanda-4-resultado.md).
+
+**Diferencias respecto del plan:** ninguna funcional. La consulta tras una respuesta incierta cierra el diálogo de eliminación para evitar confirmar sobre un detalle previo a la revisión.
+
+**Tests ejecutados:** 20 tests de página de características, 12 de rutas/navegación (incluye recorrido listar → crear → renombrar → eliminar → Productos → Categorías), 15 del servicio de características y regresión frontend completa. `npm run lint` y `npm run build`.
+
+**Tests exitosos:** suite completa secuencial 245/245 tras los últimos cambios; lint y build correctos. El servicio ya verifica 204, cookies, CSRF y ausencia de reintentos de mutaciones.
+
+**Tests fallidos:** la suite completa con paralelismo predeterminado falló dos veces en 1 test ajeno de MFA (242/243); aislado y suite secuencial pasaron. No quedó ningún fallo en los tests focales.
+
+**Incidentes:** INC-005, acceso de esbuild denegado en sandbox; INC-006, aviso duplicado de revisión al abrir el diálogo; INC-007, expectativa de navegación MFA sensible al paralelismo. Detalle en el resultado separado.
+
+**Tests faltantes:** recorrido manual con navegador y backend reales, incluyendo característica usada por productos y comprobación de que los productos permanecen; no se dispuso de ese entorno. La cantidad exacta al momento del DELETE bajo concurrencia tampoco se prueba.
+
+**Riesgos residuales:** la cantidad informada puede cambiar entre GET y DELETE; la consulta posterior a un resultado incierto no demuestra si el DELETE se aplicó. La suite paralela conserva un test MFA intermitente ajeno a esta tanda. El flujo UI se probó con servicio simulado; falta validación manual contra MySQL real.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `catalog/characteristics/pages/CharacteristicManagementPage.jsx` y su test; `app/AppRouter.products.test.jsx`; este plan y el resultado separado.
+
+**Criterio de cierre:**
+
+- [x] Eliminación confirmada y lista actualizada; advertencia explícita de que no se borran productos, conforme al contrato backend existente.
+- [x] Permisos, errores, resultado incierto y regresión automatizada comprobados.
+- [x] Tests faltantes, incidentes y riesgos residuales registrados.
 
 ## Registro global de decisiones pendientes
 
