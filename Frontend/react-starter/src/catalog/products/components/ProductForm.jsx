@@ -6,11 +6,12 @@ const pricePattern = /^\d{1,13}(?:\.\d{1,2})?$/
 const fieldClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200'
 const labelClass = 'grid gap-1.5 text-sm font-semibold text-slate-700'
 
-export function ProductForm({ initialValues, categories, characteristics, onSubmit, onCancel, pending, blocked, error }) {
+export function ProductForm({ initialValues, categories, subcategories = [], characteristics, onSubmit, onCancel, pending, blocked, error }) {
   const editing = Boolean(initialValues)
   const [values, setValues] = useState({
     nombre: initialValues?.nombre ?? '',
     categoriaId: String(initialValues?.categoriaId ?? ''),
+    subcategoriaId: String(initialValues?.subcategoriaId ?? ''),
     descripcion: initialValues?.descripcion ?? '',
     precioReferencia: String(initialValues?.precioReferencia ?? ''),
     disponible: initialValues?.disponible === undefined ? '' : String(initialValues.disponible),
@@ -21,6 +22,7 @@ export function ProductForm({ initialValues, categories, characteristics, onSubm
   const [validation, setValidation] = useState('')
   const selectedIds = values.caracteristicas.map((item) => item.caracteristicaId)
   const eligibleCategories = categories.filter((item) => item.activo || (editing && String(item.id) === String(initialValues.categoriaId)))
+  const eligibleSubcategories = subcategories.filter((item) => String(item.categoriaId) === values.categoriaId)
 
   function changeCharacteristic(index, changes) {
     setValues((current) => ({ ...current, caracteristicas: current.caracteristicas.map((item, row) => row === index ? { ...item, ...changes } : item) }))
@@ -31,6 +33,7 @@ export function ProductForm({ initialValues, categories, characteristics, onSubm
     if (pending || blocked) return
     if (!values.nombre.trim() || values.nombre.trim().length > 160 || !values.categoriaId ||
         !eligibleCategories.some((item) => String(item.id) === values.categoriaId) ||
+        (values.subcategoriaId && !eligibleSubcategories.some((item) => String(item.id) === values.subcategoriaId)) ||
         values.descripcion.length > 1000 || !pricePattern.test(values.precioReferencia) || Number(values.precioReferencia) <= 0 ||
         !['true', 'false'].includes(values.disponible) ||
         selectedIds.some((id) => !id) || new Set(selectedIds).size !== selectedIds.length ||
@@ -41,6 +44,7 @@ export function ProductForm({ initialValues, categories, characteristics, onSubm
     setValidation('')
     onSubmit({
       nombre: values.nombre.trim(), categoriaId: Number(values.categoriaId), descripcion: values.descripcion,
+      subcategoriaId: values.subcategoriaId ? Number(values.subcategoriaId) : null,
       precioReferencia: values.precioReferencia, disponible: values.disponible === 'true',
       caracteristicas: values.caracteristicas.map((item) => ({
         caracteristicaId: Number(item.caracteristicaId), valor: item.valor.trim(), unidad: item.unidad,
@@ -63,11 +67,18 @@ export function ProductForm({ initialValues, categories, characteristics, onSubm
         </label>
         {fieldError(error, 'nombre') && <small className="text-red-700">{fieldError(error, 'nombre')}</small>}
         <label className={labelClass} htmlFor="product-category">Categoría
-          <select id="product-category" required value={values.categoriaId} onChange={(event) => setValues({ ...values, categoriaId: event.target.value })} className={fieldClass}>
+          <select id="product-category" required value={values.categoriaId} onChange={(event) => setValues({ ...values, categoriaId: event.target.value, subcategoriaId: '' })} className={fieldClass}>
             <option value="">Seleccioná una categoría</option>
             {eligibleCategories.map((item) => <option key={item.id} value={item.id}>{item.nombre}{item.activo ? '' : ' (inactiva actual)'}</option>)}
           </select>
           {fieldError(error, 'categoriaId') && <small className="text-red-700">{fieldError(error, 'categoriaId')}</small>}
+        </label>
+        <label className={labelClass} htmlFor="product-subcategory">Subcategoría
+          <select id="product-subcategory" value={values.subcategoriaId} onChange={(event) => setValues({ ...values, subcategoriaId: event.target.value })} className={fieldClass}>
+            <option value="">Sin subcategoría</option>
+            {eligibleSubcategories.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+          {fieldError(error, 'subcategoriaId') && <small className="text-red-700">{fieldError(error, 'subcategoriaId')}</small>}
         </label>
         <label className={labelClass} htmlFor="product-description">Descripción
           <textarea id="product-description" maxLength={1000} value={values.descripcion} onChange={(event) => setValues({ ...values, descripcion: event.target.value })} className={`${fieldClass} min-h-24 resize-y`} />

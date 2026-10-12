@@ -1,9 +1,11 @@
 import { apiRequest } from '../../../services/apiClient.js'
 import { ENDPOINTS } from '../../../services/endpoints.js'
 
-export function listProducts(page = 0, nombre, { signal } = {}) {
+export function listProducts(page = 0, nombre, { signal, categoriaId, subcategoriaId } = {}) {
   const query = new URLSearchParams({ page: String(page), size: '20' })
   if (nombre !== undefined) query.set('nombre', nombre)
+  if (categoriaId != null) query.set('categoriaId', String(categoriaId))
+  if (subcategoriaId != null) query.set('subcategoriaId', String(subcategoriaId))
   return apiRequest(`${ENDPOINTS.CATALOG.PRODUCTS}?${query}`, { signal })
 }
 

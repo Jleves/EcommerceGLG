@@ -4,12 +4,14 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listCategories } from '../../categories/services/categoryService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
+import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
 import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 import { ProductManagementPage } from './ProductManagementPage.jsx'
 
 vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn() }))
 vi.mock('../../categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
 vi.mock('../../characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
+vi.mock('../../subcategories/services/subcategoryService.js', () => ({ listSubcategories: vi.fn() }))
 
 const active = { id: 1, nombre: 'Arena', categoriaId: 3, descripcion: 'Fina', precioReferencia: 250, disponible: true, activo: true, destacado: false }
 const inactive = { id: 2, nombre: 'Cemento', categoriaId: 4, descripcion: '', precioReferencia: 500, disponible: false, activo: false, destacado: true }
@@ -29,6 +31,20 @@ describe('ProductManagementPage', () => {
     vi.resetAllMocks()
     listCategories.mockResolvedValue([{ id: 3, nombre: 'Áridos', activo: true }, { id: 4, nombre: 'Vieja', activo: false }])
     listCharacteristics.mockResolvedValue([{ id: 7, nombre: 'Color' }, { id: 8, nombre: 'Peso' }])
+    listSubcategories.mockResolvedValue([])
+  })
+
+  it('filtra por categoría y subcategoría y muestra clasificación actual', async () => {
+    const user = userEvent.setup()
+    listSubcategories.mockResolvedValue([{ id: 9, categoriaId: 3, nombre: 'Finos' }])
+    listProducts.mockResolvedValue(makePage(0, [{ ...active, subcategoriaId: 9 }], 1))
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    expect(screen.getByText('Subcategoría: Finos')).toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar categoría' }), '3')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar subcategoría' }), '9')
+    await waitFor(() => expect(listProducts).toHaveBeenLastCalledWith(0, undefined, { signal: expect.any(AbortSignal), categoriaId: '3', subcategoriaId: '9' }))
+    expect(screen.getByTestId('location')).toHaveTextContent('categoriaId=3&subcategoriaId=9')
   })
 
   it('carga productos activos e inactivos, permite recorrer páginas y conserva el filtro', async () => {
@@ -119,13 +135,13 @@ describe('ProductManagementPage', () => {
     await screen.findByRole('heading', { name: 'Arena' })
     await user.click(screen.getByRole('button', { name: 'Crear producto' }))
     const form = within(await screen.findByRole('dialog'))
-    expect(screen.queryByRole('option', { name: 'Vieja' })).not.toBeInTheDocument()
+    expect(form.queryByRole('option', { name: 'Vieja' })).not.toBeInTheDocument()
     await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '3')
     await user.type(screen.getByRole('textbox', { name: 'Precio de referencia' }), '12.50')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
     await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
-    await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, descripcion: '', precioReferencia: '12.50', disponible: true, caracteristicas: [] }))
+    await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, subcategoriaId: null, descripcion: '', precioReferencia: '12.50', disponible: true, caracteristicas: [] }))
     expect(await screen.findByText('Producto creado.')).toBeInTheDocument()
     await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(2))
   })

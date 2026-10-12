@@ -19,7 +19,8 @@ En Sprint 1 se define y revisa el modelo; no se crean estas tablas todavía. La 
 | Entidad | Datos y relaciones | Reglas acordadas |
 | --- | --- | --- |
 | `Categoria` | `id`, nombre, descripción, ícono, activo | Una categoría contiene muchos productos. Se desactiva, no se borra físicamente si tiene productos. |
-| `Producto` | `id`, `categoria_id`, nombre, descripción, activo, destacado | Agrupa las variantes bajo una ficha pública. Pertenece a una categoría; solo los activos se publican. No tiene `marca_id` ni `caracteristica_id` directo. |
+| `Subcategoria` | `id`, `categoria_id`, nombre, descripción | Un solo nivel bajo categoría; nombre único dentro del padre. El padre se fija al crearla. Se borra físicamente y sus productos quedan sin subcategoría. |
+| `Producto` | `id`, `categoria_id`, `subcategoria_id` opcional, nombre, descripción, activo, destacado | Agrupa las variantes bajo una ficha pública. Siempre pertenece a una categoría y puede clasificarse en una subcategoría de ella; solo los activos se publican. No tiene `marca_id` ni `caracteristica_id` directo. |
 | `VarianteProducto` | `id`, `producto_id`, SKU opcional, precio de referencia, disponibilidad, activo | Representa una opción concreta del producto, con precio y disponibilidad propios. Un producto puede tener varias variantes. |
 | `Caracteristica` | `id`, nombre | Define claves reutilizables, por ejemplo `Marca`, `Color` o `Medida`. El nombre es único. |
 | `Producto_Caracteristica` | `producto_id`, `caracteristica_id`, valor, unidad opcional | Atributos compartidos por todas las variantes. La combinación producto/característica es única. `Marca` puede guardarse como característica; por ejemplo, clave `Marca`, valor `Acme`. |
@@ -30,6 +31,8 @@ En Sprint 1 se define y revisa el modelo; no se crean estas tablas todavía. La 
 `Producto.destacado` es independiente de `Promocion`: puede haber un producto destacado sin descuento, una promoción no destacada o ambas cosas a la vez. En este último caso, el producto aparece destacado con su precio promocional mientras la promoción esté activa y vigente.
 
 La marca no requiere una tabla propia. El filtro por marca se obtiene buscando la característica cuyo nombre es `Marca` y comparando su valor. La cardinalidad y unicidad de atributos deben respetarse al editar el producto.
+
+La subcategoría tiene un solo nivel y es opcional: `Siderometalúrgico → Chapas → Chapa Canaleta`. Al crear o reasignar un producto, la categoría debe estar activa y la subcategoría debe pertenecerle. Desactivar una categoría impide nuevas asignaciones a sus subcategorías, pero no cambia productos existentes. Antes de eliminar una subcategoría, la administración muestra la cantidad de productos asociados; el borrado la desvincula de ellos, actualiza `updated_at` y conserva `categoria_id` en una transacción. La cifra mostrada puede variar hasta ejecutar el borrado. El nombre queda libre para una nueva subcategoría bajo ese padre. `Galvanizada` se modela como característica o futura variante según si tiene precio y disponibilidad propios.
 
 ### Variantes y precio inicial del catálogo
 
@@ -86,7 +89,7 @@ El backend aplica la autorización; ocultar controles en React no reemplaza las 
 
 ## Separación de implementación
 
-- **Sprint 2 — catálogo básico y características de producto:** categorías y productos con sus datos esenciales, relaciones, estado y precio de referencia; `Caracteristica` y `Producto_Caracteristica` para valores por producto. `Marca` se crea como característica desde la API, sin entidad ni carga inicial propia.
+- **Sprint 2 — catálogo básico y características de producto:** categorías, subcategorías opcionales y productos con sus datos esenciales, relaciones, estado y precio de referencia; `Caracteristica` y `Producto_Caracteristica` para valores por producto. `Marca` se crea como característica desde la API, sin entidad ni carga inicial propia.
 - **Sprint 3 — variantes e imágenes:** `VarianteProducto`, `Variante_Caracteristica` e imágenes múltiples con selección de principal, según tarjetas separadas de catálogo.
 - **Sprints posteriores:** promociones; captura, consulta y exportación de suscripciones; métricas y panel. Cada grupo requiere tarjetas y migraciones separadas. Las fechas de baja se incluyen en la tabla de suscripción desde su primera migración, aunque la automatización de bajas se agregue después.
 - **Fuera de V1:** pedidos persistidos, detalle de pedido, pagos online y stock integrado.

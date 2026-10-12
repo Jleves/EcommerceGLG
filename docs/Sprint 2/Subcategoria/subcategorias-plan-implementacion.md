@@ -1,6 +1,6 @@
 # Subcategorías — plan de implementación
 
-**Propuesta de diseño:** `docs/Diagrama ECOMMERCE.drawio`, actualizado para incluir `SUBCATEGORIA`, y decisiones acordadas en esta conversación. **Estado:** tandas 1, 2 y 3 completas; tanda 4 pendiente. Este documento sigue `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.
+**Propuesta de diseño:** `docs/Diagrama ECOMMERCE.drawio`, actualizado para incluir `SUBCATEGORIA`, y decisiones acordadas en esta conversación. **Estado:** tandas 1 a 4 completas. Este documento sigue `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.
 
 ## Decisiones funcionales acordadas
 
@@ -438,14 +438,24 @@ TRATAMIENTO: incluirla al implementar el catálogo público; no simular esa UI e
 
 ### Criterio de cierre
 
-- [ ] Operador administra subcategorías y clasifica productos desde la UI.
-- [ ] Confirmación y estado tras el borrado reflejan la desvinculación real.
-- [ ] Tests y regresión relevante pasan; faltantes, incidentes y riesgos se registran.
-- [ ] `docs/modelo-inicial.md` refleja el modelo aprobado y el diagrama continúa coherente.
+- [x] Operador administra subcategorías y clasifica productos desde la UI.
+- [x] Confirmación y estado tras el borrado reflejan la desvinculación real.
+- [x] Tests y regresión relevante pasan; faltantes, incidentes y riesgos se registran.
+- [x] `docs/modelo-inicial.md` refleja el modelo aprobado y el diagrama continúa coherente.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. Detalle en [tanda-4-resultado.md](tanda-4-resultado.md).
+
+**Cambios realizados:** gestión React de subcategorías bajo categorías, con alta, edición, confirmación informada y borrado; selector dependiente y filtros administrativos de productos; endpoints y documentación del modelo.
+
+**Diferencias respecto del plan:** la gestión de subcategorías se implementa en un componente `SubcategoryManager` dentro de `CategoryManagementPage`, para aislar sus estados y peticiones. No cambia el alcance funcional.
+
+**Tests ejecutados:** 72/72 pruebas de catálogo y rutas en la corrida final; ESLint y build exitosos. La suite global tuvo 252/253 por un test de MFA ajeno a la tanda; su rerun aislado pasó 17/17. **Tests fallidos finales del catálogo:** 0.
+
+**Incidentes:** INC-005 (EPERM de Vitest dentro del sandbox), INC-006 (expectativas de pruebas de catálogo desactualizadas frente a UI/contrato nuevos) e INC-007 (test MFA intermitente), detallados en el resultado. **Tests faltantes:** recorrido manual con backend MySQL y navegador real. **Riesgos residuales:** la cifra previa al borrado puede cambiar hasta el DELETE; el catálogo público queda fuera de estas tandas; el test MFA fue intermitente bajo ejecución global. **Decisiones nuevas pendientes:** ninguna.
+
+**Archivos modificados:** componentes, servicios y pruebas React de categorías, subcategorías y productos; `endpoints.js`, `docs/modelo-inicial.md`, este plan y el resultado enlazado.
 
 ## Decisiones pendientes
 
@@ -460,7 +470,7 @@ Durante la ejecución, cada fallo relevante se registrará una sola vez como `IN
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO TRAS TANDA 3
+IMPLEMENTADO TRAS TANDA 4
 CategoryController → CategoryServiceImpl → CategoryRepository → categories
 ProductForm → ProductController → ProductServiceImpl → products.category_id
 ProductCharacteristic → characteristics + product_characteristics
@@ -474,10 +484,12 @@ ProductController → ProductServiceImpl.create/update → bloqueo de categoría
 ProductController.list → ProductRepository.findPageByFilters → nombre/categoría/subcategoría
 ProductResponse y ProductSummaryResponse → categoriaId + subcategoriaId nullable
 
-PENDIENTE: TANDA 4
-CategoryManagementPage → gestión de subcategorías en React
-ProductForm → selector dependiente y filtros administrativos React
-Catálogo público: futuro, fuera de estas tandas
+CategoryManagementPage → SubcategoryManager → subcategoryService → API de subcategorías
+ProductForm → selector dependiente → ProductManagementPage → productService → API de productos
+ProductManagementPage → filtros administrativos de categoría y subcategoría en URL
+
+FUERA DE ESTAS TANDAS
+Catálogo público: diseño e implementación futuros
 ```
 
 ## Resumen final

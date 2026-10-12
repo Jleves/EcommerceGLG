@@ -5,6 +5,7 @@ import { createCategory, deactivateCategory, listCategories, reactivateCategory,
 import { CategoryManagementPage } from './CategoryManagementPage.jsx'
 
 vi.mock('../services/categoryService.js', () => ({ listCategories: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), deactivateCategory: vi.fn(), reactivateCategory: vi.fn() }))
+vi.mock('../../subcategories/components/SubcategoryManager.jsx', () => ({ SubcategoryManager: () => null }))
 
 const categories = [
   { id: 2, nombre: 'Plomería', descripcion: 'Caños', icono: 'plomeria', activo: true },

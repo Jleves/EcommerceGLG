@@ -11,6 +11,12 @@ beforeEach(() => __resetApiClientForTests())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('productService', () => {
+  it('combina filtros de clasificación y nombre con la página', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ content: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+    await listProducts(2, 'cal', { categoriaId: 3, subcategoriaId: 9 })
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/catalog/products?page=2&size=20&nombre=cal&categoriaId=3&subcategoriaId=9')
+  })
   it('omite nombre sin filtro y envía página, tamaño, cookies y señal', async () => {
     const page = { content: [], page: 2, size: 20, totalElements: 0, totalPages: 0 }
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(page))

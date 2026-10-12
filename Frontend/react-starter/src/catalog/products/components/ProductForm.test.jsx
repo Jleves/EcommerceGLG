@@ -7,6 +7,20 @@ const categories = [{ id: 1, nombre: 'Activa', activo: true }, { id: 2, nombre: 
 const characteristics = [{ id: 3, nombre: 'Color' }, { id: 4, nombre: 'Peso' }]
 
 describe('ProductForm', () => {
+  it('permite omitir subcategoría y limpia la selección al cambiar de padre', async () => {
+    const user = userEvent.setup()
+    const submit = vi.fn()
+    render(<ProductForm categories={[...categories, { id: 3, nombre: 'Otra activa', activo: true }]} subcategories={[{ id: 8, categoriaId: 1, nombre: 'Chapas' }]} characteristics={[]} initialValues={{ nombre: 'Arena', categoriaId: 1, subcategoriaId: 8, descripcion: '', precioReferencia: 10, disponible: true }} onSubmit={submit} onCancel={() => {}} />)
+    const subcategory = screen.getByRole('combobox', { name: 'Subcategoría' })
+    expect(subcategory).toHaveValue('8')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(submit).toHaveBeenLastCalledWith(expect.objectContaining({ categoriaId: 1, subcategoriaId: 8 }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '3')
+    expect(subcategory).toHaveValue('')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '1')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({ categoriaId: 1, subcategoriaId: null }))
+  })
   it('valida precio positivo, escala, categoría y disponibilidad antes de enviar', async () => {
     const submit = vi.fn()
     const user = userEvent.setup()

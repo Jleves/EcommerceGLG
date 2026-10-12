@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { RequestError } from '../../../auth/components/RequestError.jsx'
 import { listCategories } from '../../categories/services/categoryService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
+import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
 import { ProductForm } from '../components/ProductForm.jsx'
 import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 
@@ -23,9 +24,12 @@ export function ProductManagementPage() {
   const urlNombre = searchParams.get('nombre')
   const invalidUrlNombre = urlNombre !== null && !urlNombre.trim()
   const nombre = urlNombre === null ? undefined : urlNombre.trim()
-  const key = `${page}\u0000${nombre ?? ''}`
+  const categoriaId = searchParams.get('categoriaId') || undefined
+  const subcategoriaId = searchParams.get('subcategoriaId') || undefined
+  const key = `${page}\u0000${nombre ?? ''}\u0000${categoriaId ?? ''}\u0000${subcategoriaId ?? ''}`
   const [draft, setDraft] = useState(nombre ?? '')
   const [searchError, setSearchError] = useState('')
+  const [filters, setFilters] = useState({ categories: [], subcategories: [], error: null })
   const [version, setVersion] = useState(0)
   const [state, setState] = useState({ key, version, loading: true, data: null, error: null })
   const [formTarget, setFormTarget] = useState(null)
@@ -46,6 +50,16 @@ export function ProductManagementPage() {
     ? state : { loading: true, data: null, error: null }
 
   useEffect(() => {
+    const controller = new AbortController()
+    let current = true
+    Promise.all([listCategories({ signal: controller.signal }), listSubcategories(undefined, { signal: controller.signal })]).then(
+      ([categories, subcategories]) => { if (current) setFilters({ categories, subcategories, error: null }) },
+      (error) => { if (current && error.name !== 'AbortError') setFilters({ categories: [], subcategories: [], error }) },
+    )
+    return () => { current = false; controller.abort() }
+  }, [version])
+
+  useEffect(() => {
     if (!notice) return undefined
     const timeout = window.setTimeout(() => setNotice(''), 4000)
     return () => window.clearTimeout(timeout)
@@ -60,12 +74,12 @@ export function ProductManagementPage() {
     if (invalidUrlNombre) return undefined
     const controller = new AbortController()
     let current = true
-    listProducts(page, nombre, { signal: controller.signal }).then(
+    listProducts(page, nombre, { signal: controller.signal, ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }) }).then(
       (data) => {
         if (!current) return
         if (page > 0 && data.content.length === 0 && page >= data.totalPages) {
           const lastPage = Math.max(0, data.totalPages - 1)
-          setSearchParams(nombre === undefined ? { page: String(lastPage) } : { nombre, page: String(lastPage) })
+          setSearchParams({ ...(nombre !== undefined && { nombre }), ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }), page: String(lastPage) })
         } else {
           setState({ key, version, loading: false, data, error: null })
           if (reviewing.current) {
@@ -80,7 +94,7 @@ export function ProductManagementPage() {
       },
     )
     return () => { current = false; controller.abort() }
-  }, [page, nombre, key, version, invalidUrlNombre, setSearchParams])
+  }, [page, nombre, categoriaId, subcategoriaId, key, version, invalidUrlNombre, setSearchParams])
 
   useEffect(() => {
     if (!formTarget) return undefined
@@ -88,10 +102,11 @@ export function ProductManagementPage() {
     let current = true
     Promise.all([
       listCategories({ signal: controller.signal }),
+      listSubcategories(undefined, { signal: controller.signal }),
       listCharacteristics({ signal: controller.signal }),
       formTarget === 'create' ? Promise.resolve(null) : getProduct(formTarget, { signal: controller.signal }),
     ]).then(
-      ([categories, characteristics, product]) => { if (current) setFormData({ categories, characteristics, product }) },
+      ([categories, subcategories, characteristics, product]) => { if (current) setFormData({ categories, subcategories, characteristics, product }) },
       (error) => { if (current && error.name !== 'AbortError') setFormError(error) },
     )
     return () => { current = false; controller.abort() }
@@ -186,12 +201,12 @@ export function ProductManagementPage() {
   function search(event) {
     event.preventDefault()
     const trimmed = draft.trim()
-    if (!trimmed) {
+    if (!trimmed && !categoriaId && !subcategoriaId) {
       setSearchError('Ingresá un nombre para buscar.')
       return
     }
     setSearchError('')
-    setSearchParams({ nombre: trimmed, page: '0' })
+    setSearchParams({ ...(trimmed && { nombre: trimmed }), ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }), page: '0' })
     if (page === 0 && nombre === trimmed) setVersion((value) => value + 1)
   }
 
@@ -203,9 +218,15 @@ export function ProductManagementPage() {
   }
 
   function goToPage(nextPage) {
-    setSearchParams(nombre === undefined
-      ? { page: String(nextPage) }
-      : { nombre, page: String(nextPage) })
+    setSearchParams({ ...(nombre !== undefined && { nombre }), ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }), page: String(nextPage) })
+  }
+
+  function changeCategoryFilter(value) {
+    setSearchParams({ ...(nombre !== undefined && { nombre }), ...(value && { categoriaId: value }), page: '0' })
+  }
+
+  function changeSubcategoryFilter(value) {
+    setSearchParams({ ...(nombre !== undefined && { nombre }), ...(categoriaId && { categoriaId }), ...(value && { subcategoriaId: value }), page: '0' })
   }
 
   return (
@@ -240,7 +261,7 @@ export function ProductManagementPage() {
         {needsReview && <p role="status" className="m-4 rounded bg-amber-50 p-3">Resultado incierto. Consultá el estado actual antes de guardar otra vez.</p>}
         {loadingForm && <p role="status" className="p-5">Cargando formulario…</p>}
         {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className={`justify-self-start rounded-lg px-4 py-2 font-semibold ${lightButton}`}>Cerrar</button></div>}
-        {formData && <ProductForm initialValues={formData.product} categories={formData.categories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />}
+        {formData && <ProductForm initialValues={formData.product} categories={formData.categories} subcategories={formData.subcategories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />}
       </dialog>}
       <form className="mb-6" onSubmit={search}>
         <div className="flex flex-wrap items-end gap-3">
@@ -253,6 +274,21 @@ export function ProductManagementPage() {
         </div>
         {(searchError || invalidUrlNombre) && <p className="mt-1 text-sm text-red-700" id="product-name-search-error" role="alert">Ingresá un nombre para buscar.</p>}
       </form>
+      <div className="mb-5 flex flex-wrap gap-3">
+        <label htmlFor="product-category-filter">Filtrar categoría
+          <select id="product-category-filter" value={categoriaId ?? ''} onChange={(event) => changeCategoryFilter(event.target.value)} className="ml-2 rounded border p-2">
+            <option value="">Todas</option>
+            {filters.categories.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+        </label>
+        <label htmlFor="product-subcategory-filter">Filtrar subcategoría
+          <select id="product-subcategory-filter" value={subcategoriaId ?? ''} onChange={(event) => changeSubcategoryFilter(event.target.value)} className="ml-2 rounded border p-2">
+            <option value="">Todas</option>
+            {filters.subcategories.filter((item) => !categoriaId || String(item.categoriaId) === categoriaId).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+        </label>
+        {filters.error && <RequestError error={filters.error} />}
+      </div>
       {invalidUrlNombre ? <p role="status">Corregí la búsqueda o limpiala para consultar productos.</p> : currentState.loading ? (
         <p role="status">Cargando productos…</p>
       ) : currentState.error ? (
@@ -269,6 +305,7 @@ export function ProductManagementPage() {
                   <h2 className="font-bold">{product.nombre}</h2>
                   {product.descripcion && <p className="mt-1">{product.descripcion}</p>}
                   <p className="mt-2 text-sm">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
+                  <p className="text-sm">Subcategoría: {product.subcategoriaId ? (filters.subcategories.find((item) => item.id === product.subcategoriaId)?.nombre ?? `ID ${product.subcategoriaId}`) : 'Sin subcategoría'}</p>
                   <p className="mt-1 text-sm">Precio de referencia: {product.precioReferencia} · {product.destacado ? 'Destacado' : 'No destacado'}</p>
                   <div className="mt-3 flex gap-2">
                     <button aria-label={`Editar ${product.nombre}`} className={`rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white enabled:hover:bg-slate-700 focus-visible:outline-slate-800 ${buttonInteraction}`} disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>

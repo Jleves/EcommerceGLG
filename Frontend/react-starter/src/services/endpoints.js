@@ -13,6 +13,8 @@ export const ENDPOINTS = Object.freeze({
     CATEGORY: (id) => `/api/catalog/categories/${encodeURIComponent(id)}`,
     CATEGORY_DEACTIVATE: (id) => `/api/catalog/categories/${encodeURIComponent(id)}/deactivate`,
     CATEGORY_REACTIVATE: (id) => `/api/catalog/categories/${encodeURIComponent(id)}/reactivate`,
+    SUBCATEGORIES: '/api/catalog/subcategories',
+    SUBCATEGORY: (id) => `/api/catalog/subcategories/${encodeURIComponent(id)}`,
     PRODUCTS: '/api/catalog/products',
     PRODUCT: (id) => `/api/catalog/products/${encodeURIComponent(id)}`,
     PRODUCT_DEACTIVATE: (id) => `/api/catalog/products/${encodeURIComponent(id)}/deactivate`,

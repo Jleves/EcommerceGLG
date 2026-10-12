@@ -3,6 +3,7 @@ import { RequestError } from '../../../auth/components/RequestError.jsx'
 import { CategoryForm } from '../components/CategoryForm.jsx'
 import { CategoryIcon } from '../components/CategoryIcon.jsx'
 import { createCategory, deactivateCategory, listCategories, reactivateCategory, updateCategory } from '../services/categoryService.js'
+import { SubcategoryManager } from '../../subcategories/components/SubcategoryManager.jsx'
 
 export function CategoryManagementPage() {
   const [version, setVersion] = useState(0)
@@ -209,6 +210,7 @@ export function CategoryManagementPage() {
           ))}
         </ul>
       )}
+      {!state.loading && !state.error && <SubcategoryManager categories={state.data} />}
     </section>
   )
 }
