@@ -1,6 +1,6 @@
 # Subcategorías — plan de implementación
 
-**Propuesta de diseño:** `docs/Diagrama ECOMMERCE.drawio`, actualizado para incluir `SUBCATEGORIA`, y decisiones acordadas en esta conversación. **Estado:** planificación; ninguna tanda fue ejecutada. Este documento sigue `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.
+**Propuesta de diseño:** `docs/Diagrama ECOMMERCE.drawio`, actualizado para incluir `SUBCATEGORIA`, y decisiones acordadas en esta conversación. **Estado:** tandas 1 y 2 completas; tandas 3 y 4 pendientes. Este documento sigue `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.
 
 ## Decisiones funcionales acordadas
 
@@ -95,7 +95,7 @@ El borrado propuesto sigue `SubcategoryController.delete(...) → SubcategorySer
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Persistencia y mapeo de subcategoría opcional | Diagrama revisado | Completa |
-| 2 | Administración API de subcategorías y borrado con desvinculación | 1 | Planificada |
+| 2 | Administración API de subcategorías y borrado con desvinculación | 1 | Completa |
 | 3 | Asignación, lectura y filtros de productos | 2 | Planificada |
 | 4 | Gestión React de subcategorías y selección en productos | 3 | Planificada |
 
@@ -266,13 +266,23 @@ TRATAMIENTO: cubrir ambos recorridos en la tanda 3 antes de usar la función en 
 
 ### Criterio de cierre
 
-- [ ] API cumple validación, permisos y unicidad por padre.
-- [ ] Borrado atómico preserva categoría y actualiza `updated_at` de los productos afectados.
-- [ ] Regresión de categorías pasa; faltantes, incidentes y riesgos quedan visibles.
+- [x] API cumple validación, permisos y unicidad por padre.
+- [x] Borrado atómico preserva categoría y actualiza `updated_at` de los productos afectados.
+- [x] Regresión de categorías pasa; faltantes, incidentes y riesgos quedan visibles.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. Detalle en [tanda-2-resultado.md](tanda-2-resultado.md).
+
+**Cambios realizados:** API `GET/POST/PUT/DELETE` de subcategorías, DTOs y servicio; lista filtrable y detalle con `productosAsociados`. El borrado bloquea la subcategoría, desvincula los productos con actualización de `updated_at` y elimina la fila en una transacción.
+
+**Diferencias respecto del plan:** `JpaRepository` no ofrece `deleteAndFlush(...)` en esta versión; se usan `delete(...)` y `flush()` explícito. Sin cambio funcional.
+
+**Tests ejecutados y exitosos:** 29/29: 4 HTTP/seguridad H2, 3 borrado MySQL, 1 concurrencia MySQL, 7 regresión de categorías y 14 regresión de productos. **Tests fallidos finales:** 0. La primera compilación falló y una primera ejecución HTTP tuvo 2 fallos por datos de prueba; ambos incidentes se resolvieron y revalidaron.
+
+**Incidentes:** INC-002 e INC-003, documentados en el resultado enlazado. **Tests faltantes:** ninguno de los planificados. **Riesgos residuales:** asignación por API de productos y carrera asignación/borrado corresponden a tanda 3; la cifra de `productosAsociados` es una lectura previa y puede cambiar antes del DELETE. **Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** controller, servicio, DTOs y excepción de subcategoría; `ProductRepository`, `GlobalExceptionHandler`, tres clases de test y este documento. Detalle en el resultado enlazado.
 
 ## Tanda 3 — Productos con subcategoría opcional
 
@@ -440,16 +450,18 @@ Durante la ejecución, cada fallo relevante se registrará una sola vez como `IN
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO TRAS TANDA 1
+IMPLEMENTADO TRAS TANDA 2
 CategoryController → CategoryServiceImpl → CategoryRepository → categories
 ProductForm → ProductController → ProductServiceImpl → products.category_id
 ProductCharacteristic → characteristics + product_characteristics
 Flyway V8 → subcategories + products.subcategory_id nullable
-SubcategoryRepository → consultas y bloqueo de fila disponibles; sin API todavía
+SubcategoryController → SubcategoryServiceImpl → SubcategoryRepository → subcategories
+GET detalle → ProductRepository.countBySubcategoryId → productosAsociados
+DELETE → bloqueo de subcategoría → UPDATE products.subcategory_id = NULL, updated_at nuevo
+       → DELETE subcategories, todo en una transacción
 
-PENDIENTE: TANDAS 2–4
-CategoryManagementPage → SubcategoryController → SubcategoryServiceImpl → subcategories
-                                                  └→ eliminar: products.subcategory_id = NULL, updated_at actualizado
+PENDIENTE: TANDAS 3–4
+CategoryManagementPage → gestión de subcategorías en React
 ProductForm → ProductController → ProductServiceImpl → products.category_id obligatorio
                                               └────────→ products.subcategory_id opcional
 Catálogo público: futuro, fuera de estas tandas

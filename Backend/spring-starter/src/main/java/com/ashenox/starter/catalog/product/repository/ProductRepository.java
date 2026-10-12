@@ -6,11 +6,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+    long countBySubcategoryId(Long subcategoryId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE products SET subcategory_id = NULL, updated_at = CURRENT_TIMESTAMP(6) WHERE subcategory_id = :id", nativeQuery = true)
+    int clearSubcategoryAndTouchUpdatedAt(Long id);
+
     @Query(value = "select product from Product product where :pattern is null or lower(product.nombre) like lower(:pattern) escape '!' order by product.nombre asc, product.id asc",
             countQuery = "select count(product) from Product product where :pattern is null or lower(product.nombre) like lower(:pattern) escape '!'")
     Page<Product> findPageByName(String pattern, Pageable pageable);
