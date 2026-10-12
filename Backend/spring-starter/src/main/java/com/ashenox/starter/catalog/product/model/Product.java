@@ -1,6 +1,7 @@
 package com.ashenox.starter.catalog.product.model;
 
 import com.ashenox.starter.catalog.category.model.Category;
+import com.ashenox.starter.catalog.subcategory.model.Subcategory;
 import com.ashenox.starter.shared.persistence.EntidadAuditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,6 +37,10 @@ public class Product extends EntidadAuditable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subcategory_id")
+    private Subcategory subcategory;
 
     @Column(nullable = false, length = 160)
     private String nombre;

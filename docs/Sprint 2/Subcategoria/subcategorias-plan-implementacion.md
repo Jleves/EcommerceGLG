@@ -94,7 +94,7 @@ El borrado propuesto sigue `SubcategoryController.delete(...) → SubcategorySer
 
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
-| 1 | Persistencia y mapeo de subcategoría opcional | Diagrama revisado | Planificada |
+| 1 | Persistencia y mapeo de subcategoría opcional | Diagrama revisado | Completa |
 | 2 | Administración API de subcategorías y borrado con desvinculación | 1 | Planificada |
 | 3 | Asignación, lectura y filtros de productos | 2 | Planificada |
 | 4 | Gestión React de subcategorías y selección en productos | 3 | Planificada |
@@ -165,7 +165,27 @@ TRATAMIENTO: validar en servicios y pruebas de las tandas 2 y 3.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. Detalle e incidente en [tanda-1-resultado.md](tanda-1-resultado.md).
+
+**Cambios realizados:** V8 crea `subcategories` y la FK nullable `products.subcategory_id`; `Subcategory` y `SubcategoryRepository` agregan el mapeo y las consultas; `Product` incorpora la relación opcional. La migración V7→V8 deja los productos existentes con su categoría original y subcategoría nula.
+
+**Diferencias respecto del plan:** ninguna funcional. El `ALTER TABLE` se dividió en sentencias para ser compatible con H2 y MySQL. Se agregó una prueba explícita de actualización V7→V8.
+
+**Tests ejecutados y exitosos:** 13/13: 6 H2 (mapeo de subcategorías y regresión de categorías/productos), 6 MySQL (restricciones, índices, productos y regresión) y 1 actualización V7→V8 en MySQL. Flyway V8 y `ddl-auto=validate` pasaron en ambos motores.
+
+**Tests fallidos:** la primera ejecución H2 tuvo 6 errores de carga de contexto por sintaxis de V8; tras corregirla, 0 fallidos.
+
+**Incidentes:** INC-001, sintaxis de `ALTER TABLE` incompatible con H2; resuelto y revalidado.
+
+**Tests faltantes:** ninguno de los planificados para esta tanda.
+
+**Riesgos residuales:** la FK no garantiza que el padre de la subcategoría coincida con `products.category_id`; la validación corresponde a la tanda 3. Reglas de negocio, API y borrado quedan pendientes de las tandas 2 y 3.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `V8__create_subcategories.sql`, `Subcategory.java`, `SubcategoryRepository.java`, `Product.java`, tres clases de test y este documento. Detalle en el resultado enlazado.
+
+**Cierre:** [x] migración y mapeos H2/MySQL; [x] conservación de productos V7; [x] índices y unicidad MySQL; [x] incidente y riesgo registrados.
 
 ## Tanda 2 — API y borrado de subcategorías
 
@@ -420,12 +440,14 @@ Durante la ejecución, cada fallo relevante se registrará una sola vez como `IN
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY
+IMPLEMENTADO TRAS TANDA 1
 CategoryController → CategoryServiceImpl → CategoryRepository → categories
 ProductForm → ProductController → ProductServiceImpl → products.category_id
 ProductCharacteristic → characteristics + product_characteristics
+Flyway V8 → subcategories + products.subcategory_id nullable
+SubcategoryRepository → consultas y bloqueo de fila disponibles; sin API todavía
 
-OBJETIVO TRAS TANDA 4
+PENDIENTE: TANDAS 2–4
 CategoryManagementPage → SubcategoryController → SubcategoryServiceImpl → subcategories
                                                   └→ eliminar: products.subcategory_id = NULL, updated_at actualizado
 ProductForm → ProductController → ProductServiceImpl → products.category_id obligatorio
