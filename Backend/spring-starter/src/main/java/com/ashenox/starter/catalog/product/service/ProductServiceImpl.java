@@ -16,6 +16,8 @@ import com.ashenox.starter.catalog.product.dto.ProductSummaryResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.subcategory.model.Subcategory;
+import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import com.ashenox.starter.shared.error.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -40,12 +42,23 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CharacteristicRepository characteristicRepository;
     private final ProductCharacteristicRepository productCharacteristicRepository;
+    private final SubcategoryRepository subcategoryRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public ProductPageResponse list(int page, int size, String nombre) {
+    public ProductPageResponse list(int page, int size, String nombre, Long categoriaId, Long subcategoriaId) {
         if (page < 0 || size < 1 || size > 100) {
             throw new BusinessException("La página o el tamaño solicitado no es válido.");
+        }
+        if ((categoriaId != null && categoriaId <= 0) || (subcategoriaId != null && subcategoriaId <= 0)) {
+            throw new BusinessException("Los filtros de categoría y subcategoría deben ser positivos.");
+        }
+        if (categoriaId != null && subcategoriaId != null) {
+            Subcategory subcategory = subcategoryRepository.findById(subcategoriaId)
+                    .orElseThrow(() -> new BusinessException("La subcategoría no pertenece a la categoría indicada."));
+            if (!subcategory.getCategory().getId().equals(categoriaId)) {
+                throw new BusinessException("La subcategoría no pertenece a la categoría indicada.");
+            }
         }
         String pattern = null;
         if (nombre != null) {
@@ -56,7 +69,8 @@ public class ProductServiceImpl implements ProductService {
             pattern = "%" + trimmed.replace("!", "!!").replace("%", "!%")
                     .replace("_", "!_") + "%";
         }
-        Page<Product> result = productRepository.findPageByName(pattern, PageRequest.of(page, size));
+        Page<Product> result = productRepository.findPageByFilters(pattern, categoriaId, subcategoriaId,
+                PageRequest.of(page, size));
         return new ProductPageResponse(result.getContent().stream().map(ProductSummaryResponse::from).toList(),
                 page, size, result.getTotalElements(), result.getTotalPages());
     }
@@ -69,6 +83,8 @@ public class ProductServiceImpl implements ProductService {
         if (!category.isActivo()) {
             throw new ProductCategoryInactiveException();
         }
+        Subcategory subcategory = request.subcategoriaId() == null ? null
+                : lockAssignableSubcategory(request.subcategoriaId(), category);
 
         List<ProductCharacteristicRequest> requested = request.caracteristicas() == null
                 ? List.of() : request.caracteristicas();
@@ -91,6 +107,7 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = Product.builder()
                 .category(category)
+                .subcategory(subcategory)
                 .nombre(request.nombre().strip())
                 .descripcion(request.descripcion())
                 .precioReferencia(request.precioReferencia())
@@ -127,10 +144,22 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse update(Long id, UpdateProductRequest request) {
+        // Las nuevas asignaciones bloquean categoría, subcategoría y producto, en ese orden.
+        // Esto coordina la desactivación del padre y el borrado de la subcategoría.
+        boolean assigning = request.subcategoriaIdPresente() && request.subcategoriaId() != null;
+        Category category = assigning ? categoryRepository.lockById(request.categoriaId())
+                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe.")) : null;
+        Subcategory assigned = assigning ? lockAssignableSubcategory(request.subcategoriaId(), category) : null;
         Product product = productRepository.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
-        Category category = categoryRepository.findById(request.categoriaId())
-                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+        if (!assigning) {
+            category = categoryRepository.findById(request.categoriaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+        }
+        if (!request.subcategoriaIdPresente() && product.getSubcategory() != null
+                && !product.getSubcategory().getCategory().getId().equals(category.getId())) {
+            throw new BusinessException("Al cambiar la categoría debe indicar una subcategoría compatible o null.");
+        }
 
         if (request.caracteristicasPresentes()) {
             List<ProductCharacteristicRequest> requested = request.caracteristicas();
@@ -177,6 +206,9 @@ public class ProductServiceImpl implements ProductService {
         }
 
         product.setCategory(category);
+        if (request.subcategoriaIdPresente()) {
+            product.setSubcategory(assigned);
+        }
         product.setNombre(request.nombre().strip());
         product.setDescripcion(request.descripcion());
         product.setPrecioReferencia(request.precioReferencia());
@@ -207,5 +239,21 @@ public class ProductServiceImpl implements ProductService {
         return ProductResponse.from(product, productCharacteristicRepository
                 .findByProductIdWithCharacteristic(product.getId()).stream()
                 .map(ProductCharacteristicResponse::from).toList());
+    }
+
+    private Subcategory lockAssignableSubcategory(Long id, Category category) {
+        Subcategory subcategory = subcategoryRepository.lockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La subcategoría solicitada no existe."));
+        validateAssignableSubcategory(subcategory, category);
+        return subcategory;
+    }
+
+    private void validateAssignableSubcategory(Subcategory subcategory, Category category) {
+        if (!subcategory.getCategory().getId().equals(category.getId())) {
+            throw new BusinessException("La subcategoría no pertenece a la categoría indicada.");
+        }
+        if (!category.isActivo()) {
+            throw new ProductCategoryInactiveException();
+        }
     }
 }

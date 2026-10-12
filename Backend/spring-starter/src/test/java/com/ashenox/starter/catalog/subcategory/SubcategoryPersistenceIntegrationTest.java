@@ -15,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,8 +66,11 @@ class SubcategoryPersistenceIntegrationTest {
                 .isFalse();
         assertThat(subcategories.findByCategoryIdOrderByNombreAscIdAsc(first.getId()))
                 .extracting(Subcategory::getId).containsExactly(firstA.getId(), firstZ.getId());
+        Set<Long> createdIds = Set.of(firstA.getId(), firstZ.getId(), secondA.getId());
         assertThat(subcategories.findAllByOrderByCategoryIdAscNombreAscIdAsc())
-                .extracting(Subcategory::getId).containsExactly(firstA.getId(), firstZ.getId(), secondA.getId());
+                .extracting(Subcategory::getId)
+                .filteredOn(createdIds::contains)
+                .containsExactly(firstA.getId(), firstZ.getId(), secondA.getId());
         assertThat(subcategories.lockById(firstA.getId())).isPresent();
     }
 

@@ -17,7 +17,13 @@ public record CreateProductRequest(
         @Size(max = 1000) String descripcion,
         @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 2) BigDecimal precioReferencia,
         @NotNull Boolean disponible,
-        List<@NotNull @Valid ProductCharacteristicRequest> caracteristicas) {
+        List<@NotNull @Valid ProductCharacteristicRequest> caracteristicas,
+        @Positive Long subcategoriaId) {
+    public CreateProductRequest(String nombre, Long categoriaId, String descripcion,
+                                BigDecimal precioReferencia, Boolean disponible,
+                                List<ProductCharacteristicRequest> caracteristicas) {
+        this(nombre, categoriaId, descripcion, precioReferencia, disponible, caracteristicas, null);
+    }
     public CreateProductRequest(String nombre, Long categoriaId, String descripcion,
                                 BigDecimal precioReferencia, Boolean disponible) {
         this(nombre, categoriaId, descripcion, precioReferencia, disponible, null);

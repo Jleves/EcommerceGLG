@@ -1,6 +1,6 @@
 # Subcategorías — plan de implementación
 
-**Propuesta de diseño:** `docs/Diagrama ECOMMERCE.drawio`, actualizado para incluir `SUBCATEGORIA`, y decisiones acordadas en esta conversación. **Estado:** tandas 1 y 2 completas; tandas 3 y 4 pendientes. Este documento sigue `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.
+**Propuesta de diseño:** `docs/Diagrama ECOMMERCE.drawio`, actualizado para incluir `SUBCATEGORIA`, y decisiones acordadas en esta conversación. **Estado:** tandas 1, 2 y 3 completas; tanda 4 pendiente. Este documento sigue `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.
 
 ## Decisiones funcionales acordadas
 
@@ -96,7 +96,7 @@ El borrado propuesto sigue `SubcategoryController.delete(...) → SubcategorySer
 | --- | --- | --- | --- |
 | 1 | Persistencia y mapeo de subcategoría opcional | Diagrama revisado | Completa |
 | 2 | Administración API de subcategorías y borrado con desvinculación | 1 | Completa |
-| 3 | Asignación, lectura y filtros de productos | 2 | Planificada |
+| 3 | Asignación, lectura y filtros de productos | 2 | Completa |
 | 4 | Gestión React de subcategorías y selección en productos | 3 | Planificada |
 
 ```text
@@ -343,13 +343,23 @@ TRATAMIENTO: administración React en tanda 4; catálogo público en su futura t
 
 ### Criterio de cierre
 
-- [ ] Productos nuevos y existentes funcionan con o sin subcategoría.
-- [ ] Asignación y borrado concurrentes conservan la integridad de las relaciones.
-- [ ] Contratos, regresión, faltantes, incidentes y riesgos quedan documentados.
+- [x] Productos nuevos y existentes funcionan con o sin subcategoría.
+- [x] Asignación y borrado concurrentes conservan la integridad de las relaciones.
+- [x] Contratos, regresión, faltantes, incidentes y riesgos quedan documentados.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA. Detalle en [tanda-3-resultado.md](tanda-3-resultado.md).
+
+**Cambios realizados:** alta y edición aceptan `subcategoriaId` opcional; en edición, omitido conserva, `null` desvincula y un ID asigna tras bloquear categoría, subcategoría y producto en ese orden. Se valida que pertenezca a la categoría y que su padre esté activo en nuevas asignaciones. Detalle y listado devuelven ambos IDs; el listado filtra por categoría, subcategoría y nombre con la paginación existente.
+
+**Diferencias respecto del plan:** se conserva `ProductRepository.findPageByName(...)` para compatibilidad con las pruebas y consultas existentes, y se agrega `findPageByFilters(...)`. No hay cambio funcional de alcance.
+
+**Tests ejecutados y exitosos:** 36/36 en la corrida conjunta final: 3 HTTP H2 nuevos, 4 concurrencia MySQL nuevos y 29 de regresión de producto, características, listado y borrado. **Tests fallidos finales:** 0.
+
+**Incidentes:** INC-004, Mockito no pudo adjuntarse a la JVM dentro del sandbox; la suite se ejecutó fuera de él sin cambiar código ni tests. **Tests faltantes:** ninguno de los planificados para esta tanda. **Riesgos residuales:** el selector y los filtros React siguen pendientes de la tanda 4; las escrituras directas a base de datos pueden introducir un par categoría/subcategoría incompatible porque la FK no codifica esa regla.
+
+**Decisiones pendientes descubiertas:** ninguna. **Archivos modificados:** controller, interfaz y servicio de productos, DTOs de request/respuesta, repositorio, tres clases de pruebas y este documento; detalle en el resultado enlazado.
 
 ## Tanda 4 — Administración React
 
@@ -450,7 +460,7 @@ Durante la ejecución, cada fallo relevante se registrará una sola vez como `IN
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO TRAS TANDA 2
+IMPLEMENTADO TRAS TANDA 3
 CategoryController → CategoryServiceImpl → CategoryRepository → categories
 ProductForm → ProductController → ProductServiceImpl → products.category_id
 ProductCharacteristic → characteristics + product_characteristics
@@ -459,11 +469,14 @@ SubcategoryController → SubcategoryServiceImpl → SubcategoryRepository → s
 GET detalle → ProductRepository.countBySubcategoryId → productosAsociados
 DELETE → bloqueo de subcategoría → UPDATE products.subcategory_id = NULL, updated_at nuevo
        → DELETE subcategories, todo en una transacción
+ProductController → ProductServiceImpl.create/update → bloqueo de categoría y subcategoría al asignar
+       → validación de padre activo y coincidente → products.subcategory_id nullable
+ProductController.list → ProductRepository.findPageByFilters → nombre/categoría/subcategoría
+ProductResponse y ProductSummaryResponse → categoriaId + subcategoriaId nullable
 
-PENDIENTE: TANDAS 3–4
+PENDIENTE: TANDA 4
 CategoryManagementPage → gestión de subcategorías en React
-ProductForm → ProductController → ProductServiceImpl → products.category_id obligatorio
-                                              └────────→ products.subcategory_id opcional
+ProductForm → selector dependiente y filtros administrativos React
 Catálogo público: futuro, fuera de estas tandas
 ```
 

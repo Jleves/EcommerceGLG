@@ -26,6 +26,9 @@ public class UpdateProductRequest {
     private Boolean disponible;
     private List<@NotNull @Valid ProductCharacteristicRequest> caracteristicas;
     private boolean caracteristicasPresentes;
+    @Positive
+    private Long subcategoriaId;
+    private boolean subcategoriaIdPresente;
 
     public UpdateProductRequest() {
     }
@@ -52,6 +55,10 @@ public class UpdateProductRequest {
     public BigDecimal precioReferencia() { return precioReferencia; }
     public Boolean disponible() { return disponible; }
     public List<ProductCharacteristicRequest> caracteristicas() { return caracteristicas; }
+    public Long subcategoriaId() { return subcategoriaId; }
+
+    @JsonIgnore
+    public boolean subcategoriaIdPresente() { return subcategoriaIdPresente; }
 
     @JsonIgnore
     public boolean caracteristicasPresentes() { return caracteristicasPresentes; }
@@ -66,5 +73,11 @@ public class UpdateProductRequest {
     public void setCaracteristicas(List<ProductCharacteristicRequest> caracteristicas) {
         this.caracteristicas = caracteristicas;
         this.caracteristicasPresentes = true;
+    }
+
+    @JsonSetter("subcategoriaId")
+    public void setSubcategoriaId(Long subcategoriaId) {
+        this.subcategoriaId = subcategoriaId;
+        this.subcategoriaIdPresente = true;
     }
 }

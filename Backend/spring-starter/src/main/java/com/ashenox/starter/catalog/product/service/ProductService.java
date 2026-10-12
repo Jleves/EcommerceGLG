@@ -6,7 +6,7 @@ import com.ashenox.starter.catalog.product.dto.ProductPageResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 
 public interface ProductService {
-    ProductPageResponse list(int page, int size, String nombre);
+    ProductPageResponse list(int page, int size, String nombre, Long categoriaId, Long subcategoriaId);
 
     ProductResponse create(CreateProductRequest request);
 

@@ -21,9 +21,14 @@ class AdminMutationMigrationMySqlTest {
                         password_change_failures, email_mfa_enabled, security_version)
                     values ('legacy@example.com', 'hash', 'SUPER_ADMIN', true, now(6), now(6), 2, true, 7)
                     """);
-            var flyway = Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword()).load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(3);
+            var flyway = Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+                    .target("4").load();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
             assertThat(flyway.migrate().migrationsExecuted).isZero();
+            try (var rows = statement.executeQuery("select count(*) from flyway_schema_history where version = '4' and success = 1")) {
+                assertThat(rows.next()).isTrue();
+                assertThat(rows.getInt(1)).isEqualTo(1);
+            }
             try (var rows = statement.executeQuery("select id from admin_mutation_lock")) {
                 assertThat(rows.next()).isTrue();
                 assertThat(rows.getInt(1)).isEqualTo(1);

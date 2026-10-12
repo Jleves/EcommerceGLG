@@ -30,8 +30,10 @@ public class ProductController {
     @GetMapping
     public ProductPageResponse list(@RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "20") int size,
-                                    @RequestParam(required = false) String nombre) {
-        return productService.list(page, size, nombre);
+                                    @RequestParam(required = false) String nombre,
+                                    @RequestParam(required = false) Long categoriaId,
+                                    @RequestParam(required = false) Long subcategoriaId) {
+        return productService.list(page, size, nombre, categoriaId, subcategoriaId);
     }
 
     @PostMapping

@@ -10,6 +10,7 @@ import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
 import com.ashenox.starter.catalog.product.service.ProductServiceImpl;
+import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,8 @@ class ProductServiceTest {
     private final ProductRepository products = mock(ProductRepository.class);
     private final CharacteristicRepository characteristics = mock(CharacteristicRepository.class);
     private final ProductCharacteristicRepository values = mock(ProductCharacteristicRepository.class);
-    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values);
+    private final SubcategoryRepository subcategories = mock(SubcategoryRepository.class);
+    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values, subcategories);
 
     @Test
     void trimsNamePreservesDataAndSetsServerOwnedStates() {
