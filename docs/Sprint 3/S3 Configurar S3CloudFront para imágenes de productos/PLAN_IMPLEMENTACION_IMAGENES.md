@@ -1,7 +1,7 @@
 # Plan de implementación por tandas — imágenes de productos
 
 **Tarjetas:** [S3 Configurar S3/CloudFront para imágenes de productos](https://trello.com/c/PjBAprJa) y [S3 Múltiples fotos y selección de foto principal](https://trello.com/c/T2C2WVqd).  
-**Estado del plan:** listo para ejecutar; ninguna tanda comenzó.  
+**Estado del plan:** Tanda 0 ejecutada parcialmente; Tandas 1–5 pendientes.
 **Fuente de diseño:** [CONTEXTO_PARA_PLAN_IMAGENES.md](CONTEXTO_PARA_PLAN_IMAGENES.md) y las decisiones cerradas durante la planificación.  
 **Alcance de este documento:** planificar, sin implementar código, tests, migraciones ni cambios de AWS.
 
@@ -109,7 +109,7 @@ Los IDs de imagen serán `BIGINT` como los demás recursos del catálogo. La res
 
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
-| 0 | Configuración y verificación AWS | — | Planificada |
+| 0 | Configuración y verificación AWS | — | Parcial; ver resultado de ejecución |
 | 1 | Persistencia, procesamiento y carga | 0 | Planificada |
 | 2 | Principal, orden, reemplazo y borrado | 1 | Planificada |
 | 3 | Lectura pública por CloudFront | 1–2 | Planificada |
@@ -163,13 +163,35 @@ Usar `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION=us-east-1` en la 
 
 ### Criterio de cierre
 
-- [ ] Configuración de staging validada sin secretos versionados.
-- [ ] Bucket, OAC, IAM, política de caché y alertas registrados por entorno.
-- [ ] Tests de configuración ejecutados; faltantes y riesgos visibles.
+- [x] Configuración de staging validada sin secretos versionados.
+- [x] Bucket, OAC, IAM, política de caché y alertas registrados por entorno.
+- [x] Tests de configuración ejecutados; faltantes y riesgos visibles.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (14/10/2026).
+
+**Cambios realizados:** configuración y validación de `app.images.*`, dependencia AWS SDK v2, bean `S3Client` con cadena estándar de credenciales y valores ficticios para tests. Se verificaron en AWS buckets privados, OAC, IAM y TTL de staging y producción.
+
+**Diferencias respecto del plan:** ninguna en el código. Al ejecutar la tanda, los buckets no mostraban etiquetas de usuario y los presupuestos no estaban separados por entorno. Después el usuario añadió las etiquetas, las activó en Billing y configuró cuatro presupuestos filtrados por servicio, proyecto y entorno. El agente no modificó AWS.
+
+**Tests ejecutados:** 8 de validación de propiedades, 3 de arranque y configuración de imágenes, 1 de regresión de arranque; además, inspección estática de configuración y respuestas existentes.
+
+**Tests exitosos:** 12; la inspección estática no encontró credenciales versionadas ni expuestas en las respuestas de producto existentes.
+
+**Tests fallidos:** 0 al cierre. La primera compilación del test de configuración falló por un import incorrecto y se corrigió tras verificar la versión de Spring Boot.
+
+**Incidentes:** INC-001 (import de test), INC-002 (Mockito en sandbox; repetición exitosa fuera de él), INC-003 (costos sin separación por entorno, resuelto), INC-004 (arranque local: JDK y conexión MySQL en sandbox; repetición exitosa).
+
+**Tests faltantes:** permisos IAM efectivos y entrega de objetos en la tanda 1; recepción efectiva de alertas y atribución de cargos cuando haya gasto real. El arranque local con las variables de IntelliJ fue exitoso; la carga y los endpoints de imágenes pertenecen a tandas posteriores.
+
+**Riesgos residuales:** permisos efectivos sin probar; atribución de costos aún sin datos y recepción de alertas no comprobada. El arranque no realiza llamadas a S3.
+
+**Decisiones pendientes descubiertas:** D01 quedó resuelta para la configuración de presupuestos. El costo atribuido y la recepción de alertas son comprobaciones posteriores cuando exista gasto real.
+
+**Archivos modificados:** `pom.xml`, `application.properties`, `application-test.properties`, `AppProperties.java`, `ProductImageS3Config.java`, `AppPropertiesValidationTest.java`, `ProductImageConfigurationTest.java`, este plan y el archivo de resultado.
+
+**Criterios de cierre:** [x] staging validado con las variables de IntelliJ, sin secretos versionados; [x] AWS y alertas configurados por entorno; [x] tests ejecutados y riesgos registrados. La access key no fue probada mediante una llamada S3, y la recepción real de alertas queda pendiente de evidencia. Evidencias, detalles y checklist: [RESULTADO_TANDA_0.md](S3%20Configurar%20S3CloudFront%20para%20im%C3%A1genes%20de%20productos%20-%20S3%20M%C3%BAltiples%20fotos%20y%20selecci%C3%B3n%20de%20foto%20principal/RESULTADO_TANDA_0.md).
 
 ## Tanda 1 — Modelo y carga de fotos
 
@@ -525,7 +547,7 @@ Comprobar ID y dominio de CloudFront de producción, access keys técnicas, etiq
 
 ## Registro global de decisiones pendientes
 
-No quedan decisiones funcionales o arquitectónicas abiertas. Faltan **verificaciones de infraestructura**, no elecciones de diseño: política TTL efectiva, ID y dominio de CloudFront de producción, existencia de access keys técnicas y separación/recepción real de alertas de costos. Se resuelven y registran en las Tandas 0 y 5. Si alguna verificación contradice el diseño, abrir `DECISIÓN PENDIENTE — DXX` antes de adaptar el contrato o la arquitectura.
+**D01 — Asignación de costos por entorno:** al ejecutar la tanda, los buckets S3 no mostraban etiquetas de usuario, `Environment` y `Project` estaban inactivas para asignación de costos y los dos presupuestos existentes no separaban staging y producción. Después, el usuario añadió `Project=GLGCorralon` y `Environment=staging/prod` a los buckets; la nueva lectura confirmó las cuatro etiquetas y Billing muestra ambas claves activas. El usuario configuró cuatro presupuestos, uno por cada combinación de S3/CloudFront y staging/producción. La lectura de «Filtros incluidos» confirma servicio, `Environment` y `Project=GLGCorralon` en los cuatro. Los dos nuevos presupuestos son mensuales de USD 10 y tienen tres alertas de costo real (50 %, 80 % y 100 %). Falta verificar el costo atribuido cuando esté disponible y la recepción real de alertas. El TTL efectivo y el ID/dominio de CloudFront de producción ya fueron verificados; producción todavía no tiene access key técnica, según lo permitido por el plan.
 
 ## Protocolo global de incidentes
 
@@ -573,7 +595,7 @@ Configurar y verificar AWS → persistir/procesar/subir → administrar ciclo de
 
 ### Decisiones pendientes
 
-Ninguna de producto o arquitectura. Quedan las verificaciones operativas indicadas en el registro global.
+D01 sobre la separación de costos por entorno. Quedan además las verificaciones operativas indicadas en el registro global.
 
 ### Riesgos globales
 

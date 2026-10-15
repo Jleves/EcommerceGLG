@@ -36,6 +36,59 @@ public class AppProperties {
     @Valid
     private Init init = new Init();
 
+    @Valid
+    private Images images = new Images();
+
+    @Getter
+    @Setter
+    public static class Images {
+        @NotBlank(message = "app.images.bucket es obligatorio")
+        private String bucket;
+
+        @NotBlank(message = "app.images.region es obligatoria")
+        private String region;
+
+        @NotNull(message = "app.images.cloud-front-base-url es obligatoria")
+        private URI cloudFrontBaseUrl;
+
+        @Min(value = 1, message = "app.images.max-file-size-bytes debe ser mayor que cero")
+        private long maxFileSizeBytes = 10L * 1024 * 1024;
+
+        @Min(value = 1, message = "app.images.max-pixels debe ser mayor que cero")
+        private long maxPixels = 20_000_000;
+
+        @Min(value = 1, message = "app.images.thumbnail-max-width debe ser mayor que cero")
+        private int thumbnailMaxWidth = 400;
+
+        @Min(value = 1, message = "app.images.detail-max-width debe ser mayor que cero")
+        private int detailMaxWidth = 1200;
+
+        @NotNull(message = "app.images.cache-ttl es obligatorio")
+        private Duration cacheTtl = Duration.ofHours(24);
+
+        @AssertTrue(message = "app.images.region debe ser us-east-1")
+        public boolean isRegionValid() {
+            return region != null && region.equals("us-east-1");
+        }
+
+        @AssertTrue(message = "app.images.cloud-front-base-url debe ser una URL HTTPS sin ruta, consulta ni fragmento")
+        public boolean isCloudFrontBaseUrlValid() {
+            return cloudFrontBaseUrl != null
+                    && "https".equalsIgnoreCase(cloudFrontBaseUrl.getScheme())
+                    && cloudFrontBaseUrl.getHost() != null
+                    && cloudFrontBaseUrl.getUserInfo() == null
+                    && cloudFrontBaseUrl.getPort() == -1
+                    && (cloudFrontBaseUrl.getPath() == null || cloudFrontBaseUrl.getPath().isEmpty())
+                    && cloudFrontBaseUrl.getQuery() == null
+                    && cloudFrontBaseUrl.getFragment() == null;
+        }
+
+        @AssertTrue(message = "app.images.cache-ttl debe ser mayor que cero")
+        public boolean isCacheTtlValid() {
+            return cacheTtl != null && !cacheTtl.isZero() && !cacheTtl.isNegative();
+        }
+    }
+
     @Getter
     @Setter
     public static class Security {
