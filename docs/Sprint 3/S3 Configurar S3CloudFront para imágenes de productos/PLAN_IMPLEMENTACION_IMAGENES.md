@@ -272,7 +272,7 @@ Crear migración `V9__create_product_images.sql` para `product_images` e `image_
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (16/10/2026). Se implementaron V9, procesamiento y carga de dos WebP, reserva de cupo, API administrativa de carga/consulta y registro persistente de operaciones. Staging confirmó sesión real, POST 201, ambas variantes por CloudFront y 403 en S3 directo; MySQL confirmó concurrencia del quinto cupo. Los reportes registran 41 tests PASS, 0 fallidos, y el paquete Maven se generó. El JAR Spring completo arrancó con Java 21 en Linux y un smoke test ejecutado mediante su cargador generó ambas variantes WebP con las dependencias anidadas. Incidentes INC-101 a INC-104 resueltos, riesgos residuales, archivos y checklist: [RESULTADO_TANDA_1.md](S3%20Configurar%20S3CloudFront%20para%20imágenes%20de%20productos%20-%20S3%20Múltiples%20fotos%20y%20selección%20de%20foto%20principal/RESULTADO_TANDA_1.md).
 
 ## Tanda 2 — Principal, orden, reemplazo y borrado
 

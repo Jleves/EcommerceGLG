@@ -3,6 +3,10 @@ package com.ashenox.starter.shared.error;
 import com.ashenox.starter.catalog.category.service.CategoryConflictException;
 import com.ashenox.starter.catalog.characteristic.service.CharacteristicConflictException;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
+import com.ashenox.starter.catalog.product.image.service.InvalidProductImageException;
+import com.ashenox.starter.catalog.product.image.service.ProductImageConflictException;
+import com.ashenox.starter.catalog.product.image.service.ImageStorageUnavailableException;
+import com.ashenox.starter.catalog.product.image.service.ImageProcessingUnavailableException;
 import com.ashenox.starter.catalog.subcategory.service.SubcategoryConflictException;
 import com.ashenox.starter.security.error.InvalidCredentialsException;
 import com.ashenox.starter.security.error.InvalidTokenException;
@@ -24,6 +28,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
@@ -46,6 +51,34 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleProductCategoryInactive(ProductCategoryInactiveException exception,
                                                                    HttpServletRequest request) {
         return response(request, HttpStatus.CONFLICT, ApiErrorCode.RESOURCE_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidProductImageException.class)
+    public ResponseEntity<ApiError> handleInvalidImage(InvalidProductImageException exception,
+                                                        HttpServletRequest request) {
+        return response(request, HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, exception.getMessage());
+    }
+
+    @ExceptionHandler(ProductImageConflictException.class)
+    public ResponseEntity<ApiError> handleImageConflict(ProductImageConflictException exception,
+                                                         HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT, ApiErrorCode.RESOURCE_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(ImageStorageUnavailableException.class)
+    public ResponseEntity<ApiError> handleImageStorage(ImageStorageUnavailableException exception,
+                                                        HttpServletRequest request) {
+        LOGGER.error("Image storage failed path={}", request.getRequestURI(), exception);
+        return response(request, HttpStatus.SERVICE_UNAVAILABLE, ApiErrorCode.IMAGE_STORAGE_UNAVAILABLE,
+                exception.getMessage());
+    }
+
+    @ExceptionHandler(ImageProcessingUnavailableException.class)
+    public ResponseEntity<ApiError> handleImageProcessing(ImageProcessingUnavailableException exception,
+                                                           HttpServletRequest request) {
+        LOGGER.error("Image processing failed path={}", request.getRequestURI(), exception);
+        return response(request, HttpStatus.SERVICE_UNAVAILABLE, ApiErrorCode.IMAGE_PROCESSING_UNAVAILABLE,
+                exception.getMessage());
     }
 
     @ExceptionHandler(com.ashenox.starter.user.service.AdminUserConflictException.class)
@@ -117,6 +150,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
             MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<ApiError> handleMalformedRequest(Exception exception, HttpServletRequest request) {

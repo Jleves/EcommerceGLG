@@ -47,6 +47,11 @@
 			<artifactId>s3</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>com.sksamuel.scrimage</groupId>
+			<artifactId>scrimage-webp</artifactId>
+			<version>4.6.7</version>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-h2console</artifactId>
 		</dependency>
