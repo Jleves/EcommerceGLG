@@ -30,3 +30,33 @@ export function deactivateProduct(id) {
 export function reactivateProduct(id) {
   return apiRequest(ENDPOINTS.CATALOG.PRODUCT_REACTIVATE(id), { ...mutationOptions, method: 'POST' })
 }
+
+export function listProductImages(id, { signal } = {}) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGES(id), { signal })
+}
+
+function imageBody(file) {
+  const body = new FormData()
+  body.append('file', file)
+  return body
+}
+
+export function uploadProductImage(id, file) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGES(id), { ...mutationOptions, method: 'POST', body: imageBody(file) })
+}
+
+export function setPrimaryProductImage(id, imageId) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGE_PRIMARY(id, imageId), { ...mutationOptions, method: 'PUT' })
+}
+
+export function reorderProductImages(id, imageIds) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGES_ORDER(id), { ...mutationOptions, method: 'PUT', body: { imageIds } })
+}
+
+export function replaceProductImage(id, imageId, file) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGE(id, imageId), { ...mutationOptions, method: 'PUT', body: imageBody(file) })
+}
+
+export function deleteProductImage(id, imageId) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGE(id, imageId), { ...mutationOptions, method: 'DELETE' })
+}

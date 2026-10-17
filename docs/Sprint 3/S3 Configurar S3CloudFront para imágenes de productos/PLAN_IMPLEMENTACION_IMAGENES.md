@@ -505,7 +505,7 @@ Ninguno. `apiClient.js` ya acepta `FormData`; no establecer manualmente `Content
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (17/10/2026). Cada producto tiene un botón «Imágenes» que abre un modal independiente con carga, principal, orden, reemplazo y borrado; las confirmaciones permanecen dentro de ese modal. Tras revisión del usuario, mover una foto al primer lugar también la hace principal; los otros movimientos solo cambian el orden. El cliente usa la API administrativa existente con `FormData`, cookies y CSRF. La suite frontend completa pasó en serie (263/263), además de lint y build; las pruebas relacionadas posteriores al ajuste de orden/principal pasaron (27/27). Dos corridas paralelas mostraron un fallo intermitente ajeno a imágenes en un test de navegación MFA; pasó aislado y en la suite en serie. Los cambios, pruebas, incidente INC-401, faltantes, riesgos y checklist constan en [RESULTADO_TANDA_4.md](S3%20Configurar%20S3CloudFront%20para%20imágenes%20de%20productos%20-%20S3%20Múltiples%20fotos%20y%20selección%20de%20foto%20principal/RESULTADO_TANDA_4.md).
 
 ## Tanda 5 — Validación integral y preparación de producción
 

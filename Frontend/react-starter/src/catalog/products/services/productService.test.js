@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetApiClientForTests } from '../../../services/apiClient.js'
-import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from './productService.js'
+import { createProduct, deactivateProduct, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reorderProductImages, replaceProductImage, setPrimaryProductImage, updateProduct, uploadProductImage } from './productService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 
 function jsonResponse(data) {
@@ -92,6 +92,41 @@ describe('productService', () => {
     vi.stubGlobal('fetch', fetchMock)
     await expect(reactivateProduct(7)).rejects.toMatchObject({ status: 0 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
+  })
+
+  it('envía las seis operaciones de imágenes al contrato existente, con multipart y CSRF', async () => {
+    document.cookie = 'XSRF-TOKEN=token; Path=/'
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
+    vi.stubGlobal('fetch', fetchMock)
+    const file = new File(['imagen'], 'foto.png', { type: 'image/png' })
+
+    await listProductImages(7)
+    await uploadProductImage(7, file)
+    await setPrimaryProductImage(7, 9)
+    await reorderProductImages(7, [9, 8])
+    await replaceProductImage(7, 9, file)
+    await deleteProductImage(7, 9)
+
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+      ['/api/catalog/products/7/images', 'GET'],
+      ['/api/catalog/products/7/images', 'POST'],
+      ['/api/catalog/products/7/images/9/primary', 'PUT'],
+      ['/api/catalog/products/7/images/order', 'PUT'],
+      ['/api/catalog/products/7/images/9', 'PUT'],
+      ['/api/catalog/products/7/images/9', 'DELETE'],
+    ])
+    for (const index of [1, 4]) {
+      const options = fetchMock.mock.calls[index][1]
+      expect(options.body).toBeInstanceOf(FormData)
+      expect(options.body.get('file')).toBe(file)
+      expect(options.headers.has('Content-Type')).toBe(false)
+    }
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({ imageIds: [9, 8] })
+    for (const [, options] of fetchMock.mock.calls.slice(1)) {
+      expect(options.headers.get('X-XSRF-TOKEN')).toBe('token')
+      expect(options.credentials).toBe('include')
+    }
     document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
   })
 })

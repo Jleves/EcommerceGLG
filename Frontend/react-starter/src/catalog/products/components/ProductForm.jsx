@@ -56,6 +56,7 @@ export function ProductForm({ initialValues, categories, subcategories = [], cha
     <header className="border-b border-slate-200 pb-4">
       <h2 className="text-2xl font-bold" id="product-form-title">{editing ? `Editar ${initialValues.nombre}` : 'Nuevo producto'}</h2>
       <p className="mt-1 text-sm text-slate-600">Completá los datos y guardá los cambios del catálogo.</p>
+      {!editing && <p className="mt-2 text-sm text-slate-600">Para cargar fotos, primero guardá el producto. Después buscálo en la lista y abrí «Imágenes».</p>}
     </header>
     <RequestError error={error} />
     {validation && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{validation}</p>}

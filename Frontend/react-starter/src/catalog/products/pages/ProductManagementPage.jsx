@@ -5,6 +5,7 @@ import { listCategories } from '../../categories/services/categoryService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
 import { ProductForm } from '../components/ProductForm.jsx'
+import { ProductImageManager } from '../components/ProductImageManager.jsx'
 import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 
 const buttonInteraction = 'shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
@@ -33,6 +34,7 @@ export function ProductManagementPage() {
   const [version, setVersion] = useState(0)
   const [state, setState] = useState({ key, version, loading: true, data: null, error: null })
   const [formTarget, setFormTarget] = useState(null)
+  const [imageTarget, setImageTarget] = useState(null)
   const [formData, setFormData] = useState(null)
   const [formError, setFormError] = useState(null)
   const [mutationError, setMutationError] = useState(null)
@@ -127,7 +129,7 @@ export function ProductManagementPage() {
   }, [confirming])
 
   function openForm(target) {
-    if (inFlight.current || needsReview || confirming || currentState.loading || currentState.error) return
+    if (inFlight.current || needsReview || confirming || imageTarget || currentState.loading || currentState.error) return
     setFormData(null)
     setFormError(null)
     setMutationError(null)
@@ -150,7 +152,7 @@ export function ProductManagementPage() {
     try {
       if (formTarget === 'create') await createProduct(payload)
       else await updateProduct(formTarget, payload)
-      setNotice(formTarget === 'create' ? 'Producto creado.' : 'Producto actualizado.')
+      setNotice(formTarget === 'create' ? 'Producto creado. Para cargar fotos, buscálo en la lista y abrí «Imágenes».' : 'Producto actualizado.')
       setFormTarget(null)
       setFormData(null)
       setVersion((value) => value + 1)
@@ -164,7 +166,7 @@ export function ProductManagementPage() {
   }
 
   function requestStatusChange(product) {
-    if (inFlight.current || needsReview || formTarget || confirming || currentState.loading || currentState.error) return
+    if (inFlight.current || needsReview || formTarget || imageTarget || confirming || currentState.loading || currentState.error) return
     setStatusError(null)
     setNotice('')
     setConfirming(product)
@@ -236,7 +238,7 @@ export function ProductManagementPage() {
         <p className="mt-2 text-slate-600">Productos activos e inactivos del catálogo.</p>
       </header>
       <div className="mb-5 flex justify-end">
-        <button aria-label="Crear producto" className={`rounded-lg px-4 py-2 font-semibold ${greenButton}`} disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">
+        <button aria-label="Crear producto" className={`rounded-lg px-4 py-2 font-semibold ${greenButton}`} disabled={invalidUrlNombre || currentState.loading || Boolean(currentState.error) || needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => openForm('create')} type="button">
           <span className="sm:hidden" aria-hidden="true">+</span>
           <span className="hidden sm:inline" aria-hidden="true">Crear producto</span>
         </button>
@@ -263,6 +265,7 @@ export function ProductManagementPage() {
         {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className={`justify-self-start rounded-lg px-4 py-2 font-semibold ${lightButton}`}>Cerrar</button></div>}
         {formData && <ProductForm initialValues={formData.product} categories={formData.categories} subcategories={formData.subcategories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />}
       </dialog>}
+      {imageTarget && <ProductImageManager key={imageTarget.id} product={imageTarget} onClose={() => setImageTarget(null)} />}
       <form className="mb-6" onSubmit={search}>
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid min-w-48 grow gap-1">
@@ -307,9 +310,10 @@ export function ProductManagementPage() {
                   <p className="mt-2 text-sm">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
                   <p className="text-sm">Subcategoría: {product.subcategoriaId ? (filters.subcategories.find((item) => item.id === product.subcategoriaId)?.nombre ?? `ID ${product.subcategoriaId}`) : 'Sin subcategoría'}</p>
                   <p className="mt-1 text-sm">Precio de referencia: {product.precioReferencia} · {product.destacado ? 'Destacado' : 'No destacado'}</p>
-                  <div className="mt-3 flex gap-2">
-                    <button aria-label={`Editar ${product.nombre}`} className={`rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white enabled:hover:bg-slate-700 focus-visible:outline-slate-800 ${buttonInteraction}`} disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
-                    <button aria-label={`${product.activo ? 'Desactivar' : 'Reactivar'} ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${product.activo ? deactivateButton : reactivateButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(confirming) || pending} onClick={() => requestStatusChange(product)} type="button">{product.activo ? 'Desactivar' : 'Reactivar'}</button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button aria-label={`Editar ${product.nombre}`} className={`rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white enabled:hover:bg-slate-700 focus-visible:outline-slate-800 ${buttonInteraction}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
+                    <button aria-label={`Imágenes de ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => setImageTarget(product)} type="button">Imágenes</button>
+                    <button aria-label={`${product.activo ? 'Desactivar' : 'Reactivar'} ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${product.activo ? deactivateButton : reactivateButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => requestStatusChange(product)} type="button">{product.activo ? 'Desactivar' : 'Reactivar'}</button>
                   </div>
                 </li>
               ))}

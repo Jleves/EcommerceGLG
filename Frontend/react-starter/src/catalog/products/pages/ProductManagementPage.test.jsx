@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listCategories } from '../../categories/services/categoryService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
-import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
+import { createProduct, deactivateProduct, getProduct, listProductImages, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
 import { ProductManagementPage } from './ProductManagementPage.jsx'
 
-vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn() }))
+vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn(), listProductImages: vi.fn() }))
 vi.mock('../../categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
 vi.mock('../../characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
 vi.mock('../../subcategories/services/subcategoryService.js', () => ({ listSubcategories: vi.fn() }))
@@ -32,6 +32,26 @@ describe('ProductManagementPage', () => {
     listCategories.mockResolvedValue([{ id: 3, nombre: 'Áridos', activo: true }, { id: 4, nombre: 'Vieja', activo: false }])
     listCharacteristics.mockResolvedValue([{ id: 7, nombre: 'Color' }, { id: 8, nombre: 'Peso' }])
     listSubcategories.mockResolvedValue([])
+    listProductImages.mockResolvedValue([])
+  })
+
+  it('abre las imágenes del producto elegido y limpia el modal al cambiar de producto', async () => {
+    const user = userEvent.setup()
+    listProducts.mockResolvedValue(makePage(0, [active, inactive], 1))
+    listProductImages.mockImplementation(async (id) => id === 1
+      ? [{ id: 11, position: 1, primary: true, thumbnailUrl: 'https://cdn.test/arena.webp' }]
+      : [{ id: 12, position: 1, primary: true, thumbnailUrl: 'https://cdn.test/cemento.webp' }])
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Imágenes de Arena' }))
+    expect(await screen.findByRole('dialog', { name: 'Imágenes de Arena' })).toHaveAttribute('open')
+    expect(await screen.findByRole('img', { name: 'Foto 1 de Arena' })).toHaveAttribute('src', 'https://cdn.test/arena.webp')
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Imágenes de Cemento' }))
+    expect(await screen.findByRole('img', { name: 'Foto 1 de Cemento' })).toHaveAttribute('src', 'https://cdn.test/cemento.webp')
+    expect(screen.queryByRole('img', { name: 'Foto 1 de Arena' })).not.toBeInTheDocument()
+    expect(listProductImages.mock.calls.map(([id]) => id)).toEqual([1, 2])
   })
 
   it('filtra por categoría y subcategoría y muestra clasificación actual', async () => {
@@ -135,6 +155,7 @@ describe('ProductManagementPage', () => {
     await screen.findByRole('heading', { name: 'Arena' })
     await user.click(screen.getByRole('button', { name: 'Crear producto' }))
     const form = within(await screen.findByRole('dialog'))
+    expect(form.getByText(/Para cargar fotos, primero guardá el producto/)).toBeInTheDocument()
     expect(form.queryByRole('option', { name: 'Vieja' })).not.toBeInTheDocument()
     await user.type(form.getByRole('textbox', { name: 'Nombre' }), 'Cal')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '3')
@@ -142,7 +163,7 @@ describe('ProductManagementPage', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
     await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
     await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, subcategoriaId: null, descripcion: '', precioReferencia: '12.50', disponible: true, caracteristicas: [] }))
-    expect(await screen.findByText('Producto creado.')).toBeInTheDocument()
+    expect(await screen.findByText(/Producto creado\. Para cargar fotos/)).toBeInTheDocument()
     await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(2))
   })
 
@@ -429,6 +450,11 @@ describe('ProductManagementPage', () => {
     await user.selectOptions(form.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
     await user.click(form.getByRole('button', { name: 'Guardar producto' }))
     expect(await screen.findByRole('button', { name: 'Editar Cal' })).toBeInTheDocument()
+    expect(createProduct.mock.calls[0][0]).not.toBeInstanceOf(FormData)
+    await user.click(screen.getByRole('button', { name: 'Imágenes de Cal' }))
+    expect(await screen.findByRole('dialog', { name: 'Imágenes de Cal' })).toHaveTextContent('Este producto todavía no tiene fotos.')
+    expect(listProductImages).toHaveBeenCalledWith(9, { signal: expect.any(AbortSignal) })
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
     await user.click(screen.getByRole('button', { name: 'Editar Cal' }))
     const edit = within(await screen.findByRole('dialog'))
     await user.click(edit.getByRole('button', { name: 'Agregar característica' }))
