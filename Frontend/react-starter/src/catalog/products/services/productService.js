@@ -53,10 +53,6 @@ export function reorderProductImages(id, imageIds) {
   return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGES_ORDER(id), { ...mutationOptions, method: 'PUT', body: { imageIds } })
 }
 
-export function replaceProductImage(id, imageId, file) {
-  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGE(id, imageId), { ...mutationOptions, method: 'PUT', body: imageBody(file) })
-}
-
 export function deleteProductImage(id, imageId) {
   return apiRequest(ENDPOINTS.CATALOG.PRODUCT_IMAGE(id, imageId), { ...mutationOptions, method: 'DELETE' })
 }

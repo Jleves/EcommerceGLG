@@ -36,6 +36,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -79,53 +80,30 @@ class ProductImageFlowTest {
     }
 
     @Test
-    void replacementChangesRevisionAndRetainsOldObjectsFor25Hours() throws Exception {
+    void failedDeleteCleanupRetriesWithoutRestoringPhoto() throws Exception {
         Long id = product();
         var original = service.upload(id, file());
-        var replacement = service.replace(id, original.id(), file());
-        assertThat(replacement.id()).isEqualTo(original.id());
-        assertThat(replacement.primary()).isTrue();
-        assertThat(replacement.thumbnailUrl()).isNotEqualTo(original.thumbnailUrl());
-        assertThat(storage.objects).containsKeys(key(original.thumbnailUrl()), key(replacement.thumbnailUrl()));
-        cleanup.run();
-        assertThat(storage.objects).containsKey(key(original.thumbnailUrl()));
-        var old = operations.findAll().stream().filter(op -> op.getThumbnailKey().equals(key(original.thumbnailUrl()))
-                && "CLEANUP_REQUIRED".equals(op.getStatus())).findFirst().orElseThrow();
-        assertThat(old.getNextExecutionAt()).isAfter(LocalDateTime.now().plusHours(24));
-        old.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
-        operations.saveAndFlush(old);
-        cleanup.run();
-        assertThat(storage.objects).doesNotContainKeys(key(original.thumbnailUrl()), key(original.detailUrl()));
-        assertThat(storage.objects).containsKeys(key(replacement.thumbnailUrl()), key(replacement.detailUrl()));
-    }
-
-    @Test
-    void failedReplacementKeepsPublishedUrlsAndCleanupRetries() throws Exception {
-        Long id = product();
-        var original = service.upload(id, file());
-        storage.failOnPut.set(storage.putCount.get() + 2);
-        assertThatThrownBy(() -> service.replace(id, original.id(), file()))
-                .isInstanceOf(ImageStorageUnavailableException.class);
-        storage.failOnPut.set(0);
-        assertThat(service.list(id)).containsExactly(original);
+        service.delete(id, original.id());
+        assertThat(service.list(id)).isEmpty();
         var pending = operations.findAll().stream().filter(op -> op.getImageId().equals(original.id())
                 && "CLEANUP_REQUIRED".equals(op.getStatus())).findFirst().orElseThrow();
-        storage.failOnDelete.set(storage.deleteCount.get() + 2);
+        storage.failDeleteKey.set(key(original.detailUrl()));
         cleanup.run();
         assertThat(operations.findById(pending.getId()).orElseThrow().getAttempts()).isEqualTo(1);
-        storage.failOnDelete.set(0);
+        storage.failDeleteKey.set(null);
         var retry = operations.findById(pending.getId()).orElseThrow();
         retry.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
         operations.saveAndFlush(retry);
         cleanup.run();
         assertThat(operations.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo("COMPLETE");
-        assertThat(service.list(id)).containsExactly(original);
+        assertThat(service.list(id)).isEmpty();
+        assertThat(storage.objects).doesNotContainKeys(key(original.thumbnailUrl()), key(original.detailUrl()));
         cleanup.run();
         assertThat(operations.findById(pending.getId()).orElseThrow().getAttempts()).isEqualTo(1);
     }
 
     @Test
-    void abandonedUploadIsRemovedAndConcurrentReplacementIsRejected() throws Exception {
+    void legacyPendingReplacementIsCleanedWithoutDeletingPublishedPhoto() throws Exception {
         Long id = product();
         var original = service.upload(id, file());
         ImageStorageOperation pending = new ImageStorageOperation();
@@ -137,10 +115,6 @@ class ProductImageFlowTest {
         pending.setNextExecutionAt(LocalDateTime.now().plusHours(1));
         operations.saveAndFlush(pending);
         storage.objects.put(pending.getThumbnailKey(), new byte[]{1});
-        assertThatThrownBy(() -> service.replace(id, original.id(), file()))
-                .isInstanceOf(ProductImageConflictException.class);
-        assertThatThrownBy(() -> service.delete(id, original.id()))
-                .isInstanceOf(ProductImageConflictException.class);
         cleanup.run();
         assertThat(storage.objects).containsKey(pending.getThumbnailKey());
         pending.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
@@ -234,6 +208,12 @@ class ProductImageFlowTest {
         assertThatThrownBy(() -> service.upload(id, file())).isInstanceOf(ProductImageConflictException.class);
         assertThat(storage.objects).hasSize(count);
         assertThat(service.list(id)).hasSize(5);
+        service.delete(id, service.list(id).getFirst().id());
+        assertThat(service.list(id)).hasSize(4);
+        assertThat(service.list(id)).extracting(image -> image.position()).containsExactly(1, 2, 3, 4);
+        assertThat(service.list(id).getFirst().primary()).isTrue();
+        service.upload(id, file());
+        assertThat(service.list(id)).hasSize(5);
     }
 
     @Test
@@ -286,15 +266,14 @@ class ProductImageFlowTest {
         final ConcurrentHashMap<String, byte[]> objects = new ConcurrentHashMap<>();
         final AtomicInteger putCount = new AtomicInteger();
         final AtomicInteger failOnPut = new AtomicInteger();
-        final AtomicInteger deleteCount = new AtomicInteger();
-        final AtomicInteger failOnDelete = new AtomicInteger();
+        final AtomicReference<String> failDeleteKey = new AtomicReference<>();
         FakeStorage() { super(null, null); }
         @Override public void put(String key, byte[] webp) {
             if (putCount.incrementAndGet() == failOnPut.get()) throw new IllegalStateException("simulated S3 failure");
             objects.put(key, webp);
         }
         @Override public void delete(String key) {
-            if (deleteCount.incrementAndGet() == failOnDelete.get()) throw new IllegalStateException("simulated delete failure");
+            if (key.equals(failDeleteKey.get())) throw new IllegalStateException("simulated delete failure");
             objects.remove(key);
         }
     }

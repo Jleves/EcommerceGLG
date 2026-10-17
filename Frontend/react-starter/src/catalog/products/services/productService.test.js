@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetApiClientForTests } from '../../../services/apiClient.js'
-import { createProduct, deactivateProduct, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reorderProductImages, replaceProductImage, setPrimaryProductImage, updateProduct, uploadProductImage } from './productService.js'
+import { createProduct, deactivateProduct, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reorderProductImages, setPrimaryProductImage, updateProduct, uploadProductImage } from './productService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 
 function jsonResponse(data) {
@@ -95,7 +95,7 @@ describe('productService', () => {
     document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
   })
 
-  it('envía las seis operaciones de imágenes al contrato existente, con multipart y CSRF', async () => {
+  it('envía las cinco operaciones de imágenes al contrato existente, con multipart y CSRF', async () => {
     document.cookie = 'XSRF-TOKEN=token; Path=/'
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
     vi.stubGlobal('fetch', fetchMock)
@@ -105,7 +105,6 @@ describe('productService', () => {
     await uploadProductImage(7, file)
     await setPrimaryProductImage(7, 9)
     await reorderProductImages(7, [9, 8])
-    await replaceProductImage(7, 9, file)
     await deleteProductImage(7, 9)
 
     expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
@@ -113,10 +112,9 @@ describe('productService', () => {
       ['/api/catalog/products/7/images', 'POST'],
       ['/api/catalog/products/7/images/9/primary', 'PUT'],
       ['/api/catalog/products/7/images/order', 'PUT'],
-      ['/api/catalog/products/7/images/9', 'PUT'],
       ['/api/catalog/products/7/images/9', 'DELETE'],
     ])
-    for (const index of [1, 4]) {
+    for (const index of [1]) {
       const options = fetchMock.mock.calls[index][1]
       expect(options.body).toBeInstanceOf(FormData)
       expect(options.body.get('file')).toBe(file)

@@ -43,12 +43,6 @@ public class ProductImageController {
         return service.reorder(productId, request.imageIds());
     }
 
-    @PutMapping(value = "/{imageId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ProductImageResponse replace(@PathVariable Long productId, @PathVariable Long imageId,
-                                        @RequestPart("file") MultipartFile file) {
-        return service.replace(productId, imageId, file);
-    }
-
     @DeleteMapping("/{imageId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long productId, @PathVariable Long imageId) {

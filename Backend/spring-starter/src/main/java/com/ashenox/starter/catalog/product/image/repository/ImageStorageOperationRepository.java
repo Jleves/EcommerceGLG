@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ImageStorageOperationRepository extends JpaRepository<ImageStorageOperation, Long> {
-    boolean existsByImageIdAndStatus(Long imageId, String status);
     long countByStatus(String status);
 
     @Query("select operation.id from ImageStorageOperation operation where operation.status in ('PENDING_UPLOAD', 'CLEANUP_REQUIRED') and operation.nextExecutionAt <= :now order by operation.nextExecutionAt, operation.id")

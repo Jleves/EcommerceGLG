@@ -86,10 +86,6 @@ class ProductImageMySqlIT {
         var third = service.upload(productId, file());
         service.reorder(productId, List.of(third.id(), first.id(), second.id()));
         service.setPrimary(productId, second.id());
-        var replaced = service.replace(productId, second.id(), file());
-        assertThat(replaced.thumbnailUrl()).isNotEqualTo(second.thumbnailUrl());
-        assertThat(storage.objects).containsKey(key(second.thumbnailUrl()));
-
         CountDownLatch start = new CountDownLatch(1);
         try (var pool = Executors.newFixedThreadPool(2)) {
             var a = pool.submit(() -> changePrimary(start, first.id()));
@@ -102,6 +98,7 @@ class ProductImageMySqlIT {
         var principal = service.list(productId).stream().filter(image -> image.primary()).findFirst().orElseThrow();
         service.delete(productId, principal.id());
         assertThat(service.list(productId)).hasSize(2);
+        assertThat(service.list(productId)).extracting(image -> image.position()).containsExactly(1, 2);
         assertThat(service.list(productId).stream().filter(image -> image.primary()).count()).isEqualTo(1);
         assertThat(storage.objects).containsKey(key(principal.thumbnailUrl()));
         cleanup.run();

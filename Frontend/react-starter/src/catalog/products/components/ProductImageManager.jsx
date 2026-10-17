@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { RequestError } from '../../../auth/components/RequestError.jsx'
-import { deleteProductImage, listProductImages, reorderProductImages, replaceProductImage, setPrimaryProductImage, uploadProductImage } from '../services/productService.js'
+import { deleteProductImage, listProductImages, reorderProductImages, setPrimaryProductImage, uploadProductImage } from '../services/productService.js'
 
 const button = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-slate-50 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50'
 const actionButton = 'rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50'
@@ -14,7 +14,6 @@ export function ProductImageManager({ product, onClose }) {
   const [state, setState] = useState({ loading: true, images: [], error: null })
   const [file, setFile] = useState(null)
   const [fileKey, setFileKey] = useState(0)
-  const [replacement, setReplacement] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
   const [pending, setPending] = useState(false)
   const [mutationError, setMutationError] = useState(null)
@@ -40,7 +39,6 @@ export function ProductImageManager({ product, onClose }) {
           setNeedsReview(false)
           setMutationError(null)
           setConfirmation(null)
-          setReplacement(null)
           setFile(null)
           setFileKey((value) => value + 1)
           setNotice('Estado actual consultado. Revisá la galería antes de enviar otro cambio.')
@@ -76,7 +74,6 @@ export function ProductImageManager({ product, onClose }) {
       setState({ loading: false, images, error: null })
       setFile(null)
       setFileKey((value) => value + 1)
-      setReplacement(null)
       setConfirmation(null)
       setNotice(success)
     } catch (error) {
@@ -142,21 +139,14 @@ export function ProductImageManager({ product, onClose }) {
                   <button type="button" className={button} disabled={blocked || index === 0} onClick={() => move(index, -1)}>{index === 1 ? 'Subir imagen a principal' : `Subir imagen a posición ${index}`}</button>
                   <button type="button" className={button} disabled={blocked || index === state.images.length - 1} onClick={() => move(index, 1)}>Bajar imagen a posición {index + 2}</button>
                 </div>
-                <div className="mt-3 grid gap-2">
-                  <label htmlFor={`replacement-${image.id}`} className="text-sm font-semibold">Archivo para reemplazar foto {index + 1}</label>
-                  <input id={`replacement-${image.id}`} type="file" accept="image/jpeg,image/png,image/webp" disabled={blocked} onChange={(event) => setReplacement({ id: image.id, file: event.target.files?.[0] ?? null })} />
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className={button} disabled={blocked || replacement?.id !== image.id || !replacement.file} onClick={() => setConfirmation({ type: 'replace', image, file: replacement.file })}>Reemplazar foto {index + 1}</button>
-                    <button type="button" className={button} disabled={blocked} onClick={() => setConfirmation({ type: 'delete', image })}>Borrar foto {index + 1}</button>
-                  </div>
-                </div>
+                <button type="button" className={`${button} mt-3`} disabled={blocked} onClick={() => setConfirmation(image)}>Borrar foto {index + 1}</button>
               </div>
             </div>
-            {confirmation?.image.id === image.id && <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
-              <p className="font-semibold">¿Confirmás {confirmation.type === 'replace' ? 'el reemplazo' : 'el borrado'} de la foto {index + 1}?</p>
+            {confirmation?.id === image.id && <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
+              <p className="font-semibold">¿Confirmás el borrado de la foto {index + 1}? Las fotos restantes se reordenarán y, si era la principal, la primera restante será la nueva principal.</p>
               <div className="mt-3 flex gap-2">
                 <button type="button" className={button} disabled={pending} onClick={() => setConfirmation(null)}>Cancelar</button>
-                <button type="button" className={actionButton} disabled={blocked} onClick={() => mutate(() => confirmation.type === 'replace' ? replaceProductImage(product.id, image.id, confirmation.file) : deleteProductImage(product.id, image.id), confirmation.type === 'replace' ? 'Foto reemplazada.' : 'Foto borrada.')}>Confirmar {confirmation.type === 'replace' ? 'reemplazo' : 'borrado'}</button>
+                <button type="button" className={actionButton} disabled={blocked} onClick={() => mutate(() => deleteProductImage(product.id, image.id), 'Foto borrada.')}>Confirmar borrado</button>
               </div>
             </div>}
           </li>)}</ol>}

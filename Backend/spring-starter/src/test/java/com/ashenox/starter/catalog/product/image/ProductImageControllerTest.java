@@ -63,10 +63,8 @@ class ProductImageControllerTest {
                         .content("{\"imageIds\":[" + imageId + "]}")
                         .with(user("editor").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(imageId));
-        mvc.perform(multipart(path + "/" + imageId).file(file())
-                        .with(request -> { request.setMethod("PUT"); return request; })
-                        .with(user("editor").roles("SUPER_ADMIN")).with(csrf()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(imageId));
+        mvc.perform(put(path + "/" + imageId).with(user("editor").roles("SUPER_ADMIN")).with(csrf()))
+                .andExpect(status().isMethodNotAllowed());
         mvc.perform(delete(path + "/" + imageId).with(user("editor").roles("USER")).with(csrf()))
                 .andExpect(status().isNoContent());
         mvc.perform(get(path).with(user("editor").roles("USER")))

@@ -1,16 +1,18 @@
 # Plan de implementación por tandas — imágenes de productos
 
 **Tarjetas:** [S3 Configurar S3/CloudFront para imágenes de productos](https://trello.com/c/PjBAprJa) y [S3 Múltiples fotos y selección de foto principal](https://trello.com/c/T2C2WVqd).  
-**Estado del plan:** Tandas 0–3 completas; Tandas 4–5 pendientes.
+**Estado del plan:** Tandas 0–4 completas; Tanda 5 pendiente. La decisión posterior que sigue prevalece sobre el alcance histórico de reemplazo.
 **Fuente de diseño:** [CONTEXTO_PARA_PLAN_IMAGENES.md](CONTEXTO_PARA_PLAN_IMAGENES.md) y las decisiones cerradas durante la planificación.  
 **Alcance de este documento:** planificar, sin implementar código, tests, migraciones ni cambios de AWS.
+
+**Decisión posterior a la Tanda 4 (17/10/2026):** se retiró la operación de reemplazo para simplificar la galería. La función vigente es borrar una foto y, opcionalmente, cargar otra después. El borrado compacta posiciones y promueve la primera restante si se borró la principal; una galería de menos de cinco fotos puede permanecer así. Las menciones a reemplazo en la planificación y resultados históricos de las tandas 0–4 describen el diseño anterior; el contrato vigente y la validación pendiente son los de esta actualización. Ver [AJUSTE_SIN_REEMPLAZO.md](S3%20Configurar%20S3CloudFront%20para%20imágenes%20de%20productos%20-%20S3%20Múltiples%20fotos%20y%20selección%20de%20foto%20principal/AJUSTE_SIN_REEMPLAZO.md).
 
 ## Decisiones cerradas
 
 - Cada foto del producto tendrá **dos objetos WebP**: miniatura de hasta 400 px de ancho y detalle de hasta 1200 px de ancho. Se generan para **todas** las fotos, aunque solo la miniatura principal se usa en la futura tarjeta pública. Cambiar la principal no procesa ni sube archivos.
 - Se aceptan JPEG, PNG y WebP de entrada. No se conserva el original. Máximo **cinco fotos por producto**. La primera foto es principal; al borrar la principal, pasa a serlo la primera restante por orden.
 - `SUPER_ADMIN`, `ADMIN` y `USER` pueden gestionar fotos, igual que actualmente pueden modificar productos. La galería pertenece a `Producto` y no cambia al seleccionar una variante.
-- En el apartado **Productos** del frontend, **cada producto tendrá un botón «Imágenes»**. Este abre un **modal independiente para ese producto**. Dentro del modal se cargan fotos y se administran principal, orden, reemplazo y borrado. El formulario de datos del producto no incluye archivos; primero se crea el producto y luego se usa su botón «Imágenes». No habrá modales anidados.
+- En el apartado **Productos** del frontend, **cada producto tendrá un botón «Imágenes»**. Este abre un **modal independiente para ese producto**. Dentro del modal se cargan fotos y se administran principal, orden y borrado. El formulario de datos del producto no incluye archivos; primero se crea el producto y luego se usa su botón «Imágenes». No habrá modales anidados.
 - Borrar retira la foto de la API en la transacción de MySQL y deja registrado un borrado persistente de sus objetos S3, con reintentos. Una URL anterior conocida puede seguir disponible en caché CloudFront hasta expirar; no se invalidará por defecto.
 - Se implementan endpoints públicos de **solo lectura** para productos activos y sus imágenes. Las pantallas públicas de tarjeta y detalle no forman parte de estas tarjetas.
 
@@ -88,7 +90,6 @@ sequenceDiagram
 | --- | --- |
 | Consultar galería administrativa | `GET /api/catalog/products/{id}/images` |
 | Cargar foto | `POST /api/catalog/products/{id}/images`, `multipart/form-data`, campo `file` |
-| Reemplazar foto | `PUT /api/catalog/products/{id}/images/{imageId}`, `multipart/form-data`, campo `file` |
 | Borrar foto | `DELETE /api/catalog/products/{id}/images/{imageId}` |
 | Ordenar | `PUT /api/catalog/products/{id}/images/order`, cuerpo `{ "imageIds": [ ... ] }` con todos los IDs una vez |
 | Elegir principal | `PUT /api/catalog/products/{id}/images/{imageId}/primary` |
@@ -102,7 +103,6 @@ Los IDs de imagen serán `BIGINT` como los demás recursos del catálogo. La res
 
 - Límite inicial: 10 MB y 20 megapíxeles por archivo. Validar por contenido decodificado, no solo extensión o `Content-Type`; rechazar imagen corrupta. Aplicar orientación EXIF, no ampliar imágenes pequeñas y quitar metadatos al generar WebP. Confirmar una biblioteca codificadora WebP compatible con Java 21 en Windows y Linux durante la Tanda 1.
 - Usar claves nuevas por revisión: `products/{productId}/images/{imageId}/{revision}/thumb.webp` y `detail.webp`. S3 recibirá `Content-Type: image/webp` y `Cache-Control: public, max-age=86400`. Verificar la política efectiva de CloudFront: sus TTL mínimo y máximo pueden modificar la duración indicada por el objeto ([AWS](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html)).
-- Al reemplazar, subir ambos objetos nuevos **antes** de publicar las claves en MySQL; registrar en la misma transacción el borrado de las claves antiguas para 25 horas después. Si la carga falla, las claves anteriores siguen activas. Una intención persistida antes de subir permitirá limpiar objetos nuevos tras una caída entre S3 y MySQL.
 - Al borrar, retirar foto y reasignar principal en MySQL; registrar en esa transacción la eliminación de ambas claves. Un trabajador idempotente borrará de S3 y reintentará fallos. Borrar en S3 no retira inmediatamente una copia ya cacheada en CloudFront ([AWS](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html)).
 
 ## Orden de implementación
@@ -519,7 +519,7 @@ Documentación operativa de variables, limpieza y monitoreo; solo ajustes puntua
 
 ### Flujo de la tanda
 
-Desde **Productos → Imágenes**: cargar varias fotos en staging → elegir principal → ordenar → reemplazar → borrar → consultar endpoints públicos → comprobar variantes por CloudFront y denegación S3 directa. Esta validación atraviesa los flujos diagramados en las tandas anteriores; no se repite un diagrama de código.
+Desde **Productos → Imágenes**: cargar varias fotos en staging → elegir principal → ordenar → borrar una foto → comprobar posiciones y principal restante → cargar otra de forma opcional → consultar endpoints públicos → comprobar variantes por CloudFront y denegación S3 directa. Esta validación atraviesa los flujos diagramados en las tandas anteriores; no se repite un diagrama de código.
 
 ### Cambios de persistencia/configuración
 
@@ -527,7 +527,7 @@ Comprobar ID y dominio de CloudFront de producción, access keys técnicas, etiq
 
 ### Tests necesarios
 
-**Extremo a extremo en staging:** carga autenticada, WebP de ambos tamaños por CloudFront, principal en respuesta pública, misma galería para todas las variantes, reemplazo con URL nueva y borrado eventual en S3. **Fallos:** provocar fallo temporal de borrado y comprobar reintento. **Seguridad:** sin credenciales AWS en navegador, sin archivos de producto en contenedor y acceso S3 directo denegado.
+**Extremo a extremo en staging:** carga autenticada, WebP de ambos tamaños por CloudFront, principal en respuesta pública, misma galería para todas las variantes, borrado eventual en S3, orden compacto y cupo disponible para una carga opcional. **Fallos:** provocar fallo temporal de borrado y comprobar reintento. **Seguridad:** sin credenciales AWS en navegador, sin archivos de producto en contenedor y acceso S3 directo denegado.
 
 **NO PROBADO:** tráfico y costo reales de producción antes del despliegue. **RIESGO:** presupuestos filtrados incorrectamente por entorno. **TRATAMIENTO:** comprobar Billing y revisar datos reales tras el despliegue.
 
@@ -584,7 +584,7 @@ Producto en lista administrativa
    → validación y dos WebP por foto
    → S3 privado + claves en MySQL
    → URLs CloudFront en API administrativa y pública
-   → limpieza persistente de objetos reemplazados o borrados
+   → limpieza persistente de objetos de cargas fallidas o fotos borradas
 ```
 
 ## Resumen final
@@ -603,4 +603,4 @@ MySQL y S3 no comparten transacción; el registro persistente de operaciones y l
 
 ### Validación final
 
-Un usuario autorizado gestiona hasta cinco fotos desde el **modal «Imágenes» de cada producto**, sin cargar archivos en el formulario de datos. Todas las variantes comparten galería. La principal determina la miniatura pública; cada foto tiene detalle. Reemplazar genera claves nuevas y borrar retira la foto de la API y termina eliminando sus dos objetos de S3.
+Un usuario autorizado gestiona hasta cinco fotos desde el **modal «Imágenes» de cada producto**, sin cargar archivos en el formulario de datos. Todas las variantes comparten galería. La principal determina la miniatura pública; cada foto tiene detalle. Borrar retira la foto de la API, compacta el orden, reasigna principal si corresponde y termina eliminando sus dos objetos de S3. La carga de otra foto es opcional.

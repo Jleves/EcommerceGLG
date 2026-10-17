@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deleteProductImage, listProductImages, reorderProductImages, replaceProductImage, setPrimaryProductImage, uploadProductImage } from '../services/productService.js'
+import { deleteProductImage, listProductImages, reorderProductImages, setPrimaryProductImage, uploadProductImage } from '../services/productService.js'
 import { ProductImageManager } from './ProductImageManager.jsx'
 
 vi.mock('../services/productService.js', () => ({
   listProductImages: vi.fn(), uploadProductImage: vi.fn(), setPrimaryProductImage: vi.fn(),
-  reorderProductImages: vi.fn(), replaceProductImage: vi.fn(), deleteProductImage: vi.fn(),
+  reorderProductImages: vi.fn(), deleteProductImage: vi.fn(),
 }))
 
 const product = { id: 7, nombre: 'Arena' }
@@ -20,7 +20,6 @@ describe('ProductImageManager', () => {
     uploadProductImage.mockResolvedValue({})
     setPrimaryProductImage.mockResolvedValue({})
     reorderProductImages.mockResolvedValue([])
-    replaceProductImage.mockResolvedValue({})
     deleteProductImage.mockResolvedValue(null)
   })
 
@@ -66,7 +65,6 @@ describe('ProductImageManager', () => {
     await waitFor(() => expect(setPrimaryProductImage).toHaveBeenCalledWith(7, 13))
     expect(screen.getByRole('button', { name: 'Bajar imagen a posición 2' })).toBeEnabled()
     expect(uploadProductImage).not.toHaveBeenCalled()
-    expect(replaceProductImage).not.toHaveBeenCalled()
   })
 
   it('nombra el destino intermedio y no cambia la principal al mover entre posiciones 2 y 3', async () => {
@@ -91,23 +89,30 @@ describe('ProductImageManager', () => {
     expect(screen.getByRole('button', { name: 'Consultar estado actual' })).toBeEnabled()
   })
 
-  it('pide confirmación en el mismo diálogo antes de reemplazar o borrar', async () => {
+  it('confirma el borrado, muestra el orden restante y libera un lugar para otra carga', async () => {
     const user = userEvent.setup()
+    const third = { ...second, id: 13, position: 3 }
+    const fourth = { ...second, id: 14, position: 4 }
+    const fifth = { ...second, id: 15, position: 5 }
+    listProductImages.mockResolvedValueOnce([first, second, third, fourth, fifth])
+      .mockResolvedValueOnce([{ ...second, position: 1, primary: true }, { ...third, position: 2 }, { ...fourth, position: 3 }, { ...fifth, position: 4 }])
     render(<ProductImageManager product={product} onClose={vi.fn()} />)
     await screen.findByRole('img', { name: 'Foto 1 de Arena' })
-    await user.upload(screen.getByLabelText('Archivo para reemplazar foto 1'), new File(['x'], 'otra.png', { type: 'image/png' }))
-    await user.click(screen.getByRole('button', { name: 'Reemplazar foto 1' }))
+    expect(screen.getByRole('button', { name: 'Cargar foto' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Borrar foto 1' }))
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
-    expect(replaceProductImage).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
-    expect(replaceProductImage).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Reemplazar foto 1' }))
-    await user.click(screen.getByRole('button', { name: 'Confirmar reemplazo' }))
-    await waitFor(() => expect(replaceProductImage).toHaveBeenCalledWith(7, 11, expect.any(File)))
-    await user.click(screen.getByRole('button', { name: 'Borrar foto 2' }))
+    expect(screen.getByText(/si era la principal, la primera restante será la nueva principal/)).toBeInTheDocument()
     expect(deleteProductImage).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(deleteProductImage).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Borrar foto 1' }))
     await user.click(screen.getByRole('button', { name: 'Confirmar borrado' }))
-    await waitFor(() => expect(deleteProductImage).toHaveBeenCalledWith(7, 12))
+    await waitFor(() => expect(deleteProductImage).toHaveBeenCalledWith(7, 11))
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(4))
+    expect(screen.getByRole('img', { name: 'Foto 1 de Arena' })).toHaveAttribute('src', second.thumbnailUrl)
+    expect(screen.getByText('Principal')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cargar foto' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Subir imagen' })).toBeDisabled()
   })
 
   it('bloquea otro envío tras resultado incierto hasta una lectura exitosa', async () => {

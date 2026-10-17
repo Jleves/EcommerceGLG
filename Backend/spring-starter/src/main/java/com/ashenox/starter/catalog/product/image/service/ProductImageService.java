@@ -15,7 +15,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +32,6 @@ public class ProductImageService {
     private final TransactionTemplate transactions;
 
     private record Reservation(Long imageId, Long operationId, String thumbnailKey, String detailKey) {}
-    private static final Duration REPLACED_KEY_GRACE = Duration.ofHours(25);
 
     public List<ProductImageResponse> list(Long productId) {
         if (!products.existsById(productId)) throw new ResourceNotFoundException("El producto no existe.");
@@ -63,7 +61,6 @@ public class ProductImageService {
         return transactions.execute(status -> {
             lockProduct(productId);
             ProductImage selected = publishedImage(productId, imageId);
-            ensureNoReplacement(imageId);
             if (selected.isPrimary()) return response(selected);
             images.findByProductIdAndStatusOrderByPositionAscIdAsc(productId, "PUBLISHED")
                     .stream().filter(ProductImage::isPrimary).forEach(image -> image.setPrimary(false));
@@ -84,7 +81,6 @@ public class ProductImageService {
                     .collect(java.util.stream.Collectors.toSet()))) {
                 throw new InvalidProductImageException("El orden debe contener todos los IDs de fotos una sola vez.");
             }
-            current.forEach(image -> ensureNoReplacement(image.getId()));
             var byId = current.stream().collect(java.util.stream.Collectors.toMap(ProductImage::getId, image -> image));
             for (int index = 0; index < imageIds.size(); index++) byId.get(imageIds.get(index)).setPosition(index + 1);
             images.flush();
@@ -92,28 +88,10 @@ public class ProductImageService {
         });
     }
 
-    public ProductImageResponse replace(Long productId, Long imageId, MultipartFile file) {
-        ImageProcessor.Variants variants = processor.validateAndGenerate(file);
-        Reservation reserved = transactions.execute(status -> reserveReplacement(productId, imageId));
-        try {
-            storage.put(reserved.thumbnailKey(), variants.thumbnail());
-            storage.put(reserved.detailKey(), variants.detail());
-        } catch (RuntimeException failure) {
-            transactions.executeWithoutResult(status -> markReplacementForCleanup(reserved));
-            throw new ImageStorageUnavailableException(failure);
-        }
-        try {
-            return transactions.execute(status -> publishReplacement(productId, reserved));
-        } catch (RuntimeException failure) {
-            throw new ImageStorageUnavailableException(failure);
-        }
-    }
-
     public void delete(Long productId, Long imageId) {
         transactions.executeWithoutResult(status -> {
             var product = lockProduct(productId);
             ProductImage image = publishedImage(productId, imageId);
-            ensureNoReplacement(imageId);
             boolean wasPrimary = image.isPrimary();
             scheduleCleanup(product, imageId, image.getThumbnailKey(), image.getDetailKey(), LocalDateTime.now());
             images.delete(image);
@@ -123,57 +101,6 @@ public class ProductImageService {
             if (wasPrimary && !remaining.isEmpty()) remaining.getFirst().setPrimary(true);
             images.flush();
         });
-    }
-
-    private Reservation reserveReplacement(Long productId, Long imageId) {
-        var product = lockProduct(productId);
-        publishedImage(productId, imageId);
-        ensureNoReplacement(imageId);
-        String revision = UUID.randomUUID().toString();
-        String prefix = "products/" + productId + "/images/" + imageId + "/" + revision + "/";
-        ImageStorageOperation operation = new ImageStorageOperation();
-        operation.setProduct(product);
-        operation.setImageId(imageId);
-        operation.setThumbnailKey(prefix + "thumb.webp");
-        operation.setDetailKey(prefix + "detail.webp");
-        operation.setStatus("PENDING_UPLOAD");
-        operation.setNextExecutionAt(LocalDateTime.now().plus(properties.getImages().getAbandonedUploadGrace()));
-        operations.saveAndFlush(operation);
-        return new Reservation(imageId, operation.getId(), operation.getThumbnailKey(), operation.getDetailKey());
-    }
-
-    private ProductImageResponse publishReplacement(Long productId, Reservation reserved) {
-        var product = lockProduct(productId);
-        ImageStorageOperation operation = operations.lockById(reserved.operationId()).orElseThrow();
-        if (!"PENDING_UPLOAD".equals(operation.getStatus())) {
-            throw new ProductImageConflictException("El reemplazo ya no está pendiente.");
-        }
-        ProductImage image = publishedImage(productId, reserved.imageId());
-        scheduleCleanup(product, image.getId(), image.getThumbnailKey(), image.getDetailKey(),
-                LocalDateTime.now().plus(REPLACED_KEY_GRACE));
-        image.setThumbnailKey(reserved.thumbnailKey());
-        image.setDetailKey(reserved.detailKey());
-        image.setRevision(revisionFromKey(reserved.thumbnailKey()));
-        operation.setStatus("COMPLETE");
-        operation.setNextExecutionAt(null);
-        images.flush();
-        operations.flush();
-        return response(image);
-    }
-
-    private void markReplacementForCleanup(Reservation reserved) {
-        Long productId = operations.findById(reserved.operationId()).orElseThrow().getProduct().getId();
-        lockProduct(productId);
-        ImageStorageOperation operation = operations.lockById(reserved.operationId()).orElseThrow();
-        if ("PENDING_UPLOAD".equals(operation.getStatus())) {
-            operation.setStatus("CLEANUP_REQUIRED");
-            operation.setNextExecutionAt(LocalDateTime.now());
-        }
-    }
-
-    private String revisionFromKey(String key) {
-        String[] parts = key.split("/");
-        return parts[4];
     }
 
     private void scheduleCleanup(com.ashenox.starter.catalog.product.model.Product product, Long imageId,
@@ -200,12 +127,6 @@ public class ProductImageService {
             throw new ResourceNotFoundException("La foto no existe.");
         }
         return image;
-    }
-
-    private void ensureNoReplacement(Long imageId) {
-        if (operations.existsByImageIdAndStatus(imageId, "PENDING_UPLOAD")) {
-            throw new ProductImageConflictException("La foto tiene un reemplazo en curso.");
-        }
     }
 
     private Reservation reserve(Long productId) {
