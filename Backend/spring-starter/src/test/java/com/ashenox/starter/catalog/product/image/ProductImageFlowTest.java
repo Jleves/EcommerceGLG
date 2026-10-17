@@ -4,10 +4,13 @@ import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.product.image.repository.ImageStorageOperationRepository;
 import com.ashenox.starter.catalog.product.image.repository.ProductImageRepository;
+import com.ashenox.starter.catalog.product.image.model.ImageStorageOperation;
+import com.ashenox.starter.catalog.product.image.model.ProductImage;
 import com.ashenox.starter.catalog.product.image.service.ImageStorageUnavailableException;
 import com.ashenox.starter.catalog.product.image.service.ProductImageConflictException;
 import com.ashenox.starter.catalog.product.image.service.ProductImageService;
 import com.ashenox.starter.catalog.product.image.storage.S3ImageStorage;
+import com.ashenox.starter.catalog.product.image.storage.ImageStorageCleanupJob;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -46,6 +51,153 @@ class ProductImageFlowTest {
     @Autowired ProductImageRepository images;
     @Autowired ImageStorageOperationRepository operations;
     @Autowired FakeStorage storage;
+    @Autowired ImageStorageCleanupJob cleanup;
+
+    @Test
+    void reorderPrimaryAndDeletePromotesFirstRemaining() throws Exception {
+        Long id = product();
+        var first = service.upload(id, file());
+        var second = service.upload(id, file());
+        var third = service.upload(id, file());
+        assertThatThrownBy(() -> service.reorder(id, List.of(first.id(), first.id(), third.id())))
+                .isInstanceOf(com.ashenox.starter.catalog.product.image.service.InvalidProductImageException.class);
+        assertThatThrownBy(() -> service.reorder(id, List.of(first.id(), second.id())))
+                .isInstanceOf(com.ashenox.starter.catalog.product.image.service.InvalidProductImageException.class);
+        assertThat(service.reorder(id, List.of(third.id(), first.id(), second.id())))
+                .extracting(com.ashenox.starter.catalog.product.image.dto.ProductImageResponse::id)
+                .containsExactly(third.id(), first.id(), second.id());
+        service.setPrimary(id, second.id());
+        assertThat(service.list(id).stream().filter(image -> image.primary()).map(image -> image.id()))
+                .containsExactly(second.id());
+        service.delete(id, second.id());
+        assertThat(service.list(id)).extracting(com.ashenox.starter.catalog.product.image.dto.ProductImageResponse::id)
+                .containsExactly(third.id(), first.id());
+        assertThat(service.list(id).getFirst().primary()).isTrue();
+        assertThat(storage.objects).containsKey(key(second.thumbnailUrl()));
+        cleanup.run();
+        assertThat(storage.objects).doesNotContainKeys(key(second.thumbnailUrl()), key(second.detailUrl()));
+    }
+
+    @Test
+    void replacementChangesRevisionAndRetainsOldObjectsFor25Hours() throws Exception {
+        Long id = product();
+        var original = service.upload(id, file());
+        var replacement = service.replace(id, original.id(), file());
+        assertThat(replacement.id()).isEqualTo(original.id());
+        assertThat(replacement.primary()).isTrue();
+        assertThat(replacement.thumbnailUrl()).isNotEqualTo(original.thumbnailUrl());
+        assertThat(storage.objects).containsKeys(key(original.thumbnailUrl()), key(replacement.thumbnailUrl()));
+        cleanup.run();
+        assertThat(storage.objects).containsKey(key(original.thumbnailUrl()));
+        var old = operations.findAll().stream().filter(op -> op.getThumbnailKey().equals(key(original.thumbnailUrl()))
+                && "CLEANUP_REQUIRED".equals(op.getStatus())).findFirst().orElseThrow();
+        assertThat(old.getNextExecutionAt()).isAfter(LocalDateTime.now().plusHours(24));
+        old.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
+        operations.saveAndFlush(old);
+        cleanup.run();
+        assertThat(storage.objects).doesNotContainKeys(key(original.thumbnailUrl()), key(original.detailUrl()));
+        assertThat(storage.objects).containsKeys(key(replacement.thumbnailUrl()), key(replacement.detailUrl()));
+    }
+
+    @Test
+    void failedReplacementKeepsPublishedUrlsAndCleanupRetries() throws Exception {
+        Long id = product();
+        var original = service.upload(id, file());
+        storage.failOnPut.set(storage.putCount.get() + 2);
+        assertThatThrownBy(() -> service.replace(id, original.id(), file()))
+                .isInstanceOf(ImageStorageUnavailableException.class);
+        storage.failOnPut.set(0);
+        assertThat(service.list(id)).containsExactly(original);
+        var pending = operations.findAll().stream().filter(op -> op.getImageId().equals(original.id())
+                && "CLEANUP_REQUIRED".equals(op.getStatus())).findFirst().orElseThrow();
+        storage.failOnDelete.set(storage.deleteCount.get() + 2);
+        cleanup.run();
+        assertThat(operations.findById(pending.getId()).orElseThrow().getAttempts()).isEqualTo(1);
+        storage.failOnDelete.set(0);
+        var retry = operations.findById(pending.getId()).orElseThrow();
+        retry.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
+        operations.saveAndFlush(retry);
+        cleanup.run();
+        assertThat(operations.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo("COMPLETE");
+        assertThat(service.list(id)).containsExactly(original);
+        cleanup.run();
+        assertThat(operations.findById(pending.getId()).orElseThrow().getAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void abandonedUploadIsRemovedAndConcurrentReplacementIsRejected() throws Exception {
+        Long id = product();
+        var original = service.upload(id, file());
+        ImageStorageOperation pending = new ImageStorageOperation();
+        pending.setProduct(products.findById(id).orElseThrow());
+        pending.setImageId(original.id());
+        pending.setThumbnailKey("products/" + id + "/images/" + original.id() + "/abandoned/thumb.webp");
+        pending.setDetailKey("products/" + id + "/images/" + original.id() + "/abandoned/detail.webp");
+        pending.setStatus("PENDING_UPLOAD");
+        pending.setNextExecutionAt(LocalDateTime.now().plusHours(1));
+        operations.saveAndFlush(pending);
+        storage.objects.put(pending.getThumbnailKey(), new byte[]{1});
+        assertThatThrownBy(() -> service.replace(id, original.id(), file()))
+                .isInstanceOf(ProductImageConflictException.class);
+        assertThatThrownBy(() -> service.delete(id, original.id()))
+                .isInstanceOf(ProductImageConflictException.class);
+        cleanup.run();
+        assertThat(storage.objects).containsKey(pending.getThumbnailKey());
+        pending.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
+        operations.saveAndFlush(pending);
+        cleanup.run();
+        assertThat(storage.objects).doesNotContainKey(pending.getThumbnailKey());
+        assertThat(operations.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo("COMPLETE");
+        assertThat(service.list(id)).containsExactly(original);
+    }
+
+    @Test
+    void simultaneousPrimaryChangesKeepExactlyOnePrimary() throws Exception {
+        Long id = product();
+        var first = service.upload(id, file());
+        var second = service.upload(id, file());
+        var third = service.upload(id, file());
+        CountDownLatch gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var a = pool.submit(() -> { gate.await(); service.setPrimary(id, second.id()); return true; });
+            var b = pool.submit(() -> { gate.await(); service.setPrimary(id, third.id()); return true; });
+            gate.countDown();
+            assertThat(a.get(30, TimeUnit.SECONDS)).isTrue();
+            assertThat(b.get(30, TimeUnit.SECONDS)).isTrue();
+        }
+        assertThat(service.list(id).stream().filter(image -> image.primary()).count()).isEqualTo(1);
+        assertThat(service.list(id)).hasSize(3);
+    }
+
+    @Test
+    void abandonedNewUploadReleasesReservedSlot() throws Exception {
+        Long id = product();
+        ProductImage pending = new ProductImage();
+        pending.setProduct(products.findById(id).orElseThrow());
+        pending.setPosition(0);
+        pending.setPrimary(false);
+        pending.setRevision(UUID.randomUUID().toString());
+        pending.setStatus("PENDING");
+        images.saveAndFlush(pending);
+        String prefix = "products/" + id + "/images/" + pending.getId() + "/" + pending.getRevision() + "/";
+        pending.setThumbnailKey(prefix + "thumb.webp");
+        pending.setDetailKey(prefix + "detail.webp");
+        images.saveAndFlush(pending);
+        ImageStorageOperation operation = new ImageStorageOperation();
+        operation.setProduct(pending.getProduct());
+        operation.setImageId(pending.getId());
+        operation.setThumbnailKey(pending.getThumbnailKey());
+        operation.setDetailKey(pending.getDetailKey());
+        operation.setStatus("PENDING_UPLOAD");
+        operation.setNextExecutionAt(LocalDateTime.now().minusSeconds(1));
+        operations.saveAndFlush(operation);
+        storage.objects.put(pending.getThumbnailKey(), new byte[]{1});
+        cleanup.run();
+        assertThat(images.findById(pending.getId())).isEmpty();
+        assertThat(storage.objects).doesNotContainKey(pending.getThumbnailKey());
+        assertThat(operations.findById(operation.getId()).orElseThrow().getStatus()).isEqualTo("COMPLETE");
+        assertThat(service.upload(id, file()).primary()).isTrue();
+    }
 
     @Test
     void uploadPublishesTwoKeysAndFirstPhotoIsPrimary() throws Exception {
@@ -134,11 +286,16 @@ class ProductImageFlowTest {
         final ConcurrentHashMap<String, byte[]> objects = new ConcurrentHashMap<>();
         final AtomicInteger putCount = new AtomicInteger();
         final AtomicInteger failOnPut = new AtomicInteger();
+        final AtomicInteger deleteCount = new AtomicInteger();
+        final AtomicInteger failOnDelete = new AtomicInteger();
         FakeStorage() { super(null, null); }
         @Override public void put(String key, byte[] webp) {
             if (putCount.incrementAndGet() == failOnPut.get()) throw new IllegalStateException("simulated S3 failure");
             objects.put(key, webp);
         }
-        @Override public void delete(String key) { objects.remove(key); }
+        @Override public void delete(String key) {
+            if (deleteCount.incrementAndGet() == failOnDelete.get()) throw new IllegalStateException("simulated delete failure");
+            objects.remove(key);
+        }
     }
 }

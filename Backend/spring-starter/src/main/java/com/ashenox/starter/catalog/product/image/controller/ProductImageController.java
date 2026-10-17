@@ -1,6 +1,7 @@
 package com.ashenox.starter.catalog.product.image.controller;
 
 import com.ashenox.starter.catalog.product.image.dto.ProductImageResponse;
+import com.ashenox.starter.catalog.product.image.dto.ProductImageOrderRequest;
 import com.ashenox.starter.catalog.product.image.service.ProductImageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/catalog/products/{productId}/images")
@@ -28,5 +30,28 @@ public class ProductImageController {
     public ResponseEntity<ProductImageResponse> upload(@PathVariable Long productId,
                                                         @RequestPart("file") MultipartFile file) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.upload(productId, file));
+    }
+
+    @PutMapping("/{imageId}/primary")
+    public ProductImageResponse setPrimary(@PathVariable Long productId, @PathVariable Long imageId) {
+        return service.setPrimary(productId, imageId);
+    }
+
+    @PutMapping("/order")
+    public List<ProductImageResponse> reorder(@PathVariable Long productId,
+                                              @Valid @RequestBody ProductImageOrderRequest request) {
+        return service.reorder(productId, request.imageIds());
+    }
+
+    @PutMapping(value = "/{imageId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ProductImageResponse replace(@PathVariable Long productId, @PathVariable Long imageId,
+                                        @RequestPart("file") MultipartFile file) {
+        return service.replace(productId, imageId, file);
+    }
+
+    @DeleteMapping("/{imageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long productId, @PathVariable Long imageId) {
+        service.delete(productId, imageId);
     }
 }

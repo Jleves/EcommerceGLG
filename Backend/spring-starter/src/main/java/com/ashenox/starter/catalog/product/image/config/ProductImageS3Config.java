@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import java.time.Duration;
 
 @Configuration
 public class ProductImageS3Config {
@@ -15,6 +17,8 @@ public class ProductImageS3Config {
         return S3Client.builder()
                 .region(Region.of(properties.getImages().getRegion()))
                 .credentialsProvider(DefaultCredentialsProvider.create())
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .apiCallTimeout(Duration.ofMinutes(2)).build())
                 .build();
     }
 }

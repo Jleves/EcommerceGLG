@@ -1,7 +1,7 @@
 # Plan de implementación por tandas — imágenes de productos
 
 **Tarjetas:** [S3 Configurar S3/CloudFront para imágenes de productos](https://trello.com/c/PjBAprJa) y [S3 Múltiples fotos y selección de foto principal](https://trello.com/c/T2C2WVqd).  
-**Estado del plan:** Tanda 0 ejecutada parcialmente; Tandas 1–5 pendientes.
+**Estado del plan:** Tanda 0 parcial; Tanda 1 completa; Tanda 2 parcial; Tandas 3–5 pendientes.
 **Fuente de diseño:** [CONTEXTO_PARA_PLAN_IMAGENES.md](CONTEXTO_PARA_PLAN_IMAGENES.md) y las decisiones cerradas durante la planificación.  
 **Alcance de este documento:** planificar, sin implementar código, tests, migraciones ni cambios de AWS.
 
@@ -110,8 +110,8 @@ Los IDs de imagen serán `BIGINT` como los demás recursos del catálogo. La res
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 0 | Configuración y verificación AWS | — | Parcial; ver resultado de ejecución |
-| 1 | Persistencia, procesamiento y carga | 0 | Planificada |
-| 2 | Principal, orden, reemplazo y borrado | 1 | Planificada |
+| 1 | Persistencia, procesamiento y carga | 0 | Completa |
+| 2 | Principal, orden, reemplazo y borrado | 1 | Parcial; ver resultado de ejecución |
 | 3 | Lectura pública por CloudFront | 1–2 | Planificada |
 | 4 | Modal «Imágenes» en Productos | 2–3 | Planificada |
 | 5 | Validación integral y preparación de producción | 0–4 | Planificada |
@@ -343,13 +343,13 @@ Completar estados y fechas de `image_storage_operations` si la Tanda 1 no los ne
 
 ### Criterio de cierre
 
-- [ ] Principal, orden, reemplazo y borrado verificados.
-- [ ] Fallos parciales recuperables y operaciones pendientes observables.
-- [ ] Tests ejecutados, incidentes y riesgos residuales registrados.
+- [x] Principal, orden, reemplazo y borrado verificados.
+- [x] Fallos parciales recuperables y operaciones pendientes observables.
+- [x] Tests ejecutados, incidentes y riesgos residuales registrados.
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (17/10/2026). API administrativa de principal, orden, reemplazo y borrado, más limpieza persistente con recuperación y reintentos, implementadas. El ciclo y la concurrencia pasaron en MySQL 8.4; staging verificó la API autenticada, el reemplazo servido por CloudFront y el borrado y limpieza S3 de las fotos 1 y 2 del producto 5. La suite completa con Docker terminó con 602 tests, 0 fallos, 0 errores y 0 omitidos. La limpieza de claves sustituidas a las 25 horas queda programada según el diseño. Cambios, pruebas, incidentes INC-201 a INC-206, riesgos y checklist: [RESULTADO_TANDA_2.md](S3%20Configurar%20S3CloudFront%20para%20imágenes%20de%20productos%20-%20S3%20Múltiples%20fotos%20y%20selección%20de%20foto%20principal/RESULTADO_TANDA_2.md).
 
 ## Tanda 3 — Lectura pública por CloudFront
 

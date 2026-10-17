@@ -66,6 +66,18 @@ public class AppProperties {
         @NotNull(message = "app.images.cache-ttl es obligatorio")
         private Duration cacheTtl = Duration.ofHours(24);
 
+        @Min(1)
+        private int cleanupBatchSize = 50;
+
+        @NotNull
+        private Duration cleanupRetryBase = Duration.ofMinutes(1);
+
+        @NotNull
+        private Duration cleanupRetryMax = Duration.ofHours(1);
+
+        @NotNull
+        private Duration abandonedUploadGrace = Duration.ofHours(1);
+
         @AssertTrue(message = "app.images.region debe ser us-east-1")
         public boolean isRegionValid() {
             return region != null && region.equals("us-east-1");
@@ -86,6 +98,18 @@ public class AppProperties {
         @AssertTrue(message = "app.images.cache-ttl debe ser mayor que cero")
         public boolean isCacheTtlValid() {
             return cacheTtl != null && !cacheTtl.isZero() && !cacheTtl.isNegative();
+        }
+
+        @AssertTrue(message = "Los intervalos de limpieza deben ser positivos; la espera de carga debe ser al menos 10 minutos")
+        public boolean isCleanupTimingValid() {
+            return cacheTtlValidDuration(cleanupRetryBase) && cacheTtlValidDuration(cleanupRetryMax)
+                    && cacheTtlValidDuration(abandonedUploadGrace)
+                    && cleanupRetryMax.compareTo(cleanupRetryBase) >= 0
+                    && abandonedUploadGrace.compareTo(Duration.ofMinutes(10)) >= 0;
+        }
+
+        private boolean cacheTtlValidDuration(Duration duration) {
+            return duration != null && !duration.isZero() && !duration.isNegative();
         }
     }
 
