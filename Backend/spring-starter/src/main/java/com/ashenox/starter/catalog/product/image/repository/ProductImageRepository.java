@@ -10,6 +10,9 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
     long countByProductIdAndStatus(Long productId, String status);
     List<ProductImage> findByProductIdAndStatusOrderByPositionAscIdAsc(Long productId, String status);
 
+    @Query("select image from ProductImage image where image.product.id in :productIds and image.status = 'PUBLISHED' and image.primary = true")
+    List<ProductImage> findPublishedPrimaryByProductIds(List<Long> productIds);
+
     @Query("select coalesce(max(image.position), 0) from ProductImage image where image.product.id = :productId and image.status = 'PUBLISHED'")
     int maxPublishedPosition(Long productId);
 }

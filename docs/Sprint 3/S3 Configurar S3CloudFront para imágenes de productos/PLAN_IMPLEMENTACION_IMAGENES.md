@@ -1,7 +1,7 @@
 # Plan de implementación por tandas — imágenes de productos
 
 **Tarjetas:** [S3 Configurar S3/CloudFront para imágenes de productos](https://trello.com/c/PjBAprJa) y [S3 Múltiples fotos y selección de foto principal](https://trello.com/c/T2C2WVqd).  
-**Estado del plan:** Tanda 0 parcial; Tanda 1 completa; Tanda 2 parcial; Tandas 3–5 pendientes.
+**Estado del plan:** Tandas 0–3 completas; Tandas 4–5 pendientes.
 **Fuente de diseño:** [CONTEXTO_PARA_PLAN_IMAGENES.md](CONTEXTO_PARA_PLAN_IMAGENES.md) y las decisiones cerradas durante la planificación.  
 **Alcance de este documento:** planificar, sin implementar código, tests, migraciones ni cambios de AWS.
 
@@ -425,7 +425,7 @@ Ninguna migración adicional prevista. Verificar que `SecurityConfig` permita ú
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA (17/10/2026). Se implementaron los dos GET públicos para productos activos, miniatura principal en el listado paginado y galería ordenada en el detalle. Las URLs se construyen mediante un servicio compartido desde las claves y el dominio CloudFront; la API administrativa conserva su contrato. Se cerró el permiso general de POST público. La prueba nueva y la regresión relacionada terminaron con 30 tests PASS, 0 fallos y 0 errores. El incidente de aislamiento H2 del test nuevo (INC-301), las pruebas faltantes, riesgos y checklist constan en [RESULTADO_TANDA_3.md](S3%20Configurar%20S3CloudFront%20para%20imágenes%20de%20productos%20-%20S3%20Múltiples%20fotos%20y%20selección%20de%20foto%20principal/RESULTADO_TANDA_3.md).
 
 ## Tanda 4 — Modal «Imágenes» en Productos
 

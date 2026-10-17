@@ -26,6 +26,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             countQuery = "select count(product) from Product product where :pattern is null or lower(product.nombre) like lower(:pattern) escape '!'")
     Page<Product> findPageByName(String pattern, Pageable pageable);
 
+    @Query(value = "select product from Product product where product.activo = true order by product.nombre asc, product.id asc",
+            countQuery = "select count(product) from Product product where product.activo = true")
+    Page<Product> findActivePage(Pageable pageable);
+
+    Optional<Product> findByIdAndActivoTrue(Long id);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select product from Product product where product.id = :id")
     Optional<Product> lockById(Long id);

@@ -29,6 +29,7 @@ public class ProductImageService {
     private final ImageProcessor processor;
     private final S3ImageStorage storage;
     private final AppProperties properties;
+    private final ProductImageUrlService urls;
     private final TransactionTemplate transactions;
 
     private record Reservation(Long imageId, Long operationId, String thumbnailKey, String detailKey) {}
@@ -269,8 +270,6 @@ public class ProductImageService {
     }
 
     private ProductImageResponse response(ProductImage image) {
-        String base = properties.getImages().getCloudFrontBaseUrl().toString();
-        return new ProductImageResponse(image.getId(), image.getPosition(), image.isPrimary(),
-                base + "/" + image.getThumbnailKey(), base + "/" + image.getDetailKey());
+        return urls.toResponse(image);
     }
 }
