@@ -543,7 +543,7 @@ Comprobar ID y dominio de CloudFront de producción, access keys técnicas, etiq
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** PARCIAL (17/10/2026). El recorrido por API autenticada se comprobó en MySQL/S3/CloudFront de staging con cinco fotos, sexta rechazada, principal, orden, borrado con promoción y compactación, carga opcional, lectura pública, dos WebP por foto y S3 directo denegado. La galería terminó vacía y las seis limpiezas nuevas completaron; permanece una operación histórica pendiente. La consola confirmó recursos, etiquetas, planes Free, IAM técnico y cuatro presupuestos por entorno, todos con USD 0,00. La regresión enfocada backend (21), MySQL real (2), staging (1) y frontend (265), más lint y build, pasó. Faltan el recorrido del modal en navegador real, la verificación de la operación histórica cuando venza y evidencia de cargos atribuidos y recepción de alertas. Cambios, pruebas, incidentes INC-502/503, guía operativa y checklist: [RESULTADO_TANDA_5.md](S3%20Configurar%20S3CloudFront%20para%20imágenes%20de%20productos%20-%20S3%20Múltiples%20fotos%20y%20selección%20de%20foto%20principal/RESULTADO_TANDA_5.md).
 
 ## Registro global de decisiones pendientes
 
