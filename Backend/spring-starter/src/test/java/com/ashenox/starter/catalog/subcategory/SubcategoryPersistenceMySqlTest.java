@@ -51,7 +51,7 @@ class SubcategoryPersistenceMySqlTest {
                 """, first.getId())).isInstanceOf(DataIntegrityViolationException.class);
 
         Product product = products.saveAndFlush(Product.builder().category(first).subcategory(one)
-                .nombre("Chapa").precioReferencia(new BigDecimal("10.00")).disponible(true).build());
+                .nombre("Chapa").build());
         assertThatThrownBy(() -> jdbc.update("DELETE FROM subcategories WHERE id = ?", one.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(jdbc.queryForObject("SELECT category_id FROM products WHERE id = ?", Long.class, product.getId()))
@@ -62,8 +62,8 @@ class SubcategoryPersistenceMySqlTest {
     void migrationLeavesExistingStyleProductWithoutSubcategory() {
         Category parent = category();
         Product product = products.saveAndFlush(Product.builder().category(parent)
-                .nombre("Sin subcategoría").precioReferencia(new BigDecimal("10.00"))
-                .disponible(true).build());
+                .nombre("Sin subcategoría")
+                .build());
 
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM products

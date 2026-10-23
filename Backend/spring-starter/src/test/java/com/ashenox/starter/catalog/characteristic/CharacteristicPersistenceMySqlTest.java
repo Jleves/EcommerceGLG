@@ -44,7 +44,7 @@ class CharacteristicPersistenceMySqlTest {
         Category category = categories.saveAndFlush(Category.builder().nombre("Categoría " + suffix)
                 .nombreNormalizado(suffix).icono("icon").build());
         Product product = products.saveAndFlush(Product.builder().category(category).nombre("Arena")
-                .precioReferencia(new BigDecimal("10.00")).disponible(true).build());
+                .build());
 
         assertThatThrownBy(() -> jdbc.update("INSERT INTO characteristics (nombre,nombre_normalizado,created_at,updated_at) VALUES (?,?,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))", "Otra", "marca-" + suffix))
                 .isInstanceOf(DataIntegrityViolationException.class);

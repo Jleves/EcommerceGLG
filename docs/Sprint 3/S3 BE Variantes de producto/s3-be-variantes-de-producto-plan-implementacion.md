@@ -1,6 +1,8 @@
 # S3 BE — Variantes de producto: plan de implementación
 
-**Fuente funcional:** [S3 BE Variantes de producto](https://trello.com/c/uBmWofPG/58-s3-be-variantes-de-producto). **Diseño de referencia:** `docs/modelo-inicial.md` y `docs/Diagrama ECOMMERCE.drawio`. **Estado del documento:** Tandas 1 y 2 completas y verificadas en H2/MySQL; tanda 3 no ejecutada. La tarjeta limita esta entrega a un atributo variable por producto, aunque el modelo inicial ejemplifique combinaciones de varios atributos.
+**Fuente funcional:** [S3 BE Variantes de producto](https://trello.com/c/uBmWofPG/58-s3-be-variantes-de-producto). **Diseño de referencia:** `docs/modelo-inicial.md` y `docs/Diagrama ECOMMERCE.drawio`. **Estado del documento:** Tandas 1 y 2 completas; tanda 3 implementada y verificada en backend, con cierre parcial por una falla ajena a productos en la suite frontend global. La tarjeta limita esta entrega a un atributo variable por producto, aunque el modelo inicial ejemplifique combinaciones de varios atributos.
+
+Las secciones «COMPROBADO EN EL CÓDIGO ACTUAL» y «Flujo actual» conservan el diagnóstico previo a la tanda 1 como planificación original; el estado posterior se documenta en los resultados de cada tanda.
 
 ## Decisiones acordadas para esta tarjeta
 
@@ -92,7 +94,7 @@ Si una validación falla, el servicio devuelve error de dominio antes de persist
 | --- | --- | --- | --- |
 | 1 | Persistencia, backfill y variante inicial en flujos actuales | Código actual | Completa |
 | 2 | API administrativa de variantes y reglas con características | 1 | Completa |
-| 3 | Lectura pública desde variantes y retiro de columnas duplicadas | 2 | Planificada |
+| 3 | Lectura pública desde variantes y retiro de columnas duplicadas | 2 | Parcial en verificación |
 
 ```text
 Tanda 1 → Tanda 2 → Tanda 3
@@ -434,7 +436,34 @@ TRATAMIENTO: validar la secuencia de actualización en staging antes de desplega
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** PARCIAL (implementación completa; suite frontend global no verde).
+
+**Cambios realizados:** selección pública desde variantes activas con desempate por ID, `selectedVariantId` y variantes públicas en detalle; precio/disponibilidad calculados en DTO públicos y administrativos; V11 retira la duplicación de `products`; alta/PUT heredados conservados para monovariante. Informe completo: [resultado de Tanda 3](s3-be-variantes-de-producto-tanda-3-resultado.md).
+
+**Diferencias respecto del plan:** ninguna funcional. El controller público mantuvo rutas y parámetros, por lo que no necesitó modificación.
+
+**Tests ejecutados:** suite backend completa en H2/MySQL, pruebas HTTP y migraciones V10/V11, `mvnw.cmd package -q -DskipTests`, suite frontend completa dos veces y regresión dirigida de productos/MFA.
+
+**Tests exitosos:** segunda suite backend con código 0: 621 pruebas en 106 clases, 0 fallas, 0 errores y 0 omisiones; `package` PASS; 40/40 pruebas frontend de productos y 57/57 en la corrida dirigida que incluye MFA PASS.
+
+**Tests fallidos:** la primera suite backend tuvo 1 error en una consulta histórica a la columna retirada, corregido y verificado en la segunda suite. La suite frontend global falló dos veces en el mismo test de navegación MFA ajeno al catálogo (264/265 PASS cada vez).
+
+**Incidentes:** INC-001 (Mockito detenido en sandbox), INC-002 (pruebas atadas a columnas antiguas), INC-003 (consulta histórica de subcategorías), INC-004 (falla MFA de la suite frontend global) e INC-005 (aviso de Surefire al cerrar la JVM); detalle y clasificación en el informe.
+
+**Tests faltantes:** ninguno de los planificados para esta tanda; staging, navegador y despliegue coordinado no se verificaron localmente. La suite frontend global permanece no verde por INC-004.
+
+**Riesgos residuales:** V11 y backend anterior son incompatibles, por lo que la secuencia de actualización debe validarse en staging. La prueba MFA global necesita una investigación separada. Surefire emitió un aviso de cierre pese al código de salida 0.
+
+**Decisiones pendientes descubiertas:** ninguna de arquitectura o producto.
+
+**Archivos modificados:** migración V11; modelo, repositorios, servicios y DTO de producto/variante; pruebas de producto, imágenes, características, subcategorías y migraciones; este plan y el informe de Tanda 3.
+
+**Criterio de cierre:**
+
+- [x] API pública selecciona y expone el ID correcto sin listar variantes inactivas.
+- [x] Precio/disponibilidad tienen una única fuente persistente; fotos ligadas a la ficha.
+- [x] H2, MySQL, HTTP, seguridad, `test`, `package` y regresión pertinente de productos documentados.
+- [ ] Suite frontend global verde; el test MFA de INC-004 falla fuera de los flujos de producto.
 
 ## Registro global de decisiones pendientes
 
@@ -447,7 +476,7 @@ Durante la ejecución, registrar cada incidente relevante como `INC-XXX` con tan
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY
+IMPLEMENTADO AL PLANIFICAR
 Producto con precio/disponibilidad → API administrativa y pública → miniatura/galería del producto
 
 OBJETIVO TRAS TANDA 1

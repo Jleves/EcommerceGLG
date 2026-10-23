@@ -88,6 +88,6 @@ class SubcategoryPersistenceIntegrationTest {
 
     private Product product(Category parent, String name) {
         return Product.builder().category(parent).nombre(name)
-                .precioReferencia(new BigDecimal("10.00")).disponible(true).build();
+                .build();
     }
 }

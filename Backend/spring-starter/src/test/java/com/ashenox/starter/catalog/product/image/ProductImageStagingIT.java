@@ -68,7 +68,7 @@ class ProductImageStagingIT {
             product = products.saveAndFlush(Product.builder().category(category)
                     .nombre("Tanda 1 prueba imagenes " + suffix)
                     .descripcion("Producto de prueba que permanece hasta la tanda 2")
-                    .precioReferencia(BigDecimal.ONE).disponible(false).build());
+                    .build());
         } else {
             product = products.findById(Long.parseLong(existingId)).orElseThrow();
             assertThat(product.getNombre()).startsWith("Tanda 1 prueba imagenes ");

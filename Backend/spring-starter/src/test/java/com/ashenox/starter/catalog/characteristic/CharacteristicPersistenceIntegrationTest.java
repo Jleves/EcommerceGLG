@@ -32,7 +32,7 @@ class CharacteristicPersistenceIntegrationTest {
         Category category = categories.saveAndFlush(Category.builder().nombre("Categoría " + suffix)
                 .nombreNormalizado(suffix).icono("icon").build());
         Product product = products.saveAndFlush(Product.builder().category(category).nombre("Arena")
-                .precioReferencia(new BigDecimal("10.00")).disponible(true).build());
+                .build());
         Characteristic definition = characteristics.saveAndFlush(Characteristic.builder()
                 .nombre("Marca " + suffix).nombreNormalizado("marca-" + suffix).build());
         var id = new ProductCharacteristicId(product.getId(), definition.getId());

@@ -37,7 +37,7 @@ class ProductVariantMigrationMySqlTest {
         }
 
         Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
-                .load().migrate();
+                .target(MigrationVersion.fromVersion("10")).load().migrate();
 
         try (var connection = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());

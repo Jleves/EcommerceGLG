@@ -19,7 +19,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.math.BigDecimal;
 
 @Entity
 @Table(name = "products")
@@ -47,12 +46,6 @@ public class Product extends EntidadAuditable {
 
     @Column(length = 1000)
     private String descripcion;
-
-    @Column(name = "precio_referencia", nullable = false, precision = 15, scale = 2)
-    private BigDecimal precioReferencia;
-
-    @Column(nullable = false)
-    private boolean disponible;
 
     @Column(nullable = false)
     @Builder.Default

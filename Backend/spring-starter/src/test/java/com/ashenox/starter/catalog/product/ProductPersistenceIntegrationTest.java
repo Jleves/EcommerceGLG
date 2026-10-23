@@ -4,6 +4,8 @@ import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,7 @@ class ProductPersistenceIntegrationTest {
 
     @Autowired private CategoryRepository categories;
     @Autowired private ProductRepository products;
+    @Autowired private ProductVariantRepository variants;
     @Autowired private EntityManager entityManager;
 
     @Test
@@ -32,9 +35,9 @@ class ProductPersistenceIntegrationTest {
                 .category(category)
                 .nombre("Pintura blanca")
                 .descripcion("Látex interior")
-                .precioReferencia(new BigDecimal("1234567890123.45"))
-                .disponible(false)
                 .build());
+        variants.saveAndFlush(ProductVariant.builder().product(saved)
+                .precioReferencia(new BigDecimal("1234567890123.45")).disponible(false).activo(true).build());
 
         assertThat(saved.getId()).isNotNull();
         entityManager.clear();
@@ -43,8 +46,9 @@ class ProductPersistenceIntegrationTest {
         assertThat(reloaded.getCategory().getId()).isEqualTo(category.getId());
         assertThat(reloaded.getNombre()).isEqualTo("Pintura blanca");
         assertThat(reloaded.getDescripcion()).isEqualTo("Látex interior");
-        assertThat(reloaded.getPrecioReferencia()).isEqualByComparingTo("1234567890123.45");
-        assertThat(reloaded.isDisponible()).isFalse();
+        var variant = variants.findByProductId(saved.getId()).orElseThrow();
+        assertThat(variant.getPrecioReferencia()).isEqualByComparingTo("1234567890123.45");
+        assertThat(variant.isDisponible()).isFalse();
         assertThat(reloaded.isActivo()).isTrue();
         assertThat(reloaded.isDestacado()).isFalse();
         assertThat(reloaded.getCreatedAt()).isNotNull();

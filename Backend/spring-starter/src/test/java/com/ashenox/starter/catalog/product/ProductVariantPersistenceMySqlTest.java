@@ -70,7 +70,7 @@ class ProductVariantPersistenceMySqlTest {
         Category category = categories.saveAndFlush(Category.builder().nombre("Categoría " + suffix)
                 .nombreNormalizado("categoria-" + suffix).icono("icon").build());
         return products.saveAndFlush(Product.builder().category(category).nombre("Producto " + suffix)
-                .precioReferencia(BigDecimal.ONE).disponible(true).build()).getId();
+                .build()).getId();
     }
 
     private void insert(Long productId, String sku, String normalizedSku, BigDecimal price) {

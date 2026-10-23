@@ -108,7 +108,7 @@ class SubcategoryDeleteMySqlTest {
 
     private Product product(Category category, Subcategory subcategory) {
         return products.saveAndFlush(Product.builder().category(category).subcategory(subcategory)
-                .nombre("Product " + UUID.randomUUID()).precioReferencia(new BigDecimal("10.00"))
-                .disponible(true).build());
+                .nombre("Product " + UUID.randomUUID())
+                .build());
     }
 }

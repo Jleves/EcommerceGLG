@@ -43,8 +43,10 @@ class SubcategoryMigrationUpgradeMySqlTest {
         try (var connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
              var statement = connection.createStatement();
              var result = statement.executeQuery("""
-                     SELECT p.nombre, p.category_id, p.subcategory_id, p.precio_referencia, c.nombre AS category_name
+                     SELECT p.nombre, p.category_id, p.subcategory_id,
+                            v.precio_referencia, c.nombre AS category_name
                      FROM products p JOIN categories c ON c.id = p.category_id
+                     JOIN product_variants v ON v.product_id = p.id
                      WHERE p.nombre = 'Arena'
                      """)) {
             assertThat(result.next()).isTrue();

@@ -51,6 +51,6 @@ class ProductListingMySqlTest {
 
     private Product product(Category category, String name, boolean active) {
         return products.saveAndFlush(Product.builder().category(category).nombre(name)
-                .precioReferencia(new BigDecimal("12.50")).disponible(true).activo(active).build());
+                .activo(active).build());
     }
 }

@@ -11,8 +11,8 @@ public record ProductSummaryResponse(Long id, String nombre, Long categoriaId, S
     public static ProductSummaryResponse from(Product product, List<ProductVariantResponse> variantes) {
         ProductVariantResponse initial = variantes.isEmpty() ? null : variantes.getFirst();
         return new ProductSummaryResponse(product.getId(), product.getNombre(), product.getCategory().getId(),
-                product.getDescripcion(), initial == null ? product.getPrecioReferencia() : initial.precioReferencia(),
-                initial == null ? product.isDisponible() : initial.disponible(),
+                product.getDescripcion(), initial == null ? null : initial.precioReferencia(),
+                initial != null && initial.disponible(),
                 product.isActivo(), product.isDestacado(),
                 product.getSubcategory() == null ? null : product.getSubcategory().getId(),
                 initial == null ? null : initial.id(), variantes);

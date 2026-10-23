@@ -248,7 +248,7 @@ class ProductImageFlowTest {
         Category category = categories.saveAndFlush(Category.builder().nombre("Imagen " + suffix)
                 .nombreNormalizado("imagen-" + suffix).icono("test").build());
         return products.saveAndFlush(Product.builder().category(category).nombre("Imagen " + suffix)
-                .precioReferencia(BigDecimal.ONE).disponible(true).build()).getId();
+                .build()).getId();
     }
 
     private MockMultipartFile file() throws Exception {

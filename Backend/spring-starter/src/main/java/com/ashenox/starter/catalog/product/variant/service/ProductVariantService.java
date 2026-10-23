@@ -74,7 +74,7 @@ public class ProductVariantService {
 
     @Transactional
     public ProductVariantResponse update(Long productId, Long variantId, UpdateVariantRequest request) {
-        Product product = lockProduct(productId);
+        lockProduct(productId);
         List<ProductVariant> existing = variants.findByProductIdOrderByIdAsc(productId);
         ProductVariant variant = ownedVariant(existing, variantId);
         List<VariantCharacteristic> existingAttributes = attributes.findByVariantProductId(productId);
@@ -103,9 +103,6 @@ public class ProductVariantService {
             value.setCharacteristic(definition);
             setValue(value, request.valor(), request.unidad());
             attributes.saveAndFlush(value);
-        }
-        if (existing.getFirst().getId().equals(variantId)) {
-            syncLegacy(product, variant);
         }
         return ProductVariantResponse.from(variant, definition == null ? null
                 : attributes.findById(variantId).orElseThrow());
@@ -194,12 +191,6 @@ public class ProductVariantService {
     private ProductVariant ownedVariant(List<ProductVariant> values, Long id) {
         return values.stream().filter(item -> item.getId().equals(id)).findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("La variante solicitada no existe."));
-    }
-
-    private void syncLegacy(Product product, ProductVariant variant) {
-        product.setPrecioReferencia(variant.getPrecioReferencia());
-        product.setDisponible(variant.isDisponible());
-        products.saveAndFlush(product);
     }
 
     private static String clean(String value) {

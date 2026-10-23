@@ -4,6 +4,8 @@ import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,20 +35,21 @@ class ProductPersistenceMySqlTest {
 
     @Autowired private CategoryRepository categories;
     @Autowired private ProductRepository products;
+    @Autowired private ProductVariantRepository variants;
     @Autowired private JdbcTemplate jdbc;
 
     @Test
     void mysqlPersistsExactDecimalAndAuditFields() {
         Category category = category();
         Product saved = products.saveAndFlush(Product.builder()
-                .category(category).nombre("Arena")
-                .precioReferencia(new BigDecimal("1234567890123.45"))
-                .disponible(true).build());
+                .category(category).nombre("Arena").build());
+        ProductVariant variant = variants.saveAndFlush(ProductVariant.builder().product(saved)
+                .precioReferencia(new BigDecimal("1234567890123.45")).disponible(true).activo(true).build());
 
         BigDecimal storedPrice = jdbc.queryForObject(
-                "SELECT precio_referencia FROM products WHERE id = ?", BigDecimal.class, saved.getId());
+                "SELECT precio_referencia FROM product_variants WHERE id = ?", BigDecimal.class, variant.getId());
         assertThat(storedPrice).isEqualByComparingTo("1234567890123.45");
-        assertThat(products.findById(saved.getId()).orElseThrow().getPrecioReferencia())
+        assertThat(variants.findById(variant.getId()).orElseThrow().getPrecioReferencia())
                 .isEqualByComparingTo("1234567890123.45");
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM products WHERE id = ? AND created_at IS NOT NULL AND updated_at IS NOT NULL",
@@ -56,17 +59,18 @@ class ProductPersistenceMySqlTest {
     @Test
     void mysqlRejectsMissingCategoryAndNonPositivePrice() {
         Category category = category();
-        assertThatThrownBy(() -> insert(0L, new BigDecimal("1.00")))
+        assertThatThrownBy(() -> insert(0L))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertCheckRejects(category.getId(), new BigDecimal("0.00"));
-        assertCheckRejects(category.getId(), new BigDecimal("-1.00"));
+        Product saved = products.saveAndFlush(Product.builder().category(category).nombre("Prueba").build());
+        assertCheckRejects(saved.getId(), new BigDecimal("0.00"));
+        assertCheckRejects(saved.getId(), new BigDecimal("-1.00"));
     }
 
     @Test
     void mysqlForeignKeyPreventsDeletingCategoryWithProduct() {
         Category category = category();
         products.saveAndFlush(Product.builder().category(category).nombre("Cemento")
-                .precioReferencia(new BigDecimal("10.00")).disponible(true).build());
+                .build());
 
         assertThatThrownBy(() -> jdbc.update("DELETE FROM categories WHERE id = ?", category.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -79,15 +83,19 @@ class ProductPersistenceMySqlTest {
                 .icono("icon").build());
     }
 
-    private void insert(Long categoryId, BigDecimal price) {
+    private void insert(Long categoryId) {
         jdbc.update("""
-                INSERT INTO products (category_id, nombre, precio_referencia, disponible, created_at, updated_at)
-                VALUES (?, 'Prueba', ?, TRUE, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-                """, categoryId, price);
+                INSERT INTO products (category_id, nombre, created_at, updated_at)
+                VALUES (?, 'Prueba', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+                """, categoryId);
     }
 
-    private void assertCheckRejects(Long categoryId, BigDecimal price) {
-        assertThatThrownBy(() -> insert(categoryId, price))
+    private void assertCheckRejects(Long productId, BigDecimal price) {
+        assertThatThrownBy(() -> jdbc.update("""
+                INSERT INTO product_variants
+                    (product_id, precio_referencia, disponible, activo, created_at, updated_at)
+                VALUES (?, ?, TRUE, TRUE, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+                """, productId, price))
                 .hasCauseInstanceOf(SQLException.class)
                 .satisfies(failure -> assertThat(((SQLException) failure.getCause()).getErrorCode())
                         .isEqualTo(3819));

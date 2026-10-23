@@ -49,8 +49,8 @@ class ProductServiceIntegrationTest {
         assertThat(existing.getCategory().getId()).isEqualTo(category.getId());
         assertThat(existing.getNombre()).isEqualTo("Arena");
         assertThat(existing.getDescripcion()).isEqualTo("Para obra");
-        assertThat(existing.getPrecioReferencia()).isEqualByComparingTo("15.25");
-        assertThat(existing.isDisponible()).isTrue();
+        assertThat(variants.findByProductId(existing.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("15.25");
+        assertThat(variants.findByProductId(existing.getId()).orElseThrow().isDisponible()).isTrue();
         assertThat(existing.isActivo()).isTrue();
         assertThat(existing.isDestacado()).isFalse();
         assertThatThrownBy(() -> productService.create(request))
@@ -109,8 +109,8 @@ class ProductServiceIntegrationTest {
         assertThat(reloaded.getCategory().getId()).isEqualTo(inactiveCategory.getId());
         assertThat(reloaded.getNombre()).isEqualTo("Arena fina");
         assertThat(reloaded.getDescripcion()).isNull();
-        assertThat(reloaded.getPrecioReferencia()).isEqualByComparingTo("1234567890123.45");
-        assertThat(reloaded.isDisponible()).isTrue();
+        assertThat(variants.findByProductId(reloaded.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("1234567890123.45");
+        assertThat(variants.findByProductId(reloaded.getId()).orElseThrow().isDisponible()).isTrue();
         assertThat(reloaded.isActivo()).isFalse();
         assertThat(reloaded.isDestacado()).isTrue();
         assertThat(reloaded.getCreatedAt()).isEqualTo(createdAt);
@@ -134,8 +134,8 @@ class ProductServiceIntegrationTest {
         assertThat(unchanged.getCategory().getId()).isEqualTo(category.getId());
         assertThat(unchanged.getNombre()).isEqualTo("Original");
         assertThat(unchanged.getDescripcion()).isEqualTo("Antes");
-        assertThat(unchanged.getPrecioReferencia()).isEqualByComparingTo("10.00");
-        assertThat(unchanged.isDisponible()).isFalse();
+        assertThat(variants.findByProductId(unchanged.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("10.00");
+        assertThat(variants.findByProductId(unchanged.getId()).orElseThrow().isDisponible()).isFalse();
     }
 
     @Test
@@ -169,8 +169,8 @@ class ProductServiceIntegrationTest {
         assertThat(categories.findById(category.getId()).orElseThrow().isActivo()).isFalse();
         assertThat(reloaded.getNombre()).isEqualTo("Arena");
         assertThat(reloaded.getDescripcion()).isEqualTo("Para obra");
-        assertThat(reloaded.getPrecioReferencia()).isEqualByComparingTo("125.50");
-        assertThat(reloaded.isDisponible()).isFalse();
+        assertThat(variants.findByProductId(reloaded.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("125.50");
+        assertThat(variants.findByProductId(reloaded.getId()).orElseThrow().isDisponible()).isFalse();
         assertThat(reloaded.isDestacado()).isTrue();
         assertThat(reloaded.getCreatedAt()).isEqualTo(createdAt);
     }

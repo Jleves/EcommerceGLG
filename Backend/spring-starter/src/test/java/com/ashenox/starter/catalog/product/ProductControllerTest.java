@@ -83,8 +83,8 @@ class ProductControllerTest {
             assertThat(variant.isDisponible()).isTrue();
             assertThat(variant.isActivo()).isTrue();
             assertThat(product.getCategory().getId()).isEqualTo(category.getId());
-            assertThat(product.getPrecioReferencia()).isEqualByComparingTo(new BigDecimal("12.50"));
-            assertThat(product.isDisponible()).isTrue();
+            assertThat(variants.findByProductId(product.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo(new BigDecimal("12.50"));
+            assertThat(variants.findByProductId(product.getId()).orElseThrow().isDisponible()).isTrue();
             assertThat(product.isActivo()).isTrue();
             assertThat(product.isDestacado()).isFalse();
         });
@@ -165,7 +165,7 @@ class ProductControllerTest {
         var original = products.findAll().getFirst();
         assertThat(original.getCategory().getId()).isEqualTo(category.getId());
         assertThat(original.isActivo()).isTrue();
-        assertThat(original.getPrecioReferencia()).isEqualByComparingTo("12.50");
+        assertThat(variants.findByProductId(original.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("12.50");
         mvc.perform(post(PATH).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isConflict());
         mvc.perform(post(CATEGORIES + "/" + category.getId() + "/reactivate").cookie(access).with(csrf()))
@@ -184,7 +184,6 @@ class ProductControllerTest {
         for (Role role : Role.values()) {
             Product product = saveWithVariant(Product.builder().category(activeCategory)
                     .nombre("Original " + role).descripcion("Antes")
-                    .precioReferencia(new BigDecimal("10.00")).disponible(false)
                     .activo(true).destacado(true).build());
             Cookie access = access(role);
             String item = PATH + "/" + product.getId();
@@ -214,8 +213,8 @@ class ProductControllerTest {
             assertThat(saved.getCategory().getId()).isEqualTo(inactiveCategory.getId());
             assertThat(saved.getNombre()).isEqualTo("Arena " + role);
             assertThat(saved.getDescripcion()).isEqualTo("Material");
-            assertThat(saved.getPrecioReferencia()).isEqualByComparingTo("125.50");
-            assertThat(saved.isDisponible()).isTrue();
+            assertThat(variants.findByProductId(saved.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("125.50");
+            assertThat(variants.findByProductId(saved.getId()).orElseThrow().isDisponible()).isTrue();
             assertThat(saved.isActivo()).isTrue();
             assertThat(saved.isDestacado()).isTrue();
         }
@@ -226,8 +225,8 @@ class ProductControllerTest {
     void updateValidationAndMalformedInputLeaveProductUnchanged() throws Exception {
         Category category = category(true);
         Product product = saveWithVariant(Product.builder().category(category)
-                .nombre("Original").descripcion("Antes").precioReferencia(new BigDecimal("10.00"))
-                .disponible(false).activo(true).destacado(false).build());
+                .nombre("Original").descripcion("Antes")
+                .activo(true).destacado(false).build());
         Cookie access = access(Role.ADMIN);
         String item = PATH + "/" + product.getId();
         String valid = body(category.getId(), "Arena", "12.50", true);
@@ -261,8 +260,8 @@ class ProductControllerTest {
         assertThat(products.count()).isEqualTo(1);
         assertThat(unchanged.getNombre()).isEqualTo("Original");
         assertThat(unchanged.getDescripcion()).isEqualTo("Antes");
-        assertThat(unchanged.getPrecioReferencia()).isEqualByComparingTo("10.00");
-        assertThat(unchanged.isDisponible()).isFalse();
+        assertThat(variants.findByProductId(unchanged.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("10.00");
+        assertThat(variants.findByProductId(unchanged.getId()).orElseThrow().isDisponible()).isFalse();
         assertThat(unchanged.isActivo()).isTrue();
     }
 
@@ -270,8 +269,8 @@ class ProductControllerTest {
     void missingReferencesReturnApiErrorWithoutChangingProduct() throws Exception {
         Category category = category(true);
         Product product = saveWithVariant(Product.builder().category(category)
-                .nombre("Original").precioReferencia(new BigDecimal("10.00"))
-                .disponible(false).activo(true).build());
+                .nombre("Original")
+                .activo(true).build());
         Cookie access = access(Role.USER);
         String valid = body(category.getId(), "Nuevo", "12.50", true);
 
@@ -299,8 +298,8 @@ class ProductControllerTest {
     void editAndStatusRoutesRequireSessionCsrfAndAllowedRole() throws Exception {
         Category category = category(true);
         Product product = saveWithVariant(Product.builder().category(category)
-                .nombre("Original").precioReferencia(new BigDecimal("10.00"))
-                .disponible(false).activo(true).build());
+                .nombre("Original")
+                .activo(true).build());
         Cookie access = access(Role.USER);
         String item = PATH + "/" + product.getId();
         String update = body(category.getId(), "Nuevo", "12.50", true);
@@ -322,7 +321,7 @@ class ProductControllerTest {
         Product unchanged = products.findById(product.getId()).orElseThrow();
         assertThat(products.count()).isEqualTo(1);
         assertThat(unchanged.getNombre()).isEqualTo("Original");
-        assertThat(unchanged.getPrecioReferencia()).isEqualByComparingTo("10.00");
+        assertThat(variants.findByProductId(unchanged.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("10.00");
         assertThat(unchanged.isActivo()).isTrue();
     }
 
@@ -358,8 +357,8 @@ class ProductControllerTest {
         assertThat(saved.getId()).isEqualTo(productId);
         assertThat(saved.getCategory().getId()).isEqualTo(inactiveCategory.getId());
         assertThat(saved.getNombre()).isEqualTo("Final");
-        assertThat(saved.getPrecioReferencia()).isEqualByComparingTo("15.75");
-        assertThat(saved.isDisponible()).isFalse();
+        assertThat(variants.findByProductId(saved.getId()).orElseThrow().getPrecioReferencia()).isEqualByComparingTo("15.75");
+        assertThat(variants.findByProductId(saved.getId()).orElseThrow().isDisponible()).isFalse();
         assertThat(saved.isActivo()).isTrue();
         assertThat(saved.isDestacado()).isFalse();
     }
@@ -372,7 +371,7 @@ class ProductControllerTest {
     private Product saveWithVariant(Product product) {
         Product saved = products.saveAndFlush(product);
         variants.saveAndFlush(ProductVariant.builder().product(saved)
-                .precioReferencia(saved.getPrecioReferencia()).disponible(saved.isDisponible())
+                .precioReferencia(new BigDecimal("10.00")).disponible(false)
                 .activo(true).build());
         return saved;
     }

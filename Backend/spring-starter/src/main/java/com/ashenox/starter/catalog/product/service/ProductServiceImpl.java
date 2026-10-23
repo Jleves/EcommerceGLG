@@ -141,8 +141,6 @@ public class ProductServiceImpl implements ProductService {
                 .subcategory(subcategory)
                 .nombre(request.nombre().strip())
                 .descripcion(request.descripcion())
-                .precioReferencia(initial.precioReferencia())
-                .disponible(initial.disponible())
                 .activo(true)
                 .destacado(false)
                 .build();
@@ -260,11 +258,9 @@ public class ProductServiceImpl implements ProductService {
         ProductVariant variant = variants.getFirst();
         if (variants.size() == 1) {
             if (request.precioReferenciaPresente()) {
-                product.setPrecioReferencia(request.precioReferencia());
                 variant.setPrecioReferencia(request.precioReferencia());
             }
             if (request.disponiblePresente()) {
-                product.setDisponible(request.disponible());
                 variant.setDisponible(request.disponible());
             }
         }

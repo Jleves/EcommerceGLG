@@ -119,7 +119,7 @@ class ProductImageMySqlIT {
                 .nombreNormalizado("concurrencia-imagen-" + suffix).icono("test").build());
         categoryId = category.getId();
         Product product = products.saveAndFlush(Product.builder().category(category).nombre("Concurrencia imagen " + suffix)
-                .precioReferencia(BigDecimal.ONE).disponible(false).build());
+                .build());
         productId = product.getId();
     }
 

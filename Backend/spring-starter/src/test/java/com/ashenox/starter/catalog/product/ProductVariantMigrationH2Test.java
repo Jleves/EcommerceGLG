@@ -32,7 +32,8 @@ class ProductVariantMigrationH2Test {
                     """);
         }
 
-        Flyway.configure().dataSource(url, "sa", "").load().migrate();
+        Flyway.configure().dataSource(url, "sa", "")
+                .target(MigrationVersion.fromVersion("10")).load().migrate();
 
         try (var connection = DriverManager.getConnection(url, "sa", "");
              var statement = connection.createStatement();

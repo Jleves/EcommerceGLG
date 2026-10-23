@@ -140,9 +140,9 @@ class ProductListingTest {
 
     private Product product(Category category, String name, boolean active) {
         Product saved = products.saveAndFlush(Product.builder().category(category).nombre(name).descripcion("Material")
-                .precioReferencia(new BigDecimal("12.50")).disponible(true).activo(active).destacado(false).build());
-        variants.saveAndFlush(ProductVariant.builder().product(saved).precioReferencia(saved.getPrecioReferencia())
-                .disponible(saved.isDisponible()).activo(true).build());
+                .activo(active).destacado(false).build());
+        variants.saveAndFlush(ProductVariant.builder().product(saved).precioReferencia(new BigDecimal("12.50"))
+                .disponible(true).activo(true).build());
         return saved;
     }
 

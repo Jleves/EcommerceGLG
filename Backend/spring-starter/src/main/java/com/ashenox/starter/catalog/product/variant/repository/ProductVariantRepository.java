@@ -2,6 +2,7 @@ package com.ashenox.starter.catalog.product.variant.repository;
 
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
 import java.util.List;
@@ -12,5 +13,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     List<ProductVariant> findByProductIdIn(Collection<Long> productIds);
     List<ProductVariant> findByProductIdOrderByIdAsc(Long productId);
     List<ProductVariant> findByProductIdInOrderByIdAsc(Collection<Long> productIds);
+    @Query("select variant from ProductVariant variant where variant.product.id in :productIds and variant.activo = true order by variant.product.id, variant.id")
+    List<ProductVariant> findActiveByProductIds(Collection<Long> productIds);
+    List<ProductVariant> findByProductIdAndActivoTrueOrderByIdAsc(Long productId);
     boolean existsBySkuNormalizadoAndIdNot(String skuNormalizado, Long id);
 }

@@ -12,6 +12,9 @@ import com.ashenox.starter.catalog.product.image.repository.ProductImageReposito
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.model.VariantCharacteristic;
+import com.ashenox.starter.catalog.product.variant.repository.VariantCharacteristicRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +55,7 @@ class PublicProductHttpTest {
     @Autowired MockMvc mvc;
     @Autowired ProductRepository products;
     @Autowired ProductVariantRepository variants;
+    @Autowired VariantCharacteristicRepository variantCharacteristics;
     @Autowired CategoryRepository categories;
     @Autowired CharacteristicRepository characteristics;
     @Autowired ProductCharacteristicRepository productCharacteristics;
@@ -61,10 +65,83 @@ class PublicProductHttpTest {
     void clean() {
         productCharacteristics.deleteAll();
         images.deleteAll();
+        variantCharacteristics.deleteAll();
         variants.deleteAll();
         products.deleteAll();
         characteristics.deleteAll();
         categories.deleteAll();
+    }
+
+    @Test
+    void listSelectsCheapestAvailableThenCheapestActiveAndCountsProducts() throws Exception {
+        Category category = category();
+        Product available = product(category, "A", true, true);
+        ProductVariant first = variants.findByProductId(available.getId()).orElseThrow();
+        first.setPrecioReferencia(new BigDecimal("20.00"));
+        variants.saveAndFlush(first);
+        variant(available, "9.00", false, true);
+        ProductVariant selected = variant(available, "15.00", true, true);
+        variant(available, "15.00", true, true);
+        variant(available, "1.00", true, false);
+        Product unavailable = product(category, "B", true, false);
+        ProductVariant fallback = variant(unavailable, "5.00", false, true);
+        products.saveAndFlush(Product.builder().category(category).nombre("C sin variantes").activo(true).build());
+        product(category, "D oculto", false, true);
+
+        mvc.perform(get(PATH).param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.content[0].id").value(available.getId()))
+                .andExpect(jsonPath("$.content[0].selectedVariantId").value(selected.getId()))
+                .andExpect(jsonPath("$.content[0].precioReferencia").value(15.00))
+                .andExpect(jsonPath("$.content[0].disponible").value(true));
+        mvc.perform(get(PATH).param("page", "1").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(unavailable.getId()))
+                .andExpect(jsonPath("$.content[0].selectedVariantId").value(fallback.getId()))
+                .andExpect(jsonPath("$.content[0].precioReferencia").value(5.00))
+                .andExpect(jsonPath("$.content[0].disponible").value(false));
+    }
+
+    @Test
+    void detailExposesOnlyActiveVariantsWithSkuAndSharedGallery() throws Exception {
+        Category category = category();
+        Product product = product(category, "Pintura", true, true);
+        ProductVariant initial = variants.findByProductId(product.getId()).orElseThrow();
+        initial.setSku("ROJO");
+        initial.setSkuNormalizado("rojo");
+        variants.saveAndFlush(initial);
+        ProductVariant hidden = variant(product, "1.00", true, false);
+        Characteristic color = characteristics.saveAndFlush(Characteristic.builder()
+                .nombre("Color").nombreNormalizado("color-" + UUID.randomUUID()).build());
+        variantCharacteristics.saveAndFlush(VariantCharacteristic.builder().variant(initial)
+                .characteristic(color).valor("Rojo").valorNormalizado("rojo").unidad("L")
+                .unidadNormalizada("l").build());
+        image(product, 1, true, "PUBLISHED");
+
+        mvc.perform(get(PATH + "/" + product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.selectedVariantId").value(initial.getId()))
+                .andExpect(jsonPath("$.variantes.length()").value(1))
+                .andExpect(jsonPath("$.variantes[0].id").value(initial.getId()))
+                .andExpect(jsonPath("$.variantes[0].sku").value("ROJO"))
+                .andExpect(jsonPath("$.variantes[0].caracteristicaNombre").value("Color"))
+                .andExpect(jsonPath("$.variantes[0].valor").value("Rojo"))
+                .andExpect(jsonPath("$.variantes[0].unidad").value("L"))
+                .andExpect(jsonPath("$.images.length()").value(1));
+        ProductVariant alternate = variant(product, "8.00", true, true);
+        mvc.perform(get(PATH + "/" + product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.selectedVariantId").value(alternate.getId()))
+                .andExpect(jsonPath("$.images.length()").value(1));
+        initial.setActivo(false);
+        alternate.setActivo(false);
+        variants.saveAndFlush(initial);
+        variants.saveAndFlush(alternate);
+        mvc.perform(get(PATH + "/" + product.getId())).andExpect(status().isNotFound());
+        // La variante inactiva sigue almacenada y nunca fue publicada.
+        org.assertj.core.api.Assertions.assertThat(variants.existsById(hidden.getId())).isTrue();
     }
 
     @Test
@@ -157,9 +234,16 @@ class PublicProductHttpTest {
     }
 
     private Product product(Category category, String name, boolean active, boolean available) {
-        return products.saveAndFlush(Product.builder().category(category).nombre(name)
-                .descripcion("Material").precioReferencia(new BigDecimal("12.50"))
-                .disponible(available).activo(active).build());
+        Product saved = products.saveAndFlush(Product.builder().category(category).nombre(name)
+                .descripcion("Material").activo(active).build());
+        variants.saveAndFlush(ProductVariant.builder().product(saved).precioReferencia(new BigDecimal("12.50"))
+                .disponible(available).activo(true).build());
+        return saved;
+    }
+
+    private ProductVariant variant(Product product, String price, boolean available, boolean active) {
+        return variants.saveAndFlush(ProductVariant.builder().product(product)
+                .precioReferencia(new BigDecimal(price)).disponible(available).activo(active).build());
     }
 
     private ProductImage image(Product product, int position, boolean primary, String status) {

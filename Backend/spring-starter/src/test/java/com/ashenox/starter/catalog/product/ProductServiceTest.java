@@ -71,8 +71,7 @@ class ProductServiceTest {
         verify(products).saveAndFlush(argThat(product -> product.getCategory() == category
                 && product.getNombre().equals("Arena fina")
                 && product.getDescripcion().equals("Material de obra")
-                && product.getPrecioReferencia().compareTo(new BigDecimal("125.50")) == 0
-                && !product.isDisponible() && product.isActivo() && !product.isDestacado()));
+                && product.isActivo() && !product.isDestacado()));
         assertThat(response.id()).isEqualTo(11L);
         assertThat(response.nombre()).isEqualTo("Arena fina");
         assertThat(response.categoriaId()).isEqualTo(7L);
@@ -120,8 +119,8 @@ class ProductServiceTest {
         Category previous = Category.builder().id(7L).activo(true).build();
         Category destination = Category.builder().id(8L).activo(false).build();
         Product product = Product.builder().id(11L).category(previous).nombre("Original")
-                .descripcion("Anterior").precioReferencia(new BigDecimal("10.00"))
-                .disponible(false).activo(false).destacado(true).build();
+                .descripcion("Anterior")
+                .activo(false).destacado(true).build();
         when(products.lockById(11L)).thenReturn(Optional.of(product));
         when(categories.findById(8L)).thenReturn(Optional.of(destination));
         when(products.saveAndFlush(product)).thenReturn(product);
@@ -131,8 +130,7 @@ class ProductServiceTest {
 
         verify(products).saveAndFlush(argThat(saved -> saved.getCategory() == destination
                 && saved.getNombre().equals("Arena fina") && saved.getDescripcion() == null
-                && saved.getPrecioReferencia().compareTo(new BigDecimal("125.50")) == 0
-                && saved.isDisponible() && !saved.isActivo() && saved.isDestacado()));
+                && !saved.isActivo() && saved.isDestacado()));
         verify(categories).findById(8L);
         verify(categories, never()).lockById(8L);
         assertThat(response.id()).isEqualTo(11L);
@@ -161,8 +159,8 @@ class ProductServiceTest {
     void missingCategoryDoesNotSaveOrChangeProduct() {
         Category previous = Category.builder().id(7L).activo(true).build();
         Product product = Product.builder().id(11L).category(previous).nombre("Original")
-                .descripcion("Anterior").precioReferencia(new BigDecimal("10.00"))
-                .disponible(false).activo(true).destacado(false).build();
+                .descripcion("Anterior")
+                .activo(true).destacado(false).build();
         when(products.lockById(11L)).thenReturn(Optional.of(product));
 
         assertThatThrownBy(() -> service.update(11L, updateRequest("Nuevo", 99L)))
@@ -178,8 +176,7 @@ class ProductServiceTest {
     @Test
     void updateAllowsNameAlreadyUsedByAnotherProduct() {
         Product product = Product.builder().id(11L).category(Category.builder().id(7L).build())
-                .nombre("Original").descripcion("Antes").precioReferencia(new BigDecimal("10.00"))
-                .disponible(false).build();
+                .nombre("Original").descripcion("Antes").build();
         when(products.lockById(11L)).thenReturn(Optional.of(product));
         when(categories.findById(7L)).thenReturn(Optional.of(product.getCategory()));
         when(products.saveAndFlush(product)).thenReturn(product);
@@ -195,8 +192,8 @@ class ProductServiceTest {
     void statusTransitionsAreIdempotentAndKeepAllOtherData() {
         Category inactiveCategory = Category.builder().id(7L).activo(false).build();
         Product product = Product.builder().id(11L).category(inactiveCategory).nombre("Arena")
-                .descripcion("Para obra").precioReferencia(new BigDecimal("125.50"))
-                .disponible(false).activo(true).destacado(true).build();
+                .descripcion("Para obra")
+                .activo(true).destacado(true).build();
         when(products.lockById(11L)).thenReturn(Optional.of(product));
         when(products.saveAndFlush(product)).thenReturn(product);
 

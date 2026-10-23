@@ -143,7 +143,7 @@ class ProductImageControllerTest {
         Category category = categories.saveAndFlush(Category.builder().nombre("HTTP " + suffix)
                 .nombreNormalizado("http-" + suffix).icono("test").build());
         return products.saveAndFlush(Product.builder().category(category).nombre("HTTP " + suffix)
-                .precioReferencia(BigDecimal.ONE).disponible(true).build()).getId();
+                .build()).getId();
     }
 
     private MockMultipartFile file() throws Exception {

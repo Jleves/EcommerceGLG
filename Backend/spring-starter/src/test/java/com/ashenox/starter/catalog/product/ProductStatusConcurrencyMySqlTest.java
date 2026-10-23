@@ -69,8 +69,8 @@ class ProductStatusConcurrencyMySqlTest {
         assertThat(saved.getCategory().getId()).isEqualTo(category.getId());
         assertThat(saved.getNombre()).isEqualTo("Arena");
         assertThat(saved.getDescripcion()).isEqualTo("Para obra");
-        assertThat(saved.getPrecioReferencia()).isEqualByComparingTo("125.50");
-        assertThat(saved.isDisponible()).isFalse();
+        assertThat(productService.getById(saved.getId()).precioReferencia()).isEqualByComparingTo("125.50");
+        assertThat(productService.getById(saved.getId()).disponible()).isFalse();
     }
 
     private static void await(CountDownLatch latch) {
