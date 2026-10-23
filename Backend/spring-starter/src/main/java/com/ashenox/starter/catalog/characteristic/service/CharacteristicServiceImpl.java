@@ -6,6 +6,8 @@ import com.ashenox.starter.catalog.characteristic.dto.UpdateCharacteristicReques
 import com.ashenox.starter.catalog.characteristic.model.Characteristic;
 import com.ashenox.starter.catalog.characteristic.repository.CharacteristicRepository;
 import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
+import com.ashenox.starter.catalog.product.variant.repository.VariantCharacteristicRepository;
+import com.ashenox.starter.catalog.product.variant.service.ProductVariantConflictException;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class CharacteristicServiceImpl implements CharacteristicService {
     private final CharacteristicRepository repository;
     private final ProductCharacteristicRepository productCharacteristicRepository;
+    private final VariantCharacteristicRepository variantCharacteristicRepository;
 
     @Override
     @Transactional
@@ -31,7 +34,7 @@ public class CharacteristicServiceImpl implements CharacteristicService {
             throw new CharacteristicConflictException();
         }
         return CharacteristicResponse.from(repository.saveAndFlush(Characteristic.builder()
-                .nombre(nombre).nombreNormalizado(normalized).build()), 0);
+                .nombre(nombre).nombreNormalizado(normalized).build()), 0, 0);
     }
 
     @Override
@@ -40,8 +43,12 @@ public class CharacteristicServiceImpl implements CharacteristicService {
         List<Characteristic> definitions = repository.findAllByOrderByNombreAscIdAsc();
         Map<Long, Long> counts = productCharacteristicRepository.countAllByCharacteristic().stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        Map<Long, Long> variantCounts = variantCharacteristicRepository.countAllByCharacteristic().stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         return definitions.stream()
-                .map(definition -> CharacteristicResponse.from(definition, counts.getOrDefault(definition.getId(), 0L)))
+                .map(definition -> CharacteristicResponse.from(definition,
+                        counts.getOrDefault(definition.getId(), 0L),
+                        variantCounts.getOrDefault(definition.getId(), 0L)))
                 .toList();
     }
 
@@ -50,7 +57,8 @@ public class CharacteristicServiceImpl implements CharacteristicService {
     public CharacteristicResponse getById(Long id) {
         Characteristic definition = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe."));
-        return CharacteristicResponse.from(definition, productCharacteristicRepository.countByCharacteristic_Id(id));
+        return CharacteristicResponse.from(definition, productCharacteristicRepository.countByCharacteristic_Id(id),
+                variantCharacteristicRepository.countByCharacteristicId(id));
     }
 
     @Override
@@ -66,7 +74,8 @@ public class CharacteristicServiceImpl implements CharacteristicService {
         definition.setNombre(nombre);
         definition.setNombreNormalizado(normalized);
         return CharacteristicResponse.from(repository.saveAndFlush(definition),
-                productCharacteristicRepository.countByCharacteristic_Id(id));
+                productCharacteristicRepository.countByCharacteristic_Id(id),
+                variantCharacteristicRepository.countByCharacteristicId(id));
     }
 
     @Override
@@ -74,6 +83,9 @@ public class CharacteristicServiceImpl implements CharacteristicService {
     public void delete(Long id) {
         Characteristic definition = repository.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe."));
+        if (variantCharacteristicRepository.existsByCharacteristicId(id)) {
+            throw new ProductVariantConflictException("La característica está en uso por variantes.");
+        }
         productCharacteristicRepository.deleteByCharacteristicId(id);
         repository.delete(definition);
         repository.flush();

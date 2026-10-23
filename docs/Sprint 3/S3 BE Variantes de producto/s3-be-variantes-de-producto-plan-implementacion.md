@@ -1,6 +1,6 @@
 # S3 BE — Variantes de producto: plan de implementación
 
-**Fuente funcional:** [S3 BE Variantes de producto](https://trello.com/c/uBmWofPG/58-s3-be-variantes-de-producto). **Diseño de referencia:** `docs/modelo-inicial.md` y `docs/Diagrama ECOMMERCE.drawio`. **Estado del documento:** Tanda 1 completa y verificada en H2/MySQL; tandas 2 y 3 no ejecutadas. La tarjeta limita esta entrega a un atributo variable por producto, aunque el modelo inicial ejemplifique combinaciones de varios atributos.
+**Fuente funcional:** [S3 BE Variantes de producto](https://trello.com/c/uBmWofPG/58-s3-be-variantes-de-producto). **Diseño de referencia:** `docs/modelo-inicial.md` y `docs/Diagrama ECOMMERCE.drawio`. **Estado del documento:** Tandas 1 y 2 completas y verificadas en H2/MySQL; tanda 3 no ejecutada. La tarjeta limita esta entrega a un atributo variable por producto, aunque el modelo inicial ejemplifique combinaciones de varios atributos.
 
 ## Decisiones acordadas para esta tarjeta
 
@@ -91,7 +91,7 @@ Si una validación falla, el servicio devuelve error de dominio antes de persist
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Persistencia, backfill y variante inicial en flujos actuales | Código actual | Completa |
-| 2 | API administrativa de variantes y reglas con características | 1 | Planificada |
+| 2 | API administrativa de variantes y reglas con características | 1 | Completa |
 | 3 | Lectura pública desde variantes y retiro de columnas duplicadas | 2 | Planificada |
 
 ```text
@@ -314,7 +314,33 @@ TRATAMIENTO: no leerlos para reglas nuevas; retirar la duplicación en la tanda 
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA
+
+**Cambios realizados:** se agregó la API administrativa de variantes, validaciones de atributo/valor/SKU/estado, soporte de `varianteInicial`, edición común compatible, variantes completas en detalle y listado administrativos, y `cantidadVariantes` con protección de borrado. Informe completo: [resultado de Tanda 2](s3-be-variantes-de-producto-tanda-2-resultado.md).
+
+**Diferencias respecto del plan:** por decisión de esta ejecución, cada fila del listado administrativo incluye todas sus variantes, y los escalares administrativos representan la variante de menor ID. No se cambió la lectura pública ni se aplicó V11.
+
+**Tests ejecutados:** 6 pruebas nuevas H2/HTTP, 2 nuevas de concurrencia MySQL, regresión dirigida de producto y características, suite backend completa y `mvnw.cmd package -q -DskipTests`. Tras el ajuste final del conteo se repitieron las pruebas relacionadas en H2/MySQL.
+
+**Tests exitosos:** la suite completa finalizó con código 0; los reportes Surefire sumaron 622 pruebas, 0 fallas, 0 errores y 0 omisiones. Las 6 pruebas nuevas H2/HTTP y las 2 MySQL pasaron en sus corridas finales; `package` pasó.
+
+**Tests fallidos:** ninguno en las corridas finales. Fallaron inicialmente una expectativa de validación heredada y la detección de SKU duplicado antes del `flush`; ambas se analizaron y corrigieron.
+
+**Incidentes:** INC-001 (Mockito detenido en sandbox), INC-002 (expectativa antigua de `@NotNull` en PUT), INC-003 (flush anticipado del SKU), INC-004 (aviso de Surefire al cerrar JVM); detalle en el informe.
+
+**Tests faltantes:** ninguno de los grupos previstos para esta tanda. No se validó staging ni un navegador, que no forman parte de esta tanda.
+
+**Riesgos residuales:** `products` aún conserva precio/disponibilidad para la lectura pública transitoria; la selección pública multivariante corresponde a la tanda 3. La suite completa se ejecutó antes del último ajuste del conteo agrupado y de ampliar un test HTTP; ambos cambios se verificaron después con pruebas dirigidas.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** API, servicio, DTO y repositorios de variantes; servicio/DTO de productos y características; handler de errores; pruebas relacionadas; este plan y el informe de Tanda 2.
+
+**Criterio de cierre:**
+
+- [x] Las variantes se administran sin duplicar productos ni admitir dos atributos variables.
+- [x] Se preservan IDs, SKU único y al menos una variante activa.
+- [x] Borrado y conteos de características, concurrencia, HTTP y seguridad comprobados; riesgos visibles.
 
 ---
 

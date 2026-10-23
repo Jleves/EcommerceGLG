@@ -18,6 +18,11 @@ import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
+import com.ashenox.starter.catalog.product.variant.dto.CreateVariantRequest;
+import com.ashenox.starter.catalog.product.variant.dto.ProductVariantResponse;
+import com.ashenox.starter.catalog.product.variant.service.ProductVariantService;
+import com.ashenox.starter.catalog.product.variant.service.ProductVariantConflictException;
+import com.ashenox.starter.catalog.product.variant.repository.VariantCharacteristicRepository;
 import com.ashenox.starter.catalog.subcategory.model.Subcategory;
 import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
@@ -46,6 +51,8 @@ public class ProductServiceImpl implements ProductService {
     private final ProductCharacteristicRepository productCharacteristicRepository;
     private final SubcategoryRepository subcategoryRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final VariantCharacteristicRepository variantCharacteristicRepository;
+    private final ProductVariantService productVariantService;
 
     @Override
     @Transactional(readOnly = true)
@@ -75,17 +82,30 @@ public class ProductServiceImpl implements ProductService {
         Page<Product> result = productRepository.findPageByFilters(pattern, categoriaId, subcategoriaId,
                 PageRequest.of(page, size));
         List<Long> productIds = result.getContent().stream().map(Product::getId).toList();
-        Map<Long, Long> variantIds = productIds.isEmpty() ? Map.of() : productVariantRepository
-                .findByProductIdIn(productIds).stream()
-                .collect(Collectors.toMap(variant -> variant.getProduct().getId(), ProductVariant::getId));
+        List<ProductVariant> pageVariants = productIds.isEmpty() ? List.of()
+                : productVariantRepository.findByProductIdInOrderByIdAsc(productIds);
+        Map<Long, Long> owners = pageVariants.stream().collect(Collectors.toMap(
+                ProductVariant::getId, variant -> variant.getProduct().getId()));
+        Map<Long, List<ProductVariantResponse>> variantGroups = productVariantService.responses(pageVariants).stream()
+                .collect(Collectors.groupingBy(value -> owners.get(value.id())));
         return new ProductPageResponse(result.getContent().stream()
-                .map(product -> ProductSummaryResponse.from(product, variantIds.get(product.getId()))).toList(),
+                .map(product -> ProductSummaryResponse.from(product,
+                        variantGroups.getOrDefault(product.getId(), List.of()))).toList(),
                 page, size, result.getTotalElements(), result.getTotalPages());
     }
 
     @Override
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
+        boolean nested = request.varianteInicial() != null;
+        if (nested == (request.precioReferencia() != null || request.disponible() != null)) {
+            throw new BusinessException("Indique la variante inicial o precio y disponibilidad heredados.");
+        }
+        if (!nested && (request.precioReferencia() == null || request.disponible() == null)) {
+            throw new BusinessException("Precio y disponibilidad son obligatorios.");
+        }
+        CreateVariantRequest initial = nested ? request.varianteInicial()
+                : new CreateVariantRequest(null, request.precioReferencia(), request.disponible(), null, null, null);
         Category category = categoryRepository.lockById(request.categoriaId())
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         if (!category.isActivo()) {
@@ -112,21 +132,22 @@ public class ProductServiceImpl implements ProductService {
             definitions.add(characteristicRepository.lockById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("La característica solicitada no existe.")));
         }
+        if (initial.caracteristicaId() != null && ids.contains(initial.caracteristicaId())) {
+            throw new ProductVariantConflictException("El atributo variable no puede ser compartido por el producto.");
+        }
 
         Product product = Product.builder()
                 .category(category)
                 .subcategory(subcategory)
                 .nombre(request.nombre().strip())
                 .descripcion(request.descripcion())
-                .precioReferencia(request.precioReferencia())
-                .disponible(request.disponible())
+                .precioReferencia(initial.precioReferencia())
+                .disponible(initial.disponible())
                 .activo(true)
                 .destacado(false)
                 .build();
         Product saved = productRepository.saveAndFlush(product);
-        ProductVariant variant = productVariantRepository.saveAndFlush(ProductVariant.builder()
-                .product(saved).precioReferencia(saved.getPrecioReferencia())
-                .disponible(saved.isDisponible()).activo(true).build());
+        ProductVariantResponse variant = productVariantService.createInitial(saved, initial);
         List<ProductCharacteristic> associations = new ArrayList<>();
         for (ProductCharacteristicRequest item : requested) {
             Characteristic definition = definitions.stream()
@@ -141,7 +162,7 @@ public class ProductServiceImpl implements ProductService {
             productCharacteristicRepository.saveAllAndFlush(associations);
         }
         return ProductResponse.from(saved, associations.stream()
-                .map(ProductCharacteristicResponse::from).toList(), variant.getId());
+                .map(ProductCharacteristicResponse::from).toList(), List.of(variant));
     }
 
     @Override
@@ -163,6 +184,15 @@ public class ProductServiceImpl implements ProductService {
         Subcategory assigned = assigning ? lockAssignableSubcategory(request.subcategoriaId(), category) : null;
         Product product = productRepository.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
+        List<ProductVariant> variants = productVariantRepository.findByProductIdOrderByIdAsc(id);
+        if (variants.isEmpty()) throw new IllegalStateException("El producto no tiene variante inicial.");
+        if (variants.size() > 1 && (request.precioReferenciaPresente() || request.disponiblePresente())) {
+            throw new ProductVariantConflictException("El precio y la disponibilidad se editan por variante.");
+        }
+        if (variants.size() == 1 && (request.precioReferenciaPresente() && request.precioReferencia() == null
+                || request.disponiblePresente() && request.disponible() == null)) {
+            throw new BusinessException("Precio y disponibilidad no pueden ser null.");
+        }
         if (!assigning) {
             category = categoryRepository.findById(request.categoriaId())
                     .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
@@ -187,6 +217,11 @@ public class ProductServiceImpl implements ProductService {
                 if (!ids.add(item.caracteristicaId())) {
                     throw new BusinessException("Una característica no puede repetirse en el producto.");
                 }
+            }
+            Set<Long> variableIds = variantCharacteristicRepository.findByVariantProductId(id).stream()
+                    .map(item -> item.getCharacteristic().getId()).collect(Collectors.toSet());
+            if (ids.stream().anyMatch(variableIds::contains)) {
+                throw new ProductVariantConflictException("El atributo variable no puede ser compartido por el producto.");
             }
             Map<Long, Characteristic> definitions = new java.util.HashMap<>();
             for (Long characteristicId : ids.stream().sorted().toList()) {
@@ -222,14 +257,19 @@ public class ProductServiceImpl implements ProductService {
         }
         product.setNombre(request.nombre().strip());
         product.setDescripcion(request.descripcion());
-        product.setPrecioReferencia(request.precioReferencia());
-        product.setDisponible(request.disponible());
-        ProductVariant variant = productVariantRepository.findByProductId(id)
-                .orElseThrow(() -> new IllegalStateException("El producto no tiene variante inicial."));
-        variant.setPrecioReferencia(request.precioReferencia());
-        variant.setDisponible(request.disponible());
+        ProductVariant variant = variants.getFirst();
+        if (variants.size() == 1) {
+            if (request.precioReferenciaPresente()) {
+                product.setPrecioReferencia(request.precioReferencia());
+                variant.setPrecioReferencia(request.precioReferencia());
+            }
+            if (request.disponiblePresente()) {
+                product.setDisponible(request.disponible());
+                variant.setDisponible(request.disponible());
+            }
+        }
         Product saved = productRepository.saveAndFlush(product);
-        productVariantRepository.saveAndFlush(variant);
+        if (variants.size() == 1) productVariantRepository.saveAndFlush(variant);
         return response(saved);
     }
 
@@ -253,11 +293,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductResponse response(Product product) {
-        Long variantId = productVariantRepository.findByProductId(product.getId())
-                .map(ProductVariant::getId).orElse(null);
+        List<ProductVariantResponse> variants = productVariantService.responses(
+                productVariantRepository.findByProductIdOrderByIdAsc(product.getId()));
         return ProductResponse.from(product, productCharacteristicRepository
                 .findByProductIdWithCharacteristic(product.getId()).stream()
-                .map(ProductCharacteristicResponse::from).toList(), variantId);
+                .map(ProductCharacteristicResponse::from).toList(), variants);
     }
 
     private Subcategory lockAssignableSubcategory(Long id, Category category) {

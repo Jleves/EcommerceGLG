@@ -3,6 +3,7 @@ package com.ashenox.starter.shared.error;
 import com.ashenox.starter.catalog.category.service.CategoryConflictException;
 import com.ashenox.starter.catalog.characteristic.service.CharacteristicConflictException;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
+import com.ashenox.starter.catalog.product.variant.service.ProductVariantConflictException;
 import com.ashenox.starter.catalog.product.image.service.InvalidProductImageException;
 import com.ashenox.starter.catalog.product.image.service.ProductImageConflictException;
 import com.ashenox.starter.catalog.product.image.service.ImageStorageUnavailableException;
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler {
     private final ApiErrorResponder responder;
 
     @ExceptionHandler({CategoryConflictException.class, CharacteristicConflictException.class,
-            SubcategoryConflictException.class})
+            SubcategoryConflictException.class, ProductVariantConflictException.class})
     public ResponseEntity<ApiError> handleCategoryConflict(RuntimeException exception,
                                                             HttpServletRequest request) {
         return response(request, HttpStatus.CONFLICT, ApiErrorCode.RESOURCE_CONFLICT, exception.getMessage());

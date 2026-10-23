@@ -20,10 +20,11 @@ public class UpdateProductRequest {
     private Long categoriaId;
     @Size(max = 1000)
     private String descripcion;
-    @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 2)
+    @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 2)
     private BigDecimal precioReferencia;
-    @NotNull
     private Boolean disponible;
+    private boolean precioReferenciaPresente;
+    private boolean disponiblePresente;
     private List<@NotNull @Valid ProductCharacteristicRequest> caracteristicas;
     private boolean caracteristicasPresentes;
     @Positive
@@ -40,6 +41,8 @@ public class UpdateProductRequest {
         this.descripcion = descripcion;
         this.precioReferencia = precioReferencia;
         this.disponible = disponible;
+        this.precioReferenciaPresente = true;
+        this.disponiblePresente = true;
     }
 
     public UpdateProductRequest(String nombre, Long categoriaId, String descripcion,
@@ -63,11 +66,25 @@ public class UpdateProductRequest {
     @JsonIgnore
     public boolean caracteristicasPresentes() { return caracteristicasPresentes; }
 
+    @JsonIgnore
+    public boolean precioReferenciaPresente() { return precioReferenciaPresente; }
+
+    @JsonIgnore
+    public boolean disponiblePresente() { return disponiblePresente; }
+
     public void setNombre(String nombre) { this.nombre = nombre; }
     public void setCategoriaId(Long categoriaId) { this.categoriaId = categoriaId; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-    public void setPrecioReferencia(BigDecimal precioReferencia) { this.precioReferencia = precioReferencia; }
-    public void setDisponible(Boolean disponible) { this.disponible = disponible; }
+    @JsonSetter("precioReferencia")
+    public void setPrecioReferencia(BigDecimal precioReferencia) {
+        this.precioReferencia = precioReferencia;
+        this.precioReferenciaPresente = true;
+    }
+    @JsonSetter("disponible")
+    public void setDisponible(Boolean disponible) {
+        this.disponible = disponible;
+        this.disponiblePresente = true;
+    }
 
     @JsonSetter("caracteristicas")
     public void setCaracteristicas(List<ProductCharacteristicRequest> caracteristicas) {

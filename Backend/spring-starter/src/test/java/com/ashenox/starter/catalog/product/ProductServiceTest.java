@@ -12,6 +12,8 @@ import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveExcept
 import com.ashenox.starter.catalog.product.service.ProductServiceImpl;
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
+import com.ashenox.starter.catalog.product.variant.repository.VariantCharacteristicRepository;
+import com.ashenox.starter.catalog.product.variant.service.ProductVariantService;
 import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -32,7 +34,11 @@ class ProductServiceTest {
     private final ProductCharacteristicRepository values = mock(ProductCharacteristicRepository.class);
     private final SubcategoryRepository subcategories = mock(SubcategoryRepository.class);
     private final ProductVariantRepository variants = mock(ProductVariantRepository.class);
-    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values, subcategories, variants);
+    private final VariantCharacteristicRepository variantValues = mock(VariantCharacteristicRepository.class);
+    private final ProductVariantService variantService = new ProductVariantService(products, variants, variantValues,
+            characteristics, values);
+    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values,
+            subcategories, variants, variantValues, variantService);
 
     @BeforeEach
     void setUpVariants() {
@@ -44,7 +50,10 @@ class ProductServiceTest {
             return variant;
         });
         when(variants.findByProductId(11L)).thenReturn(Optional.of(ProductVariant.builder()
-                .id(21L).product(Product.builder().id(11L).build()).activo(true).build()));
+                .id(21L).product(Product.builder().id(11L).build())
+                .precioReferencia(new BigDecimal("125.50")).disponible(false).activo(true).build()));
+        when(variants.findByProductIdOrderByIdAsc(11L)).thenAnswer(invocation -> java.util.List.of(
+                variants.findByProductId(11L).orElseThrow()));
     }
 
     @Test
