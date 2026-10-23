@@ -9,6 +9,7 @@ import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
 import com.ashenox.starter.catalog.product.dto.ProductCharacteristicRequest;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.service.ProductService;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ class ProductCharacteristicAtomicityIntegrationTest {
     @Autowired CategoryRepository categories;
     @Autowired CharacteristicRepository characteristics;
     @Autowired ProductRepository products;
+    @Autowired ProductVariantRepository variants;
     @Autowired ProductService service;
     @MockitoBean ProductCharacteristicRepository values;
 
@@ -41,6 +43,7 @@ class ProductCharacteristicAtomicityIntegrationTest {
         Characteristic definition = characteristics.saveAndFlush(Characteristic.builder().nombre("Marca " + suffix)
                 .nombreNormalizado("marca-" + suffix).build());
         long before = products.count();
+        long variantsBefore = variants.count();
         when(values.saveAllAndFlush(any())).thenThrow(new IllegalStateException("Fallo al guardar asociación"));
 
         assertThatThrownBy(() -> service.create(new CreateProductRequest("Arena", category.getId(), null,
@@ -48,5 +51,6 @@ class ProductCharacteristicAtomicityIntegrationTest {
                 List.of(new ProductCharacteristicRequest(definition.getId(), "Acme", null)))))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(products.count()).isEqualTo(before);
+        assertThat(variants.count()).isEqualTo(variantsBefore);
     }
 }

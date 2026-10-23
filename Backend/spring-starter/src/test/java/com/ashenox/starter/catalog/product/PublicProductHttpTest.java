@@ -11,6 +11,7 @@ import com.ashenox.starter.catalog.product.image.model.ProductImage;
 import com.ashenox.starter.catalog.product.image.repository.ProductImageRepository;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,7 @@ class PublicProductHttpTest {
 
     @Autowired MockMvc mvc;
     @Autowired ProductRepository products;
+    @Autowired ProductVariantRepository variants;
     @Autowired CategoryRepository categories;
     @Autowired CharacteristicRepository characteristics;
     @Autowired ProductCharacteristicRepository productCharacteristics;
@@ -59,6 +61,7 @@ class PublicProductHttpTest {
     void clean() {
         productCharacteristics.deleteAll();
         images.deleteAll();
+        variants.deleteAll();
         products.deleteAll();
         characteristics.deleteAll();
         categories.deleteAll();

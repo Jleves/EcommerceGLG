@@ -1,6 +1,6 @@
 # S3 BE — Variantes de producto: plan de implementación
 
-**Fuente funcional:** [S3 BE Variantes de producto](https://trello.com/c/uBmWofPG/58-s3-be-variantes-de-producto). **Diseño de referencia:** `docs/modelo-inicial.md` y `docs/Diagrama ECOMMERCE.drawio`. **Estado del documento:** planificado; ninguna tanda de este plan fue ejecutada. La tarjeta limita esta entrega a un atributo variable por producto, aunque el modelo inicial ejemplifique combinaciones de varios atributos.
+**Fuente funcional:** [S3 BE Variantes de producto](https://trello.com/c/uBmWofPG/58-s3-be-variantes-de-producto). **Diseño de referencia:** `docs/modelo-inicial.md` y `docs/Diagrama ECOMMERCE.drawio`. **Estado del documento:** Tanda 1 completa y verificada en H2/MySQL; tandas 2 y 3 no ejecutadas. La tarjeta limita esta entrega a un atributo variable por producto, aunque el modelo inicial ejemplifique combinaciones de varios atributos.
 
 ## Decisiones acordadas para esta tarjeta
 
@@ -90,7 +90,7 @@ Si una validación falla, el servicio devuelve error de dominio antes de persist
 
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
-| 1 | Persistencia, backfill y variante inicial en flujos actuales | Código actual | Planificada |
+| 1 | Persistencia, backfill y variante inicial en flujos actuales | Código actual | Completa |
 | 2 | API administrativa de variantes y reglas con características | 1 | Planificada |
 | 3 | Lectura pública desde variantes y retiro de columnas duplicadas | 2 | Planificada |
 
@@ -188,7 +188,33 @@ TRATAMIENTO: no habilitar todavía mutaciones de varias variantes; retirar colum
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA
+
+**Cambios realizados:** V10 crea `product_variants` y `variant_characteristics`, migra una variante activa por producto y conserva las columnas antiguas. Se agregaron entidades/repositorios; alta y edición sincronizan precio y disponibilidad transaccionalmente. El detalle y listado administrativos agregan `varianteInicialId`. Informe completo: [resultado de Tanda 1](s3-be-variantes-de-producto-tanda-1-resultado.md).
+
+**Diferencias respecto del plan:** ninguna funcional. Se adaptaron fixtures y limpieza de pruebas que insertaban o borraban productos directamente, para respetar la nueva FK. No se ejecutaron tandas posteriores.
+
+**Tests ejecutados:** `mvnw.cmd test -q` con Java 21 fuera del sandbox: 573 detectados, 406 ejecutados y 167 omitidos en esa primera corrida sin Docker. `ProductVariantMigrationH2Test`, `ProductVariantPersistenceIntegrationTest`, servicio, HTTP, atomicidad y regresión H2 pasaron. Luego, con Docker disponible, pasaron las 3 pruebas nuevas de MySQL y una corrida de regresión relacionada de 37 pruebas en 19 clases, sin omisiones. `mvnw.cmd package -q -DskipTests` pasó.
+
+**Tests exitosos:** 406 en la suite inicial H2 y 37 en la regresión MySQL relacionada; las 3 pruebas específicas de V10 pasaron tanto en una corrida dirigida como dentro de esas 37. V9→V10, restricciones, mapeo JPA, sincronización, atomicidad y regresión quedaron comprobados en los motores correspondientes.
+
+**Tests fallidos:** ninguna falla final. La primera ejecución dirigida dentro del sandbox quedó bloqueada por Mockito. En la primera corrida MySQL falló `mysqlRejectsNonPositivePriceAndMissingProduct` porque el test esperaba una clase de excepción distinta; MySQL sí rechazó el dato. Se corrigió la aserción para verificar el código 3819 y la repetición pasó.
+
+**Incidentes:** INC-001 (agente Mockito bloqueado en sandbox), INC-002 (daemon Docker inicialmente no disponible, resuelto) e INC-003 (expectativa incorrecta del test MySQL); detalle en el informe de Tanda 1.
+
+**Tests faltantes:** ninguno de los definidos para la Tanda 1. La suite completa con Docker no se repitió; la regresión MySQL relacionada sí se ejecutó.
+
+**Riesgos residuales:** escrituras ajenas a `ProductServiceImpl` pueden desincronizar las columnas duplicadas durante la transición; estas pruebas locales no validan un entorno de destino.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** migración V10; modelo/repositorios `catalog.product.variant`; DTO y `ProductServiceImpl`; pruebas de migración, persistencia, servicio, HTTP, atomicidad y regresión; este plan y el informe de Tanda 1.
+
+**Criterio de cierre:**
+
+- [x] V10 migra productos existentes en H2 y MySQL; las altas crean una variante activa.
+- [x] Precio y disponibilidad heredados y de variante coinciden durante la transición.
+- [x] Tests H2/MySQL y regresión relacionada pasan; incidentes y riesgos quedan registrados.
 
 ---
 

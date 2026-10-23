@@ -6,6 +6,8 @@ import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import com.ashenox.starter.security.jwt.JWTUtil;
 import com.ashenox.starter.user.model.Role;
 import com.ashenox.starter.user.model.User;
@@ -43,6 +45,7 @@ class ProductControllerTest {
 
     @Autowired MockMvc mvc;
     @Autowired ProductRepository products;
+    @Autowired ProductVariantRepository variants;
     @Autowired CategoryRepository categories;
     @Autowired UserRepository users;
     @Autowired AuthSessionService sessions;
@@ -50,6 +53,7 @@ class ProductControllerTest {
 
     @BeforeEach
     void clean() {
+        variants.deleteAll();
         products.deleteAll();
         categories.deleteAll();
     }
@@ -63,6 +67,7 @@ class ProductControllerTest {
                                     .replace("\"disponible\":true", "\"disponible\":true,\"activo\":false,\"destacado\":true")))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.id").isNumber())
+                    .andExpect(jsonPath("$.varianteInicialId").isNumber())
                     .andExpect(jsonPath("$.nombre").value("Arena " + role))
                     .andExpect(jsonPath("$.categoriaId").value(category.getId()))
                     .andExpect(jsonPath("$.descripcion").value("Material"))
@@ -73,6 +78,10 @@ class ProductControllerTest {
         }
         assertThat(products.count()).isEqualTo(3);
         products.findAll().forEach(product -> {
+            ProductVariant variant = variants.findByProductId(product.getId()).orElseThrow();
+            assertThat(variant.getPrecioReferencia()).isEqualByComparingTo("12.50");
+            assertThat(variant.isDisponible()).isTrue();
+            assertThat(variant.isActivo()).isTrue();
             assertThat(product.getCategory().getId()).isEqualTo(category.getId());
             assertThat(product.getPrecioReferencia()).isEqualByComparingTo(new BigDecimal("12.50"));
             assertThat(product.isDisponible()).isTrue();
@@ -173,7 +182,7 @@ class ProductControllerTest {
         Category inactiveCategory = categories.saveAndFlush(Category.builder().nombre("Inactiva")
                 .nombreNormalizado("inactiva").icono("brick").activo(false).build());
         for (Role role : Role.values()) {
-            Product product = products.saveAndFlush(Product.builder().category(activeCategory)
+            Product product = saveWithVariant(Product.builder().category(activeCategory)
                     .nombre("Original " + role).descripcion("Antes")
                     .precioReferencia(new BigDecimal("10.00")).disponible(false)
                     .activo(true).destacado(true).build());
@@ -216,7 +225,7 @@ class ProductControllerTest {
     @Test
     void updateValidationAndMalformedInputLeaveProductUnchanged() throws Exception {
         Category category = category(true);
-        Product product = products.saveAndFlush(Product.builder().category(category)
+        Product product = saveWithVariant(Product.builder().category(category)
                 .nombre("Original").descripcion("Antes").precioReferencia(new BigDecimal("10.00"))
                 .disponible(false).activo(true).destacado(false).build());
         Cookie access = access(Role.ADMIN);
@@ -260,7 +269,7 @@ class ProductControllerTest {
     @Test
     void missingReferencesReturnApiErrorWithoutChangingProduct() throws Exception {
         Category category = category(true);
-        Product product = products.saveAndFlush(Product.builder().category(category)
+        Product product = saveWithVariant(Product.builder().category(category)
                 .nombre("Original").precioReferencia(new BigDecimal("10.00"))
                 .disponible(false).activo(true).build());
         Cookie access = access(Role.USER);
@@ -289,7 +298,7 @@ class ProductControllerTest {
     @Test
     void editAndStatusRoutesRequireSessionCsrfAndAllowedRole() throws Exception {
         Category category = category(true);
-        Product product = products.saveAndFlush(Product.builder().category(category)
+        Product product = saveWithVariant(Product.builder().category(category)
                 .nombre("Original").precioReferencia(new BigDecimal("10.00"))
                 .disponible(false).activo(true).build());
         Cookie access = access(Role.USER);
@@ -358,6 +367,14 @@ class ProductControllerTest {
     private Category category(boolean active) {
         return categories.saveAndFlush(Category.builder().nombre("Materiales")
                 .nombreNormalizado("materiales").icono("brick").activo(active).build());
+    }
+
+    private Product saveWithVariant(Product product) {
+        Product saved = products.saveAndFlush(product);
+        variants.saveAndFlush(ProductVariant.builder().product(saved)
+                .precioReferencia(saved.getPrecioReferencia()).disponible(saved.isDisponible())
+                .activo(true).build());
+        return saved;
     }
 
     private String body(Long categoryId, String name, String price, boolean available) {

@@ -7,6 +7,8 @@ import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import com.ashenox.starter.security.jwt.JWTUtil;
 import com.ashenox.starter.user.model.Role;
 import com.ashenox.starter.user.model.User;
@@ -42,6 +44,7 @@ class ProductListingTest {
 
     @Autowired MockMvc mvc;
     @Autowired ProductRepository products;
+    @Autowired ProductVariantRepository variants;
     @Autowired CategoryRepository categories;
     @Autowired UserRepository users;
     @Autowired AuthSessionService sessions;
@@ -50,6 +53,7 @@ class ProductListingTest {
 
     @BeforeEach
     void clean() {
+        variants.deleteAll();
         products.deleteAll();
         categories.deleteAll();
     }
@@ -69,6 +73,7 @@ class ProductListingTest {
         mvc.perform(get(PATH).cookie(access).param("page", "0").param("size", "2"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(2))
                 .andExpect(jsonPath("$.content[0].id").value(first.getId()))
+                .andExpect(jsonPath("$.content[0].varianteInicialId").isNumber())
                 .andExpect(jsonPath("$.content[1].id").value(second.getId()))
                 .andExpect(jsonPath("$.content[0].categoriaId").value(category.getId()))
                 .andExpect(jsonPath("$.content[0].precioReferencia").value(12.50))
@@ -134,8 +139,11 @@ class ProductListingTest {
     }
 
     private Product product(Category category, String name, boolean active) {
-        return products.saveAndFlush(Product.builder().category(category).nombre(name).descripcion("Material")
+        Product saved = products.saveAndFlush(Product.builder().category(category).nombre(name).descripcion("Material")
                 .precioReferencia(new BigDecimal("12.50")).disponible(true).activo(active).destacado(false).build());
+        variants.saveAndFlush(ProductVariant.builder().product(saved).precioReferencia(saved.getPrecioReferencia())
+                .disponible(saved.isDisponible()).activo(true).build());
+        return saved;
     }
 
     private Cookie access(Role role) {

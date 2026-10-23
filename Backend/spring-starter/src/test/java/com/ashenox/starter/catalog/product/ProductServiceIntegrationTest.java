@@ -8,6 +8,7 @@ import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
 import com.ashenox.starter.catalog.product.service.ProductService;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +27,7 @@ class ProductServiceIntegrationTest {
     @Autowired private CategoryService categoryService;
     @Autowired private ProductService productService;
     @Autowired private ProductRepository products;
+    @Autowired private ProductVariantRepository variants;
 
     @Test
     void productSurvivesDeactivationAndReactivationControlsNewCreates() {
@@ -38,6 +40,9 @@ class ProductServiceIntegrationTest {
                 new BigDecimal("15.25"), true);
 
         var created = productService.create(request);
+        assertThat(created.varianteInicialId()).isNotNull();
+        assertThat(variants.findByProductId(created.id()).orElseThrow().getId())
+                .isEqualTo(created.varianteInicialId());
         categoryService.deactivate(category.getId());
 
         var existing = products.findById(created.id()).orElseThrow();
@@ -84,6 +89,12 @@ class ProductServiceIntegrationTest {
 
         var updated = productService.update(created.id(), new UpdateProductRequest("  Arena fina  ",
                 inactiveCategory.getId(), null, new BigDecimal("1234567890123.45"), true));
+
+        assertThat(updated.varianteInicialId()).isEqualTo(created.varianteInicialId());
+        var variant = variants.findByProductId(created.id()).orElseThrow();
+        assertThat(variant.getPrecioReferencia()).isEqualByComparingTo("1234567890123.45");
+        assertThat(variant.isDisponible()).isTrue();
+        assertThat(variant.isActivo()).isTrue();
 
         assertThat(updated.id()).isEqualTo(created.id());
         assertThat(updated.nombre()).isEqualTo("Arena fina");

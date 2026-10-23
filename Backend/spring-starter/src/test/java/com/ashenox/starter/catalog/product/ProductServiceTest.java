@@ -10,9 +10,12 @@ import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
 import com.ashenox.starter.catalog.product.service.ProductServiceImpl;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -28,7 +31,21 @@ class ProductServiceTest {
     private final CharacteristicRepository characteristics = mock(CharacteristicRepository.class);
     private final ProductCharacteristicRepository values = mock(ProductCharacteristicRepository.class);
     private final SubcategoryRepository subcategories = mock(SubcategoryRepository.class);
-    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values, subcategories);
+    private final ProductVariantRepository variants = mock(ProductVariantRepository.class);
+    private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values, subcategories, variants);
+
+    @BeforeEach
+    void setUpVariants() {
+        when(variants.saveAndFlush(any(ProductVariant.class))).thenAnswer(invocation -> {
+            ProductVariant variant = invocation.getArgument(0);
+            if (variant.getId() == null) {
+                variant.setId(21L);
+            }
+            return variant;
+        });
+        when(variants.findByProductId(11L)).thenReturn(Optional.of(ProductVariant.builder()
+                .id(21L).product(Product.builder().id(11L).build()).activo(true).build()));
+    }
 
     @Test
     void trimsNamePreservesDataAndSetsServerOwnedStates() {
@@ -55,6 +72,10 @@ class ProductServiceTest {
         assertThat(response.disponible()).isFalse();
         assertThat(response.activo()).isTrue();
         assertThat(response.destacado()).isFalse();
+        assertThat(response.varianteInicialId()).isEqualTo(21L);
+        verify(variants).saveAndFlush(argThat(variant -> variant.getProduct().getId().equals(11L)
+                && variant.getPrecioReferencia().compareTo(new BigDecimal("125.50")) == 0
+                && !variant.isDisponible() && variant.isActivo()));
     }
 
     @Test
@@ -113,6 +134,9 @@ class ProductServiceTest {
         assertThat(response.disponible()).isTrue();
         assertThat(response.activo()).isFalse();
         assertThat(response.destacado()).isTrue();
+        assertThat(response.varianteInicialId()).isEqualTo(21L);
+        verify(variants).saveAndFlush(argThat(variant -> variant.getPrecioReferencia()
+                .compareTo(new BigDecimal("125.50")) == 0 && variant.isDisponible()));
     }
 
     @Test

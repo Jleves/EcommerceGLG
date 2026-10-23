@@ -16,6 +16,8 @@ import com.ashenox.starter.catalog.product.dto.ProductSummaryResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
+import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
+import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import com.ashenox.starter.catalog.subcategory.model.Subcategory;
 import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
@@ -43,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
     private final CharacteristicRepository characteristicRepository;
     private final ProductCharacteristicRepository productCharacteristicRepository;
     private final SubcategoryRepository subcategoryRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -71,7 +74,12 @@ public class ProductServiceImpl implements ProductService {
         }
         Page<Product> result = productRepository.findPageByFilters(pattern, categoriaId, subcategoriaId,
                 PageRequest.of(page, size));
-        return new ProductPageResponse(result.getContent().stream().map(ProductSummaryResponse::from).toList(),
+        List<Long> productIds = result.getContent().stream().map(Product::getId).toList();
+        Map<Long, Long> variantIds = productIds.isEmpty() ? Map.of() : productVariantRepository
+                .findByProductIdIn(productIds).stream()
+                .collect(Collectors.toMap(variant -> variant.getProduct().getId(), ProductVariant::getId));
+        return new ProductPageResponse(result.getContent().stream()
+                .map(product -> ProductSummaryResponse.from(product, variantIds.get(product.getId()))).toList(),
                 page, size, result.getTotalElements(), result.getTotalPages());
     }
 
@@ -116,6 +124,9 @@ public class ProductServiceImpl implements ProductService {
                 .destacado(false)
                 .build();
         Product saved = productRepository.saveAndFlush(product);
+        ProductVariant variant = productVariantRepository.saveAndFlush(ProductVariant.builder()
+                .product(saved).precioReferencia(saved.getPrecioReferencia())
+                .disponible(saved.isDisponible()).activo(true).build());
         List<ProductCharacteristic> associations = new ArrayList<>();
         for (ProductCharacteristicRequest item : requested) {
             Characteristic definition = definitions.stream()
@@ -130,7 +141,7 @@ public class ProductServiceImpl implements ProductService {
             productCharacteristicRepository.saveAllAndFlush(associations);
         }
         return ProductResponse.from(saved, associations.stream()
-                .map(ProductCharacteristicResponse::from).toList());
+                .map(ProductCharacteristicResponse::from).toList(), variant.getId());
     }
 
     @Override
@@ -213,7 +224,13 @@ public class ProductServiceImpl implements ProductService {
         product.setDescripcion(request.descripcion());
         product.setPrecioReferencia(request.precioReferencia());
         product.setDisponible(request.disponible());
-        return response(productRepository.saveAndFlush(product));
+        ProductVariant variant = productVariantRepository.findByProductId(id)
+                .orElseThrow(() -> new IllegalStateException("El producto no tiene variante inicial."));
+        variant.setPrecioReferencia(request.precioReferencia());
+        variant.setDisponible(request.disponible());
+        Product saved = productRepository.saveAndFlush(product);
+        productVariantRepository.saveAndFlush(variant);
+        return response(saved);
     }
 
     @Override
@@ -236,9 +253,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductResponse response(Product product) {
+        Long variantId = productVariantRepository.findByProductId(product.getId())
+                .map(ProductVariant::getId).orElse(null);
         return ProductResponse.from(product, productCharacteristicRepository
                 .findByProductIdWithCharacteristic(product.getId()).stream()
-                .map(ProductCharacteristicResponse::from).toList());
+                .map(ProductCharacteristicResponse::from).toList(), variantId);
     }
 
     private Subcategory lockAssignableSubcategory(Long id, Category category) {
