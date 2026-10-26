@@ -6,7 +6,8 @@ import { listCharacteristics } from '../../characteristics/services/characterist
 import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
 import { ProductForm } from '../components/ProductForm.jsx'
 import { ProductImageManager } from '../components/ProductImageManager.jsx'
-import { createProduct, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
+import { ProductVariantManager } from '../components/ProductVariantManager.jsx'
+import { createProduct, createVariant, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct, updateVariant } from '../services/productService.js'
 
 const buttonInteraction = 'shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
 const greenButton = `${buttonInteraction} bg-emerald-700 text-white enabled:hover:bg-emerald-800 focus-visible:outline-emerald-700`
@@ -36,6 +37,9 @@ export function ProductManagementPage() {
   const [formTarget, setFormTarget] = useState(null)
   const [imageTarget, setImageTarget] = useState(null)
   const [formData, setFormData] = useState(null)
+  const [createdProduct, setCreatedProduct] = useState(null)
+  const [variantError, setVariantError] = useState(null)
+  const [variantNeedsReview, setVariantNeedsReview] = useState(false)
   const [formError, setFormError] = useState(null)
   const [mutationError, setMutationError] = useState(null)
   const [statusError, setStatusError] = useState(null)
@@ -131,6 +135,9 @@ export function ProductManagementPage() {
   function openForm(target) {
     if (inFlight.current || needsReview || confirming || imageTarget || currentState.loading || currentState.error) return
     setFormData(null)
+    setCreatedProduct(null)
+    setVariantError(null)
+    setVariantNeedsReview(false)
     setFormError(null)
     setMutationError(null)
     setNotice('')
@@ -141,6 +148,9 @@ export function ProductManagementPage() {
     if (inFlight.current) return
     setFormTarget(null)
     setFormData(null)
+    setCreatedProduct(null)
+    setVariantError(null)
+    setVariantNeedsReview(false)
     setMutationError(null)
   }
 
@@ -150,15 +160,67 @@ export function ProductManagementPage() {
     setPending(true)
     setMutationError(null)
     try {
-      if (formTarget === 'create') await createProduct(payload)
-      else await updateProduct(formTarget, payload)
-      setNotice(formTarget === 'create' ? 'Producto creado. Para cargar fotos, buscálo en la lista y abrí «Imágenes».' : 'Producto actualizado.')
-      setFormTarget(null)
-      setFormData(null)
+      if (formTarget === 'create') {
+        const product = await createProduct(payload)
+        if (!product?.id || !product?.varianteInicialId || !Array.isArray(product.variantes)) {
+          setNeedsReview(true)
+          setMutationError({ message: 'La respuesta no confirmó el ID y las variantes. Consultá la lista antes de intentar otra alta.' })
+          return
+        }
+        setCreatedProduct(product)
+        setNotice(`Producto ${product.id} creado. Podés agregar variantes en el diálogo.`)
+      } else {
+        await updateProduct(formTarget, payload)
+        setNotice('Producto actualizado.')
+        setFormTarget(null)
+        setFormData(null)
+      }
       setVersion((value) => value + 1)
     } catch (error) {
       setMutationError(error)
       if (!error?.status || error.status >= 500) setNeedsReview(true)
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+
+  async function refreshProduct() {
+    if (!createdProduct?.id || inFlight.current) return
+    inFlight.current = true
+    setPending(true)
+    setVariantError(null)
+    try {
+      const product = await getProduct(createdProduct.id)
+      setCreatedProduct(product)
+      setVariantNeedsReview(false)
+      setVersion((value) => value + 1)
+    } catch (error) {
+      setVariantError(error)
+      setVariantNeedsReview(true)
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+
+  async function submitVariant(action, payload) {
+    if (!createdProduct?.id || inFlight.current || variantNeedsReview) return
+    inFlight.current = true
+    setPending(true)
+    setVariantError(null)
+    let mutated = false
+    try {
+      if (action === 'initial') await updateVariant(createdProduct.id, createdProduct.varianteInicialId, payload)
+      else await createVariant(createdProduct.id, payload)
+      mutated = true
+      const product = await getProduct(createdProduct.id)
+      setCreatedProduct(product)
+      setNotice(action === 'initial' ? 'Variante inicial confirmada.' : 'Variante agregada y confirmada.')
+      setVersion((value) => value + 1)
+    } catch (error) {
+      setVariantError(error)
+      if (mutated || !error?.status || error.status >= 500) setVariantNeedsReview(true)
     } finally {
       inFlight.current = false
       setPending(false)
@@ -263,7 +325,9 @@ export function ProductManagementPage() {
         {needsReview && <p role="status" className="m-4 rounded bg-amber-50 p-3">Resultado incierto. Consultá el estado actual antes de guardar otra vez.</p>}
         {loadingForm && <p role="status" className="p-5">Cargando formulario…</p>}
         {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className={`justify-self-start rounded-lg px-4 py-2 font-semibold ${lightButton}`}>Cerrar</button></div>}
-        {formData && <ProductForm initialValues={formData.product} categories={formData.categories} subcategories={formData.subcategories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />}
+        {formData && (createdProduct
+          ? <ProductVariantManager key={`${createdProduct.id}-${createdProduct.variantes?.length}-${createdProduct.variantes?.[0]?.caracteristicaId ?? ''}`} product={createdProduct} characteristics={formData.characteristics} pending={pending || currentState.loading || Boolean(currentState.error)} reviewRequired={variantNeedsReview} error={variantError} onUpdateInitial={(_, payload) => submitVariant('initial', payload)} onCreate={(payload) => submitVariant('create', payload)} onReview={refreshProduct} onClose={closeForm} />
+          : <ProductForm initialValues={formData.product} categories={formData.categories} subcategories={formData.subcategories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />)}
       </dialog>}
       {imageTarget && <ProductImageManager key={imageTarget.id} product={imageTarget} onClose={() => setImageTarget(null)} />}
       <form className="mb-6" onSubmit={search}>

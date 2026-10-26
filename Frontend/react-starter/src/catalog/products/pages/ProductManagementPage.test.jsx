@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listCategories } from '../../categories/services/categoryService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
-import { createProduct, deactivateProduct, getProduct, listProductImages, listProducts, reactivateProduct, updateProduct } from '../services/productService.js'
+import { createProduct, createVariant, deactivateProduct, getProduct, listProductImages, listProducts, reactivateProduct, updateProduct, updateVariant } from '../services/productService.js'
 import { ProductManagementPage } from './ProductManagementPage.jsx'
 
-vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn(), listProductImages: vi.fn() }))
+vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), createVariant: vi.fn(), updateVariant: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn(), listProductImages: vi.fn() }))
 vi.mock('../../categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
 vi.mock('../../characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
 vi.mock('../../subcategories/services/subcategoryService.js', () => ({ listSubcategories: vi.fn() }))
@@ -16,6 +16,7 @@ vi.mock('../../subcategories/services/subcategoryService.js', () => ({ listSubca
 const active = { id: 1, nombre: 'Arena', categoriaId: 3, descripcion: 'Fina', precioReferencia: 250, disponible: true, activo: true, destacado: false }
 const inactive = { id: 2, nombre: 'Cemento', categoriaId: 4, descripcion: '', precioReferencia: 500, disponible: false, activo: false, destacado: true }
 const makePage = (page, content = [], totalPages = 2) => ({ content, page, size: 20, totalElements: 21, totalPages })
+const createdProduct = { id: 3, nombre: 'Cal', categoriaId: 3, varianteInicialId: 31, caracteristicas: [], variantes: [{ id: 31, sku: null, precioReferencia: 12.5, disponible: true, activo: true, caracteristicaId: null, caracteristicaNombre: null, valor: null, unidad: null }] }
 
 function Location() {
   const location = useLocation()
@@ -149,7 +150,7 @@ describe('ProductManagementPage', () => {
 
   it('crea sin características y recarga la lista', async () => {
     listProducts.mockResolvedValue(makePage(0, [active]))
-    createProduct.mockResolvedValue({ id: 3 })
+    createProduct.mockResolvedValue(createdProduct)
     const user = userEvent.setup()
     renderPage()
     await screen.findByRole('heading', { name: 'Arena' })
@@ -162,14 +163,15 @@ describe('ProductManagementPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Precio de referencia' }), '12.50')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
     await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
-    await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, subcategoriaId: null, descripcion: '', precioReferencia: '12.50', disponible: true, caracteristicas: [] }))
-    expect(await screen.findByText(/Producto creado\. Para cargar fotos/)).toBeInTheDocument()
+    await waitFor(() => expect(createProduct).toHaveBeenCalledWith({ nombre: 'Cal', categoriaId: 3, subcategoriaId: null, descripcion: '', varianteInicial: { sku: null, precioReferencia: '12.50', disponible: true, caracteristicaId: null, valor: null, unidad: null }, caracteristicas: [] }))
+    expect(await screen.findByRole('heading', { name: 'Producto creado: Cal' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
     await waitFor(() => expect(listProducts).toHaveBeenCalledTimes(2))
   })
 
   it('crea con varias características sin repetir IDs', async () => {
     listProducts.mockResolvedValue(makePage(0, [active]))
-    createProduct.mockResolvedValue({})
+    createProduct.mockResolvedValue(createdProduct)
     const user = userEvent.setup()
     renderPage()
     await screen.findByRole('heading', { name: 'Arena' })
@@ -185,11 +187,82 @@ describe('ProductManagementPage', () => {
     await user.click(form.getByRole('button', { name: 'Agregar característica' }))
     await user.selectOptions(form.getAllByRole('combobox', { name: 'Característica' })[1], '8')
     await user.type(form.getAllByRole('textbox', { name: 'Valor' })[1], '25')
-    await user.type(form.getAllByRole('textbox', { name: 'Unidad' })[1], 'kg')
+    await user.selectOptions(form.getAllByRole('combobox', { name: 'Unidad' })[1], 'kg')
     await user.click(form.getByRole('button', { name: 'Guardar producto' }))
     await waitFor(() => expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({ caracteristicas: [
-      { caracteristicaId: 7, valor: 'Rojo', unidad: '' }, { caracteristicaId: 8, valor: '25', unidad: 'kg' },
+      { caracteristicaId: 7, valor: 'Rojo', unidad: null }, { caracteristicaId: 8, valor: '25', unidad: 'kg' },
     ] })))
+  })
+
+  it('continúa el alta: asigna Color a la inicial y agrega Blanco y Celeste de a una', async () => {
+    const user = userEvent.setup()
+    listProducts.mockResolvedValue(makePage(0, [active], 1))
+    createProduct.mockResolvedValue(createdProduct)
+    updateVariant.mockResolvedValue({})
+    createVariant.mockResolvedValue({})
+    const red = { ...createdProduct.variantes[0], caracteristicaId: 7, caracteristicaNombre: 'Color', valor: 'Rojo' }
+    const white = { id: 32, precioReferencia: 15, disponible: false, caracteristicaId: 7, caracteristicaNombre: 'Color', valor: 'Blanco', unidad: null }
+    const blue = { id: 33, precioReferencia: 18, disponible: true, caracteristicaId: 7, caracteristicaNombre: 'Color', valor: 'Celeste', unidad: null }
+    getProduct.mockResolvedValueOnce({ ...createdProduct, variantes: [red] })
+      .mockResolvedValueOnce({ ...createdProduct, variantes: [red, white] })
+      .mockResolvedValueOnce({ ...createdProduct, variantes: [red, white, blue] })
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const dialog = within(await screen.findByRole('dialog'))
+    await user.type(dialog.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(dialog.getByRole('textbox', { name: 'Precio de referencia' }), '12.50')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(dialog.getByRole('button', { name: 'Guardar producto' }))
+    await dialog.findByRole('heading', { name: 'Producto creado: Cal' })
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Atributo variable' }), '7')
+    await user.type(dialog.getByRole('textbox', { name: 'Valor de la variante inicial' }), 'Rojo')
+    await user.click(dialog.getByRole('button', { name: 'Guardar valor inicial' }))
+    await dialog.findByRole('button', { name: 'Agregar variante' })
+    expect(updateVariant).toHaveBeenCalledWith(3, 31, expect.objectContaining({ caracteristicaId: 7, valor: 'Rojo', precioReferencia: 12.5 }))
+    await user.type(dialog.getByRole('textbox', { name: 'Valor de la nueva variante' }), 'Blanco')
+    await user.type(dialog.getByRole('textbox', { name: 'Precio de referencia' }), '15')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Disponibilidad' }), 'false')
+    await user.click(dialog.getByRole('button', { name: 'Agregar variante' }))
+    await dialog.findByText(/ID 32 · Color: Blanco/)
+    await user.type(dialog.getByRole('textbox', { name: 'Valor de la nueva variante' }), 'Celeste')
+    await user.type(dialog.getByRole('textbox', { name: 'Precio de referencia' }), '18')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(dialog.getByRole('button', { name: 'Agregar variante' }))
+    await dialog.findByText(/ID 33 · Color: Celeste/)
+    expect(createVariant.mock.calls.map(([id, payload]) => [id, payload.valor])).toEqual([[3, 'Blanco'], [3, 'Celeste']])
+    expect(getProduct).toHaveBeenCalledTimes(3)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('consulta el detalle antes de repetir una variante con resultado incierto', async () => {
+    const user = userEvent.setup()
+    listProducts.mockResolvedValue(makePage(0, [active], 1))
+    const red = { ...createdProduct.variantes[0], caracteristicaId: 7, caracteristicaNombre: 'Color', valor: 'Rojo' }
+    createProduct.mockResolvedValue({ ...createdProduct, variantes: [red] })
+    createVariant.mockRejectedValueOnce({ status: 503, message: 'Sin respuesta' })
+    getProduct.mockResolvedValue({ ...createdProduct, variantes: [red] })
+    renderPage()
+    await screen.findByRole('heading', { name: 'Arena' })
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    const dialog = within(await screen.findByRole('dialog'))
+    await user.type(dialog.getByRole('textbox', { name: 'Nombre' }), 'Cal')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Categoría' }), '3')
+    await user.type(dialog.getByRole('textbox', { name: 'Precio de referencia' }), '12.50')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
+    await user.click(dialog.getByRole('button', { name: 'Guardar producto' }))
+    await dialog.findByRole('button', { name: 'Agregar variante' })
+    await user.type(dialog.getByRole('textbox', { name: 'Valor de la nueva variante' }), 'Blanco')
+    await user.type(dialog.getByRole('textbox', { name: 'Precio de referencia' }), '15')
+    await user.selectOptions(dialog.getByRole('combobox', { name: 'Disponibilidad' }), 'false')
+    await user.click(dialog.getByRole('button', { name: 'Agregar variante' }))
+    expect(await dialog.findByText('Sin respuesta')).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Agregar variante' })).toBeDisabled()
+    await user.click(dialog.getByRole('button', { name: 'Consultar detalle del producto' }))
+    await waitFor(() => expect(getProduct).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(dialog.getByRole('button', { name: 'Agregar variante' })).toBeEnabled())
+    expect(createVariant).toHaveBeenCalledTimes(1)
   })
 
   it('edita conservando categoría inactiva y envía la lista completa al quitar y agregar características', async () => {
@@ -208,7 +281,7 @@ describe('ProductManagementPage', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Característica' }), '8')
     await user.type(screen.getByRole('textbox', { name: 'Valor' }), '25')
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-    await waitFor(() => expect(updateProduct).toHaveBeenCalledWith(2, expect.objectContaining({ categoriaId: 4, caracteristicas: [{ caracteristicaId: 8, valor: '25', unidad: '' }] })))
+    await waitFor(() => expect(updateProduct).toHaveBeenCalledWith(2, expect.objectContaining({ categoriaId: 4, caracteristicas: [{ caracteristicaId: 8, valor: '25', unidad: null }] })))
     expect(await screen.findByText('Producto actualizado.')).toBeInTheDocument()
     expect(updateProduct.mock.calls[0][1]).not.toHaveProperty('activo')
     expect(updateProduct.mock.calls[0][1]).not.toHaveProperty('destacado')
@@ -294,7 +367,7 @@ describe('ProductManagementPage', () => {
     listProducts.mockResolvedValueOnce(makePage(2, [active], 3))
       .mockResolvedValueOnce({ content: [], page: 2, size: 20, totalElements: 20, totalPages: 1 })
       .mockResolvedValueOnce(makePage(0, [active], 1))
-    createProduct.mockResolvedValue({})
+    createProduct.mockResolvedValue(createdProduct)
     const user = userEvent.setup()
     renderPage('/app/catalog/products?page=2')
     await screen.findByRole('heading', { name: 'Arena' })
@@ -428,7 +501,7 @@ describe('ProductManagementPage', () => {
   })
 
   it('recorre buscar, crear, editar características y cambiar estado en la misma sesión', async () => {
-    const created = { ...active, id: 9, nombre: 'Cal' }
+    const created = { ...active, id: 9, nombre: 'Cal', varianteInicialId: 91, caracteristicas: [], variantes: [{ id: 91, precioReferencia: 12, disponible: true, caracteristicaId: null, valor: null, unidad: null }] }
     let listed = [active]
     listProducts.mockImplementation(async () => makePage(0, listed, 1))
     createProduct.mockImplementation(async () => { listed = [created]; return created })
@@ -449,6 +522,7 @@ describe('ProductManagementPage', () => {
     await user.type(form.getByRole('textbox', { name: 'Precio de referencia' }), '12')
     await user.selectOptions(form.getByRole('combobox', { name: 'Disponibilidad' }), 'true')
     await user.click(form.getByRole('button', { name: 'Guardar producto' }))
+    await user.click(await screen.findByRole('button', { name: 'Cerrar alta' }))
     expect(await screen.findByRole('button', { name: 'Editar Cal' })).toBeInTheDocument()
     expect(createProduct.mock.calls[0][0]).not.toBeInstanceOf(FormData)
     await user.click(screen.getByRole('button', { name: 'Imágenes de Cal' }))
@@ -461,7 +535,7 @@ describe('ProductManagementPage', () => {
     await user.selectOptions(edit.getByRole('combobox', { name: 'Característica' }), '7')
     await user.type(edit.getByRole('textbox', { name: 'Valor' }), 'Blanco')
     await user.click(edit.getByRole('button', { name: 'Guardar cambios' }))
-    await waitFor(() => expect(updateProduct).toHaveBeenCalledWith(9, expect.objectContaining({ caracteristicas: [{ caracteristicaId: 7, valor: 'Blanco', unidad: '' }] })))
+    await waitFor(() => expect(updateProduct).toHaveBeenCalledWith(9, expect.objectContaining({ caracteristicas: [{ caracteristicaId: 7, valor: 'Blanco', unidad: null }] })))
     await user.click(await screen.findByRole('button', { name: 'Desactivar Cal' }))
     await user.click(screen.getByRole('button', { name: 'Confirmar desactivación' }))
     await user.click(await screen.findByRole('button', { name: 'Reactivar Cal' }))

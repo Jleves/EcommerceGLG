@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetApiClientForTests } from '../../../services/apiClient.js'
-import { createProduct, deactivateProduct, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reorderProductImages, setPrimaryProductImage, updateProduct, uploadProductImage } from './productService.js'
+import { createProduct, createVariant, deactivateProduct, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reorderProductImages, setPrimaryProductImage, updateProduct, updateVariant, uploadProductImage } from './productService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 
 function jsonResponse(data) {
@@ -69,6 +69,25 @@ describe('productService', () => {
       ['/api/catalog/products/7/deactivate', 'POST', 'include', 'token'],
       ['/api/catalog/products/7/reactivate', 'POST', 'include', 'token'],
     ])
+    document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
+  })
+
+  it('envía POST y PUT de variantes con cookies, CSRF y sin reintento de mutación', async () => {
+    document.cookie = 'XSRF-TOKEN=token; Path=/'
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ id: 8 }))
+      .mockResolvedValueOnce(jsonResponse({ id: 7 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Conflicto' }), { status: 409, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const payload = { sku: null, precioReferencia: '12', disponible: true, caracteristicaId: 3, valor: 'Rojo', unidad: null }
+    await createVariant(5, payload)
+    await updateVariant(5, 7, payload)
+    await expect(createVariant(5, payload)).rejects.toMatchObject({ status: 409 })
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method, options.credentials, options.headers.get('X-XSRF-TOKEN')])).toEqual([
+      ['/api/catalog/products/5/variants', 'POST', 'include', 'token'],
+      ['/api/catalog/products/5/variants/7', 'PUT', 'include', 'token'],
+      ['/api/catalog/products/5/variants', 'POST', 'include', 'token'],
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(payload)
     document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
   })
 
