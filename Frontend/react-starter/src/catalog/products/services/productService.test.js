@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetApiClientForTests } from '../../../services/apiClient.js'
-import { createProduct, createVariant, deactivateProduct, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reorderProductImages, setPrimaryProductImage, updateProduct, updateVariant, uploadProductImage } from './productService.js'
+import { createProduct, createVariant, deactivateProduct, deactivateVariant, deleteProductImage, getProduct, listProductImages, listProducts, reactivateProduct, reactivateVariant, reorderProductImages, setPrimaryProductImage, updateProduct, updateVariant, uploadProductImage } from './productService.js'
 import { listCharacteristics } from '../../characteristics/services/characteristicService.js'
 
 function jsonResponse(data) {
@@ -88,6 +88,23 @@ describe('productService', () => {
       ['/api/catalog/products/5/variants', 'POST', 'include', 'token'],
     ])
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(payload)
+    document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
+  })
+
+  it('cambia el estado de una variante por sus rutas propias sin repetir la mutación', async () => {
+    document.cookie = 'XSRF-TOKEN=token; Path=/'
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ activo: false }))
+      .mockResolvedValueOnce(jsonResponse({ activo: true }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Conflicto' }), { status: 409, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    await deactivateVariant(5, 7)
+    await reactivateVariant(5, 7)
+    await expect(deactivateVariant(5, 7)).rejects.toMatchObject({ status: 409 })
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method, options.credentials, options.headers.get('X-XSRF-TOKEN')])).toEqual([
+      ['/api/catalog/products/5/variants/7/deactivate', 'POST', 'include', 'token'],
+      ['/api/catalog/products/5/variants/7/reactivate', 'POST', 'include', 'token'],
+      ['/api/catalog/products/5/variants/7/deactivate', 'POST', 'include', 'token'],
+    ])
     document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'
   })
 

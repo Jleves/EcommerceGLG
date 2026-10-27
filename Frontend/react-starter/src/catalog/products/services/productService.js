@@ -31,6 +31,14 @@ export function updateVariant(productId, variantId, payload) {
   return apiRequest(ENDPOINTS.CATALOG.PRODUCT_VARIANT(productId, variantId), { ...mutationOptions, method: 'PUT', body: payload })
 }
 
+export function deactivateVariant(productId, variantId) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_VARIANT_DEACTIVATE(productId, variantId), { ...mutationOptions, method: 'POST' })
+}
+
+export function reactivateVariant(productId, variantId) {
+  return apiRequest(ENDPOINTS.CATALOG.PRODUCT_VARIANT_REACTIVATE(productId, variantId), { ...mutationOptions, method: 'POST' })
+}
+
 export function deactivateProduct(id) {
   return apiRequest(ENDPOINTS.CATALOG.PRODUCT_DEACTIVATE(id), { ...mutationOptions, method: 'POST' })
 }

@@ -1,6 +1,6 @@
 # S3 FE — Gestionar variantes de producto: plan de implementación
 
-**Fuente funcional:** [S3 FE Gestionar variantes de producto](https://trello.com/c/m8FRqzpY/59-s3-fe-gestionar-variantes-de-producto) y acuerdos de esta planificación. **Dependencia implementada:** [S3 BE Variantes de producto](../S3%20BE%20Variantes%20de%20producto/s3-be-variantes-de-producto-plan-implementacion.md). **Diseño de referencia:** [modelo inicial](../../modelo-inicial.md). **Estado:** tanda 1 completa; tanda 2 planificada.
+**Fuente funcional:** [S3 FE Gestionar variantes de producto](https://trello.com/c/m8FRqzpY/59-s3-fe-gestionar-variantes-de-producto) y acuerdos de esta planificación. **Dependencia implementada:** [S3 BE Variantes de producto](../S3%20BE%20Variantes%20de%20producto/s3-be-variantes-de-producto-plan-implementacion.md). **Diseño de referencia:** [modelo inicial](../../modelo-inicial.md). **Estado:** tandas 1 y 2 completas en el código local.
 
 ## Decisiones acordadas para esta tarjeta
 
@@ -112,7 +112,7 @@ En edición, `ProductManagementPage` consulta `getProduct(...)`; `ProductForm` g
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 1 | Contrato frontend y alta gradual con variante inicial y continuación en el mismo diálogo | API S3 BE vigente | Completa |
-| 2 | Edición de datos compartidos y gestión individual de variantes, estados, recarga y errores | Tanda 1 | Planificada |
+| 2 | Edición de datos compartidos y gestión individual de variantes, estados, recarga y errores | Tanda 1 | Completa |
 
 ```text
 Tanda 1 → Tanda 2 → validación integral
@@ -395,7 +395,35 @@ TRATAMIENTO
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** edición compartida sin precio/disponibilidad superiores; gestión individual de variantes activas e inactivas, alta, edición y cambios de estado; lectura confirmada y actualización de lista; rutas frontend de desactivación/reactivación; aviso de fotos generales.
+
+**Diferencias respecto del plan:** ninguna de alcance. El backend y las migraciones no cambiaron.
+
+**Tests ejecutados:** pruebas dirigidas de formulario, gestor, página y servicio; suite frontend con un worker; lint, build y revisión del diff.
+
+**Tests exitosos:** 50/50 dirigidos, luego 25/25 de página tras ampliar escenarios; 285/285 globales en 30 archivos; lint y build.
+
+**Tests fallidos:** la primera corrida dirigida tuvo 2 fallas por expectativas del flujo anterior; la segunda, 1 falla por una consulta ambigua de la prueba nueva. Ambas causas se corrigieron y la suite final pasó.
+
+**Incidentes:** INC-003 e INC-004, descritos en [resultado de la tanda 2](s3-fe-gestionar-variantes-de-producto-tanda-2-resultado.md).
+
+**Tests faltantes:** recorrido real de navegador con backend/MySQL, prueba concurrente con base real y validación en el entorno de destino.
+
+**Riesgos residuales:** operaciones separadas pueden dejar una ficha parcialmente actualizada; las pruebas locales no prueban el contrato ni las migraciones del destino.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** `ProductForm.jsx` y su prueba, `ProductVariantManager.jsx` y su prueba, `ProductManagementPage.jsx` y su prueba, `productService.js` y su prueba, `endpoints.js`, este plan y el registro detallado.
+
+**Criterio de cierre:**
+
+- [x] Edición de ficha multivariante y acciones individuales comprobadas.
+- [x] Estados, conflictos y revisión del detalle tras resultado incierto comprobados.
+- [x] Recorrido de Rojo, Blanco y Celeste y galería general comprobado en pruebas de interfaz; recorrido real declarado faltante.
+- [x] Pruebas dirigidas, suite frontend, lint y build ejecutados; fallas y límites informados.
+- [x] Incidentes, tests faltantes y riesgos residuales documentados.
 
 ## Registro global de decisiones pendientes
 

@@ -7,7 +7,7 @@ import { listSubcategories } from '../../subcategories/services/subcategoryServi
 import { ProductForm } from '../components/ProductForm.jsx'
 import { ProductImageManager } from '../components/ProductImageManager.jsx'
 import { ProductVariantManager } from '../components/ProductVariantManager.jsx'
-import { createProduct, createVariant, deactivateProduct, getProduct, listProducts, reactivateProduct, updateProduct, updateVariant } from '../services/productService.js'
+import { createProduct, createVariant, deactivateProduct, deactivateVariant, getProduct, listProducts, reactivateProduct, reactivateVariant, updateProduct, updateVariant } from '../services/productService.js'
 
 const buttonInteraction = 'shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
 const greenButton = `${buttonInteraction} bg-emerald-700 text-white enabled:hover:bg-emerald-800 focus-visible:outline-emerald-700`
@@ -38,6 +38,8 @@ export function ProductManagementPage() {
   const [imageTarget, setImageTarget] = useState(null)
   const [formData, setFormData] = useState(null)
   const [createdProduct, setCreatedProduct] = useState(null)
+  const [creationStep, setCreationStep] = useState('form')
+  const [formRevision, setFormRevision] = useState(0)
   const [variantError, setVariantError] = useState(null)
   const [variantNeedsReview, setVariantNeedsReview] = useState(false)
   const [formError, setFormError] = useState(null)
@@ -50,6 +52,7 @@ export function ProductManagementPage() {
   const inFlight = useRef(false)
   const reviewing = useRef(false)
   const dialog = useRef(null)
+  const creationConfirmDialog = useRef(null)
   const confirmDialog = useRef(null)
   const loadingForm = formTarget !== null && formData === null && !formError
   const currentState = state.key === key && state.version === version
@@ -119,11 +122,18 @@ export function ProductManagementPage() {
   }, [formTarget])
 
   useEffect(() => {
+    if (creationStep === 'confirm' && creationConfirmDialog.current && !creationConfirmDialog.current.open) {
+      if (creationConfirmDialog.current.showModal) creationConfirmDialog.current.showModal()
+      else creationConfirmDialog.current.setAttribute('open', '')
+    }
+  }, [creationStep])
+
+  useEffect(() => {
     if (formTarget && dialog.current && !dialog.current.open) {
       if (dialog.current.showModal) dialog.current.showModal()
       else dialog.current.setAttribute('open', '')
     }
-  }, [formTarget])
+  }, [formTarget, creationStep])
 
   useEffect(() => {
     if (confirming && confirmDialog.current && !confirmDialog.current.open) {
@@ -135,7 +145,9 @@ export function ProductManagementPage() {
   function openForm(target) {
     if (inFlight.current || needsReview || confirming || imageTarget || currentState.loading || currentState.error) return
     setFormData(null)
+    setFormRevision(0)
     setCreatedProduct(null)
+    setCreationStep('form')
     setVariantError(null)
     setVariantNeedsReview(false)
     setFormError(null)
@@ -149,13 +161,20 @@ export function ProductManagementPage() {
     setFormTarget(null)
     setFormData(null)
     setCreatedProduct(null)
+    setCreationStep('form')
     setVariantError(null)
     setVariantNeedsReview(false)
     setMutationError(null)
   }
 
+  function finishCreation() {
+    if (!createdProduct || inFlight.current) return
+    closeForm()
+    setNotice('Producto creado con éxito.')
+  }
+
   async function submitProduct(payload) {
-    if (inFlight.current || needsReview || !formData || currentState.loading || currentState.error) return
+    if (inFlight.current || needsReview || variantNeedsReview || !formData || currentState.loading || currentState.error) return
     inFlight.current = true
     setPending(true)
     setMutationError(null)
@@ -168,17 +187,21 @@ export function ProductManagementPage() {
           return
         }
         setCreatedProduct(product)
-        setNotice(`Producto ${product.id} creado. Podés agregar variantes en el diálogo.`)
+        setCreationStep('confirm')
       } else {
         await updateProduct(formTarget, payload)
-        setNotice('Producto actualizado.')
-        setFormTarget(null)
-        setFormData(null)
+        const product = await getProduct(formTarget)
+        setFormData((current) => ({ ...current, product }))
+        setFormRevision((value) => value + 1)
+        setNotice('Datos compartidos actualizados y confirmados.')
       }
       setVersion((value) => value + 1)
     } catch (error) {
       setMutationError(error)
-      if (!error?.status || error.status >= 500) setNeedsReview(true)
+      if (!error?.status || error.status >= 500) {
+        if (formTarget === 'create') setNeedsReview(true)
+        else setVariantNeedsReview(true)
+      }
     } finally {
       inFlight.current = false
       setPending(false)
@@ -186,14 +209,17 @@ export function ProductManagementPage() {
   }
 
   async function refreshProduct() {
-    if (!createdProduct?.id || inFlight.current) return
+    const productId = createdProduct?.id ?? formData?.product?.id
+    if (!productId || inFlight.current) return
     inFlight.current = true
     setPending(true)
     setVariantError(null)
     try {
-      const product = await getProduct(createdProduct.id)
-      setCreatedProduct(product)
+      const product = await getProduct(productId)
+      if (createdProduct) setCreatedProduct(product)
+      else { setFormData((current) => ({ ...current, product })); setFormRevision((value) => value + 1) }
       setVariantNeedsReview(false)
+      setMutationError(null)
       setVersion((value) => value + 1)
     } catch (error) {
       setVariantError(error)
@@ -204,19 +230,23 @@ export function ProductManagementPage() {
     }
   }
 
-  async function submitVariant(action, payload) {
-    if (!createdProduct?.id || inFlight.current || variantNeedsReview) return
+  async function submitVariant(action, variantId, payload) {
+    const productId = createdProduct?.id ?? formData?.product?.id
+    if (!productId || inFlight.current || variantNeedsReview) return
     inFlight.current = true
     setPending(true)
     setVariantError(null)
     let mutated = false
     try {
-      if (action === 'initial') await updateVariant(createdProduct.id, createdProduct.varianteInicialId, payload)
-      else await createVariant(createdProduct.id, payload)
+      if (action === 'initial' || action === 'update') await updateVariant(productId, variantId, payload)
+      else if (action === 'create') await createVariant(productId, payload)
+      else if (action === 'deactivate') await deactivateVariant(productId, variantId)
+      else if (action === 'reactivate') await reactivateVariant(productId, variantId)
       mutated = true
-      const product = await getProduct(createdProduct.id)
-      setCreatedProduct(product)
-      setNotice(action === 'initial' ? 'Variante inicial confirmada.' : 'Variante agregada y confirmada.')
+      const product = await getProduct(productId)
+      if (createdProduct) setCreatedProduct(product)
+      else setFormData((current) => ({ ...current, product }))
+      setNotice(action === 'initial' ? 'Variante inicial confirmada.' : action === 'create' ? 'Variante agregada y confirmada.' : 'Variante actualizada y confirmada.')
       setVersion((value) => value + 1)
     } catch (error) {
       setVariantError(error)
@@ -321,13 +351,26 @@ export function ProductManagementPage() {
           </div>
         </div>
       </dialog>}
-      {formTarget && <dialog ref={dialog} aria-labelledby="product-form-title" onCancel={(event) => { if (inFlight.current) event.preventDefault(); else closeForm() }} className="m-auto max-h-[90vh] w-[min(94vw,42rem)] overflow-y-auto rounded-xl border-0 p-0 shadow-2xl backdrop:bg-slate-950/60">
+      {creationStep === 'confirm' && createdProduct && <dialog ref={creationConfirmDialog} aria-labelledby="creation-confirm-title" aria-describedby="creation-confirm-description" onCancel={finishCreation} className="m-auto w-[min(92vw,27rem)] rounded-2xl border-0 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50">
+        <div className="border-t-4 border-emerald-700 p-5 sm:p-6">
+          <h2 id="creation-confirm-title" className="text-lg font-bold">Producto creado</h2>
+          <p id="creation-confirm-description" className="mt-2 text-sm text-slate-700">¿Querés agregar más variantes al producto {createdProduct.nombre}?</p>
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            <button type="button" onClick={finishCreation} className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`}>No, terminar</button>
+            <button type="button" onClick={() => setCreationStep('variants')} className={`rounded-lg px-4 py-2 font-semibold ${greenButton}`}>Sí, agregar variantes</button>
+          </div>
+        </div>
+      </dialog>}
+      {formTarget && creationStep !== 'confirm' && <dialog ref={dialog} aria-labelledby="product-form-title" onCancel={(event) => { if (inFlight.current) event.preventDefault(); else closeForm() }} className="m-auto max-h-[90vh] w-[min(94vw,42rem)] overflow-y-auto rounded-xl border-0 p-0 shadow-2xl backdrop:bg-slate-950/60">
         {needsReview && <p role="status" className="m-4 rounded bg-amber-50 p-3">Resultado incierto. Consultá el estado actual antes de guardar otra vez.</p>}
         {loadingForm && <p role="status" className="p-5">Cargando formulario…</p>}
         {formError && <div className="grid gap-3 p-5"><RequestError error={formError} /><button type="button" onClick={closeForm} className={`justify-self-start rounded-lg px-4 py-2 font-semibold ${lightButton}`}>Cerrar</button></div>}
         {formData && (createdProduct
-          ? <ProductVariantManager key={`${createdProduct.id}-${createdProduct.variantes?.length}-${createdProduct.variantes?.[0]?.caracteristicaId ?? ''}`} product={createdProduct} characteristics={formData.characteristics} pending={pending || currentState.loading || Boolean(currentState.error)} reviewRequired={variantNeedsReview} error={variantError} onUpdateInitial={(_, payload) => submitVariant('initial', payload)} onCreate={(payload) => submitVariant('create', payload)} onReview={refreshProduct} onClose={closeForm} />
-          : <ProductForm initialValues={formData.product} categories={formData.categories} subcategories={formData.subcategories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview} error={mutationError} />)}
+          ? <ProductVariantManager key={`${createdProduct.id}-${createdProduct.variantes?.length}-${createdProduct.variantes?.[0]?.caracteristicaId ?? ''}`} product={createdProduct} characteristics={formData.characteristics} pending={pending || currentState.loading || Boolean(currentState.error)} reviewRequired={variantNeedsReview} error={variantError} onUpdateInitial={(id, payload) => submitVariant('initial', id, payload)} onCreate={(payload) => submitVariant('create', null, payload)} onReview={refreshProduct} onClose={closeForm} />
+          : <>
+            <ProductForm key={`${formTarget}-${formRevision}`} initialValues={formData.product} categories={formData.categories} subcategories={formData.subcategories} characteristics={formData.characteristics} onSubmit={submitProduct} onCancel={closeForm} pending={pending || currentState.loading || Boolean(currentState.error)} blocked={needsReview || variantNeedsReview} error={mutationError} />
+            {formData.product && <ProductVariantManager key={`${formData.product.id}-${formData.product.variantes?.length}-${formData.product.variantes?.[0]?.caracteristicaId ?? ''}`} editing product={formData.product} characteristics={formData.characteristics} pending={pending || currentState.loading || Boolean(currentState.error)} reviewRequired={variantNeedsReview} error={variantError} onUpdateInitial={(id, payload) => submitVariant('initial', id, payload)} onUpdate={(id, payload) => submitVariant('update', id, payload)} onCreate={(payload) => submitVariant('create', null, payload)} onChangeStatus={(id, action) => submitVariant(action, id)} onReview={refreshProduct} onClose={closeForm} />}
+          </>)}
       </dialog>}
       {imageTarget && <ProductImageManager key={imageTarget.id} product={imageTarget} onClose={() => setImageTarget(null)} />}
       <form className="mb-6" onSubmit={search}>

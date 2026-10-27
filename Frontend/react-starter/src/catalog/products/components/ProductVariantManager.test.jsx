@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ProductVariantManager } from './ProductVariantManager.jsx'
@@ -14,6 +14,45 @@ function show(overrides = {}) {
 }
 
 describe('ProductVariantManager', () => {
+  it('edita una variante inactiva y confirma sus transiciones por separado', async () => {
+    const user = userEvent.setup()
+    const red = { ...initial, caracteristicaId: 3, caracteristicaNombre: 'Color', valor: 'Rojo', activo: true }
+    const white = { ...red, id: 12, valor: 'Blanco', activo: false, disponible: false }
+    const onUpdate = vi.fn()
+    const onChangeStatus = vi.fn()
+    render(<ProductVariantManager editing product={{ ...product, variantes: [red, white] }} characteristics={characteristics}
+      onUpdate={onUpdate} onChangeStatus={onChangeStatus} onCreate={vi.fn()} onReview={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByText('Variante Color: Blanco - Inactiva')).toBeInTheDocument()
+    const whiteForm = within(screen.getByRole('form', { name: 'Editar variante Color: Blanco' }))
+    expect(whiteForm.getByRole('textbox', { name: 'Valor de la variante' })).toBeInTheDocument()
+    expect(whiteForm.getByRole('combobox', { name: 'Unidad' })).toBeInTheDocument()
+    expect(whiteForm.getByRole('textbox', { name: 'Identificador de la variante' })).toBeInTheDocument()
+    expect(whiteForm.getByRole('combobox', { name: 'Disponibilidad' })).toBeInTheDocument()
+    await user.clear(whiteForm.getByRole('textbox', { name: 'Precio' }))
+    await user.type(whiteForm.getByRole('textbox', { name: 'Precio' }), '125')
+    await user.click(whiteForm.getByRole('button', { name: 'Guardar variante' }))
+    expect(onUpdate).toHaveBeenCalledWith(12, expect.objectContaining({ precioReferencia: '125', caracteristicaId: 3, disponible: false }))
+    expect(within(screen.getByRole('form', { name: 'Editar variante Color: Rojo' })).getByRole('button', { name: 'Desactivar' })).toBeDisabled()
+    await user.click(whiteForm.getByRole('button', { name: 'Reactivar' }))
+    expect(onChangeStatus).not.toHaveBeenCalled()
+    await user.click(whiteForm.getByRole('button', { name: 'Confirmar reactivación' }))
+    expect(onChangeStatus).toHaveBeenCalledWith(12, 'reactivate')
+  })
+
+  it('rechaza al editar un valor duplicado aunque la otra variante esté inactiva', async () => {
+    const user = userEvent.setup()
+    const red = { ...initial, caracteristicaId: 3, caracteristicaNombre: 'Color', valor: 'Rojo', activo: true }
+    const white = { ...red, id: 12, valor: 'Blanco', activo: false }
+    const onUpdate = vi.fn()
+    render(<ProductVariantManager editing product={{ ...product, variantes: [red, white] }} characteristics={characteristics}
+      onUpdate={onUpdate} onCreate={vi.fn()} onReview={vi.fn()} onClose={vi.fn()} />)
+    const redForm = within(screen.getByRole('form', { name: 'Editar variante Color: Rojo' }))
+    await user.clear(redForm.getByRole('textbox', { name: 'Valor de la variante' }))
+    await user.type(redForm.getByRole('textbox', { name: 'Valor de la variante' }), ' blanco ')
+    await user.click(redForm.getByRole('button', { name: 'Guardar variante' }))
+    expect(onUpdate).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Ya existe una variante')
+  })
   it('exige asignar atributo y valor a la inicial antes de permitir otra variante', async () => {
     const user = userEvent.setup()
     const { onUpdateInitial, onCreate } = show()

@@ -14,7 +14,82 @@ function invalidUnit(unit) {
   return unit !== null && (!unit.trim() || unit.length > 100)
 }
 
-export function ProductVariantManager({ product, characteristics, pending, reviewRequired, error, onUpdateInitial, onCreate, onReview, onClose }) {
+function variantDescription(variant) {
+  return variant.caracteristicaNombre
+    ? `${variant.caracteristicaNombre}: ${variant.valor}${variant.unidad ? ` ${variant.unidad}` : ''}`
+    : 'sin atributo variable'
+}
+
+function VariantRow({ variant, variants, pending, reviewRequired, onUpdate, onChangeStatus }) {
+  const [value, setValue] = useState(variant.valor ?? '')
+  const [unit, setUnit] = useState(variant.unidad ?? null)
+  const [sku, setSku] = useState(variant.sku ?? '')
+  const [price, setPrice] = useState(String(variant.precioReferencia))
+  const [available, setAvailable] = useState(String(variant.disponible))
+  const [validation, setValidation] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const lastActive = variant.activo && variants.filter((item) => item.activo).length === 1
+
+  function save(event) {
+    event.preventDefault()
+    if (pending || reviewRequired) return
+    const repeated = variants.some((item) => item.id !== variant.id && item.caracteristicaId === variant.caracteristicaId &&
+      normalized(item.valor ?? '') === normalized(value) && normalized(item.unidad ?? '') === normalized(unit))
+    if (sku.length > 160 || !pricePattern.test(price) || Number(price) <= 0 || invalidUnit(unit) ||
+        (variant.caracteristicaId && (!value.trim() || value.length > 500)) || repeated) {
+      setValidation(repeated ? 'Ya existe una variante con ese valor y unidad.' : 'Revisá los campos de esta variante.')
+      return
+    }
+    setValidation('')
+    onUpdate(variant.id, { sku: sku.trim() || null, precioReferencia: price, disponible: available === 'true',
+      caracteristicaId: variant.caracteristicaId ?? null, valor: variant.caracteristicaId ? value.trim() : null,
+      unidad: variant.caracteristicaId ? unit?.trim() || null : null })
+  }
+
+  return <form onSubmit={save} className="grid gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm" aria-label={`Editar variante ${variantDescription(variant)}`}>
+    <p className="font-semibold">Variante {variantDescription(variant)} - {variant.activo ? 'Activa' : 'Inactiva'}</p>
+    {validation && <p role="alert" className="text-red-700">{validation}</p>}
+    <fieldset disabled={pending || reviewRequired} className="grid gap-3">
+      {variant.caracteristicaId && <div className="grid gap-3 sm:grid-cols-2">
+        <label className={labelClass} htmlFor={`variant-value-${variant.id}`}>Valor de la variante
+          <input id={`variant-value-${variant.id}`} maxLength={500} value={value} onChange={(event) => setValue(event.target.value)} className={fieldClass} />
+        </label>
+        <UnitSelect id={`variant-unit-${variant.id}`} label="Unidad" value={unit} onChange={setUnit} />
+      </div>}
+      <label className={labelClass} htmlFor={`variant-sku-${variant.id}`}>Identificador de la variante
+        <input id={`variant-sku-${variant.id}`} maxLength={160} value={sku} onChange={(event) => setSku(event.target.value)} className={fieldClass} />
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className={labelClass} htmlFor={`variant-price-${variant.id}`}>Precio
+          <input id={`variant-price-${variant.id}`} inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className={fieldClass} />
+        </label>
+        <label className={labelClass} htmlFor={`variant-available-${variant.id}`}>Disponibilidad
+          <select id={`variant-available-${variant.id}`} value={available} onChange={(event) => setAvailable(event.target.value)} className={fieldClass}>
+            <option value="true">Disponible</option><option value="false">No disponible</option>
+          </select>
+        </label>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className="rounded bg-emerald-700 px-4 py-2 font-semibold text-white">Guardar variante</button>
+        <button type="button" disabled={lastActive} onClick={() => setConfirming(true)} className="rounded border border-slate-400 px-4 py-2 font-semibold">
+          {variant.activo ? 'Desactivar' : 'Reactivar'}
+        </button>
+      </div>
+      {lastActive && <p>No se puede desactivar la última variante activa.</p>}
+      {confirming && <div className="grid gap-2 rounded border border-amber-300 bg-amber-50 p-3">
+        <p>¿Confirmás {variant.activo ? 'desactivar' : 'reactivar'} la variante {variantDescription(variant)}?</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setConfirming(false)}>Cancelar</button>
+          <button type="button" onClick={() => { setConfirming(false); onChangeStatus(variant.id, variant.activo ? 'deactivate' : 'reactivate') }}>
+            Confirmar {variant.activo ? 'desactivación' : 'reactivación'}
+          </button>
+        </div>
+      </div>}
+    </fieldset>
+  </form>
+}
+
+export function ProductVariantManager({ product, characteristics, pending, reviewRequired, error, onUpdateInitial, onUpdate, onCreate, onChangeStatus, onReview, onClose, editing = false }) {
   const variants = product.variantes ?? []
   const initial = variants.find((variant) => variant.id === product.varianteInicialId) ?? variants[0]
   const attributeId = initial?.caracteristicaId ? String(initial.caracteristicaId) : ''
@@ -61,10 +136,10 @@ export function ProductVariantManager({ product, characteristics, pending, revie
       caracteristicaId: Number(attributeId), valor: value.trim(), unidad: unit?.trim() || null })
   }
 
-  return <section className="grid gap-5 bg-white p-5 text-slate-900 sm:p-6" aria-labelledby="product-form-title">
+  return <section className="grid gap-5 bg-white p-5 text-slate-900 sm:p-6" aria-label="Gestión de variantes">
     <header className="border-b border-slate-200 pb-4">
-      <h2 className="text-2xl font-bold" id="product-form-title">Producto creado: {product.nombre}</h2>
-      <p className="mt-1 text-sm text-slate-700">ID {product.id}. La ficha y su variante inicial ya están guardadas. Podés completar otras variantes ahora.</p>
+      <h2 className="text-2xl font-bold" id={editing ? undefined : 'product-form-title'}>{editing ? `Variantes de ${product.nombre}` : `Producto creado: ${product.nombre}`}</h2>
+      <p className="mt-1 text-sm text-slate-700">{editing ? 'Cada variante se guarda por separado.' : 'La ficha y su variante inicial ya están guardadas. Podés completar otras variantes ahora.'}</p>
       <p className="mt-1 text-sm text-slate-600">Las fotos son generales del producto. Después de cerrar, buscálo en la lista y abrí «Imágenes».</p>
     </header>
     <RequestError error={error} />
@@ -75,8 +150,8 @@ export function ProductVariantManager({ product, characteristics, pending, revie
     </div>}
     <section aria-label="Variantes confirmadas" className="grid gap-3">
       <h3 className="text-lg font-bold">Variantes confirmadas</h3>
-      {variants.map((variant) => <div key={variant.id} className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
-        <p className="font-semibold">ID {variant.id} · {variant.caracteristicaNombre ? `${variant.caracteristicaNombre}: ${variant.valor}${variant.unidad ? ` ${variant.unidad}` : ''}` : 'Sin atributo variable'}</p>
+      {variants.map((variant) => editing ? <VariantRow key={`${variant.id}-${variant.sku}-${variant.precioReferencia}-${variant.disponible}-${variant.activo}-${variant.valor}-${variant.unidad}`} variant={variant} variants={variants} pending={pending} reviewRequired={reviewRequired} onUpdate={onUpdate} onChangeStatus={onChangeStatus} /> : <div key={variant.id} className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+        <p className="font-semibold">Variante {variantDescription(variant)}</p>
         <p>Identificador de la variante: {variant.sku || 'Sin identificador'} · Precio de referencia: {variant.precioReferencia} · {variant.disponible ? 'Disponible' : 'No disponible'}</p>
       </div>)}
     </section>
@@ -118,6 +193,6 @@ export function ProductVariantManager({ product, characteristics, pending, revie
         <button type="submit" className="justify-self-start rounded bg-emerald-700 px-4 py-2 font-semibold text-white">Agregar variante</button>
       </fieldset>
     </form>}
-    <button type="button" disabled={pending} onClick={onClose} className="justify-self-start rounded border border-slate-300 px-4 py-2 font-semibold">Cerrar alta</button>
+    <button type="button" disabled={pending} onClick={onClose} className="justify-self-start rounded border border-slate-300 px-4 py-2 font-semibold">{editing ? 'Cerrar edición' : 'Cerrar alta'}</button>
   </section>
 }

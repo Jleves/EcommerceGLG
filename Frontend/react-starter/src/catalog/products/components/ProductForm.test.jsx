@@ -7,6 +7,24 @@ const categories = [{ id: 1, nombre: 'Activa', activo: true }, { id: 2, nombre: 
 const characteristics = [{ id: 3, nombre: 'Color' }, { id: 4, nombre: 'Peso' }]
 
 describe('ProductForm', () => {
+  it('edita solo datos compartidos y reserva Color para las variantes', async () => {
+    const user = userEvent.setup()
+    const submit = vi.fn()
+    const product = { nombre: 'Pintura', categoriaId: 1, descripcion: 'Interior', precioReferencia: 100, disponible: true,
+      variantes: [{ id: 11, caracteristicaId: 3, valor: 'Rojo' }, { id: 12, caracteristicaId: 3, valor: 'Blanco' }],
+      caracteristicas: [{ caracteristicaId: 4, valor: '20', unidad: 'L' }] }
+    render(<ProductForm categories={categories} characteristics={characteristics} initialValues={product} onSubmit={submit} onCancel={() => {}} />)
+    expect(screen.queryByRole('textbox', { name: 'Precio de referencia' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    const payload = submit.mock.calls[0][0]
+    expect(payload.caracteristicas).toEqual([{ caracteristicaId: 4, valor: '20', unidad: 'L' }])
+    expect(payload).not.toHaveProperty('precioReferencia')
+    expect(payload).not.toHaveProperty('disponible')
+    expect(screen.getByRole('button', { name: 'Agregar característica' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Quitar característica' }))
+    await user.click(screen.getByRole('button', { name: 'Agregar característica' }))
+    expect(screen.getByRole('combobox', { name: 'Característica' })).not.toHaveTextContent('Color')
+  })
   it('permite omitir subcategoría y limpia la selección al cambiar de padre', async () => {
     const user = userEvent.setup()
     const submit = vi.fn()
