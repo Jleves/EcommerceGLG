@@ -20,4 +20,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsByNombreNormalizadoAndIdNot(String nombreNormalizado, Long id);
 
     List<Category> findAllByOrderByNombreAscIdAsc();
+
+    List<Category> findByActivoTrueOrderByNombreAscIdAsc();
 }

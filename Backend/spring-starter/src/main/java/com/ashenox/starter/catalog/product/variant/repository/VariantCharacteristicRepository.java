@@ -15,4 +15,7 @@ public interface VariantCharacteristicRepository extends JpaRepository<VariantCh
     boolean existsByCharacteristicId(Long characteristicId);
     @Query("select vc.characteristic.id, count(vc) from VariantCharacteristic vc group by vc.characteristic.id")
     List<Object[]> countAllByCharacteristic();
+
+    @Query("select distinct vc.characteristic.id, vc.characteristic.nombre, vc.valor from VariantCharacteristic vc where vc.variant.activo = true and vc.variant.product.activo = true")
+    List<Object[]> findPublicFacetValues();
 }

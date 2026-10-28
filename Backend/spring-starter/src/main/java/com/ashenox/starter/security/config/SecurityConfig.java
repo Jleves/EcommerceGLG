@@ -117,7 +117,8 @@ public class SecurityConfig  {
                         .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/reset-password/validate").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/public/products", "/api/public/products/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/products", "/api/public/products/{id}",
+                                "/api/public/products/{id}/related", "/api/public/catalog").permitAll()
                         .requestMatchers("/api/public/**").denyAll()
                         .requestMatchers("/api/admin/users", "/api/admin/users/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/admin/**")

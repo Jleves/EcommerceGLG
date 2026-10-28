@@ -1,0 +1,58 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AppRouter } from '../app/AppRouter.jsx'
+import { getPublicCatalog, getPublicProducts, getPublicProduct, getRelatedProducts } from './publicService.js'
+
+vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn(), getPublicProducts: vi.fn(), getPublicProduct: vi.fn(), getRelatedProducts: vi.fn() }))
+
+const catalog = { categories: [{ id: 3, nombre: 'Materiales', descripcion: 'Cemento y áridos', icono: 'materiales', activo: true }], facets: [{ id: 8, name: 'Marca', values: ['Acme'] }, { id: 9, name: 'Color', values: ['Gris'] }] }
+const product = { id: 7, nombre: 'Cemento Portland', categoriaId: 3, precioReferencia: 1200, disponible: true, primaryThumbnailUrl: null, selectedVariantId: 12 }
+
+function renderRoute(path) { return render(<MemoryRouter initialEntries={[path]}><AppRouter /></MemoryRouter>) }
+
+describe('catálogo público', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getPublicCatalog.mockResolvedValue(catalog)
+    getPublicProducts.mockResolvedValue({ content: [product], page: 0, size: 20, totalElements: 1, totalPages: 1 })
+    getRelatedProducts.mockResolvedValue({ content: [] })
+    getPublicProduct.mockResolvedValue({ ...product, descripcion: 'Para obra', images: [], caracteristicas: [], variantes: [{ id: 12, precioReferencia: 1200, disponible: true, caracteristicaNombre: 'Color', valor: 'Gris' }, { id: 13, precioReferencia: 1500, disponible: false, caracteristicaNombre: 'Color', valor: 'Blanco' }] })
+  })
+
+  it('muestra el home público y solo enlaces listos', async () => {
+    renderRoute('/')
+    expect(screen.getByRole('heading', { name: /Construí con confianza/ })).toBeInTheDocument()
+    expect((await screen.findAllByRole('link', { name: /Materiales/ }))[0]).toHaveAttribute('href', '/catalog?categoriaId=3')
+    expect(screen.queryByText('Ofertas vigentes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mi carrito')).not.toBeInTheDocument()
+    expect(screen.queryByText('Envíos')).not.toBeInTheDocument()
+  })
+
+  it('combina búsqueda y filtros públicos desde la URL', async () => {
+    const user = userEvent.setup()
+    renderRoute('/catalog?q=cemento&categoriaId=3')
+    await screen.findByText('Cemento Portland')
+    expect(getPublicProducts).toHaveBeenCalledWith(expect.objectContaining({ q: 'cemento', categoriaId: '3' }), expect.anything())
+    await user.selectOptions(screen.getByLabelText('Marca'), 'Acme')
+    await waitFor(() => expect(getPublicProducts).toHaveBeenLastCalledWith(expect.objectContaining({ marca: 'Acme', q: 'cemento', categoriaId: '3' }), expect.anything()))
+    await user.selectOptions(screen.getByLabelText('Color'), 'Gris')
+    await waitFor(() => expect(getPublicProducts).toHaveBeenLastCalledWith(expect.objectContaining({ atributos: ['9:Gris'] }), expect.anything()))
+  })
+
+  it('explica cuándo la búsqueda no encuentra productos', async () => {
+    getPublicProducts.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
+    renderRoute('/catalog?q=sin-coincidencias')
+    expect(await screen.findByText(/No encontramos productos con esos criterios/)).toBeInTheDocument()
+  })
+
+  it('conserva la variante seleccionada y actualiza precio y disponibilidad', async () => {
+    const user = userEvent.setup()
+    renderRoute('/products/7?variantId=12')
+    expect(await screen.findByRole('heading', { name: 'Cemento Portland' })).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Blanco/ }))
+    expect(screen.getByText('No disponible')).toBeInTheDocument()
+    expect(screen.getByText(/1.500/)).toBeInTheDocument()
+  })
+})

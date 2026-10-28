@@ -13,10 +13,19 @@ import { AppLayout } from './AppLayout.jsx'
 import { ProfilePage } from './ProfilePage.jsx'
 import { ProtectedRoute } from './ProtectedRoute.jsx'
 import { PublicOnlyRoute } from './PublicOnlyRoute.jsx'
+import { PublicLayout } from '../public/PublicLayout.jsx'
+import { HomePage } from '../public/HomePage.jsx'
+import { CatalogPage } from '../public/CatalogPage.jsx'
+import { ProductDetailPage } from '../public/ProductDetailPage.jsx'
 
 export function AppRouter() {
   return (
     <Routes>
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/catalog" element={<CatalogPage />} />
+        <Route path="/products/:id" element={<ProductDetailPage />} />
+      </Route>
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
@@ -39,7 +48,6 @@ export function AppRouter() {
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/app/profile" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

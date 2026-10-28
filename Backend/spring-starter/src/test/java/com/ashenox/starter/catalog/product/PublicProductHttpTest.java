@@ -228,6 +228,56 @@ class PublicProductHttpTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void publicSearchCombinesTextCategoryBrandAndAttributesWithoutPublishingInactiveProducts() throws Exception {
+        Category materials = category();
+        Category tools = categories.saveAndFlush(Category.builder().nombre("Herramientas")
+                .nombreNormalizado("herramientas-" + UUID.randomUUID()).icono("herramientas").activo(true).build());
+        Product matching = product(materials, "Cemento Portland", true, true);
+        Product otherBrand = product(materials, "Cemento blanco", true, true);
+        Product otherCategory = product(tools, "Taladro", true, true);
+        Product hidden = product(materials, "Cemento oculto", false, true);
+        Characteristic brand = characteristics.saveAndFlush(Characteristic.builder().nombre("Marca")
+                .nombreNormalizado("marca").build());
+        Characteristic finish = characteristics.saveAndFlush(Characteristic.builder().nombre("Acabado")
+                .nombreNormalizado("acabado").build());
+        Characteristic color = characteristics.saveAndFlush(Characteristic.builder().nombre("Color")
+                .nombreNormalizado("color").build());
+        assign(matching, brand, "Acme");
+        assign(matching, finish, "Gris");
+        assign(otherBrand, brand, "Otra");
+        assign(otherCategory, brand, "Acme");
+        assign(hidden, brand, "Acme");
+        ProductVariant matchingVariant = variants.findByProductId(matching.getId()).orElseThrow();
+        variantCharacteristics.saveAndFlush(VariantCharacteristic.builder().variant(matchingVariant)
+                .characteristic(color).valor("Azul").valorNormalizado("azul").build());
+
+        mvc.perform(get(PATH).param("q", "cemento").param("categoriaId", materials.getId().toString())
+                        .param("marca", "ACME").param("atributo", finish.getId() + ":Gris"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(matching.getId()));
+        mvc.perform(get(PATH).param("q", "acme"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get(PATH).param("q", "azul").param("atributo", color.getId() + ":Azul"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(get(PATH).param("q", "cemento").param("marca", "inexistente"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(PATH).param("atributo", "malformado")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/public/catalog")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories.length()").value(2))
+                .andExpect(jsonPath("$.facets.length()").value(3));
+        mvc.perform(get(PATH + "/" + matching.getId() + "/related"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[?(@.id == " + matching.getId() + ")]").isEmpty());
+        mvc.perform(get(PATH + "/" + hidden.getId() + "/related")).andExpect(status().isNotFound());
+    }
+
+    private void assign(Product product, Characteristic characteristic, String value) {
+        productCharacteristics.saveAndFlush(ProductCharacteristic.builder()
+                .id(new ProductCharacteristicId(product.getId(), characteristic.getId()))
+                .product(product).characteristic(characteristic).valor(value).build());
+    }
+
     private Category category() {
         return categories.saveAndFlush(Category.builder().nombre("Materiales")
                 .nombreNormalizado("materiales-" + UUID.randomUUID()).icono("brick").activo(true).build());

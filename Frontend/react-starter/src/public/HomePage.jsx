@@ -1,0 +1,57 @@
+import { useEffect, useState } from 'react'
+import { Link, useOutletContext } from 'react-router-dom'
+import { IconArrowLeft, IconArrowRight, IconBuildingStore, IconCreditCard, IconBrandWhatsapp } from '@tabler/icons-react'
+import { resolveCategoryIcon } from '../catalog/categories/icons/categoryIcons.js'
+import { brandLogos, campaignPhotos, whatsappNumber } from './publicConfig.js'
+
+function CampaignCarousel() {
+  const [current, setCurrent] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!media) return undefined
+    const update = () => setReducedMotion(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  useEffect(() => {
+    if (campaignPhotos.length < 2 || paused || reducedMotion) return undefined
+    const timer = window.setInterval(() => setCurrent((value) => (value + 1) % campaignPhotos.length), 6000)
+    return () => window.clearInterval(timer)
+  }, [paused, reducedMotion])
+  const hasPhotos = campaignPhotos.length > 0
+  return (
+    <div className="campaign" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocusCapture={() => setPaused(true)} onBlurCapture={() => setPaused(false)} aria-label="Campañas de GLG">
+      <div className="campaign-frame">
+        {hasPhotos ? <img src={campaignPhotos[current].src} alt={campaignPhotos[current].alt} /> : <p>Las fotos de campaña estarán disponibles próximamente.</p>}
+      </div>
+      {campaignPhotos.length > 1 && <div className="campaign-controls">
+        <div className="campaign-dots" aria-label="Elegir foto de campaña">{campaignPhotos.map((photo, index) => <button key={photo.src} type="button" className={index === current ? 'active' : ''} onClick={() => setCurrent(index)} aria-label={`Ver foto ${index + 1}`} aria-current={index === current ? 'true' : undefined} />)}</div>
+        <div><button type="button" onClick={() => setCurrent((current - 1 + campaignPhotos.length) % campaignPhotos.length)} aria-label="Foto anterior"><IconArrowLeft size={18} /></button><button type="button" onClick={() => setCurrent((current + 1) % campaignPhotos.length)} aria-label="Foto siguiente"><IconArrowRight size={18} /></button></div>
+      </div>}
+    </div>
+  )
+}
+
+export function HomePage() {
+  const { catalog } = useOutletContext()
+  const categories = catalog.data?.categories ?? []
+  const brandFacet = catalog.data?.facets?.find((facet) => facet.name.toLowerCase() === 'marca')
+  const visibleBrands = brandLogos.filter((brand) => brandFacet?.values.some((value) => value.toLowerCase() === brand.name.toLowerCase()))
+  return <>
+    <section className="home-hero"><div className="public-container hero-grid">
+      <div className="hero-copy"><span className="eyebrow">Materiales para tus proyectos</span><h1>Construí con<br /> confianza.</h1><p>Todo lo que necesitás para cada etapa de tu obra, en un solo lugar. Explorá el catálogo y consultanos por WhatsApp.</p><Link className="purple-button" to="/catalog">Explorar categorías <IconArrowRight size={17} /></Link></div>
+      <CampaignCarousel />
+    </div></section>
+    <section className="home-services public-container" aria-label="Información comercial">
+      <article><IconCreditCard aria-hidden="true" /><div><h2>Medios de pago</h2><p>Consultá las opciones disponibles.</p></div></article>
+      <article><IconBrandWhatsapp aria-hidden="true" /><div><h2>WhatsApp</h2><p>{whatsappNumber ? <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer">Te ayudamos con tu compra.</a> : 'Te ayudamos con tu compra.'}</p></div></article>
+      <article><IconBuildingStore aria-hidden="true" /><div><h2>Sucursal</h2><p>Visitá nuestro local en General Roca.</p></div></article>
+    </section>
+    <section className="home-categories"><div className="public-container"><div className="section-heading"><div><span className="eyebrow">Explorá por categoría</span><h2>Todo para tu obra</h2><p>Elegí lo que necesitás y encontrá materiales para cada proyecto.</p></div><Link to="/catalog">Ver todas las categorías →</Link></div>
+      {catalog.loading ? <p role="status">Cargando categorías…</p> : catalog.error ? <p role="alert">No pudimos cargar las categorías. Probá nuevamente más tarde.</p> : categories.length === 0 ? <p>Todavía no hay categorías disponibles.</p> : <div className="category-grid">{categories.slice(0, 4).map((category, index) => { const { Icon } = resolveCategoryIcon(category.icono); return <Link className="category-card" to={`/catalog?categoriaId=${category.id}`} key={category.id}><div className={`category-art art-${index % 4}`}><Icon size={64} stroke={1.2} aria-hidden="true" /><span>0{index + 1}</span></div><div className="category-label"><strong>{category.nombre}</strong><span>{category.descripcion || 'Ver productos'}</span><b aria-hidden="true">→</b></div></Link> })}</div>}
+    </div></section>
+    <section className="home-brands public-container"><div className="section-heading"><div><span className="eyebrow">Marcas que nos acompañan</span><h2>Trabajamos con grandes marcas</h2></div></div>{catalog.loading ? <p role="status">Cargando marcas…</p> : visibleBrands.length > 0 ? <div className="brand-track">{visibleBrands.map((brand) => <Link key={brand.name} to={`/catalog?marca=${encodeURIComponent(brand.name)}`} aria-label={`Ver productos de ${brand.name}`}><img src={brand.src} alt={brand.name} loading="lazy" /></Link>)}</div> : <p className="brand-pending">Los logos de marcas se incorporarán próximamente.</p>}</section>
+  </>
+}

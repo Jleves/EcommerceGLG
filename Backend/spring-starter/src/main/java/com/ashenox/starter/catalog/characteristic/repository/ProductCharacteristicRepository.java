@@ -13,6 +13,9 @@ public interface ProductCharacteristicRepository extends JpaRepository<ProductCh
     @Query("select pc from ProductCharacteristic pc join fetch pc.characteristic where pc.product.id = :productId order by pc.characteristic.id")
     List<ProductCharacteristic> findByProductIdWithCharacteristic(@Param("productId") Long productId);
 
+    @Query("select distinct pc.characteristic.id, pc.characteristic.nombre, pc.valor from ProductCharacteristic pc where pc.product.activo = true and exists (select variant.id from ProductVariant variant where variant.product = pc.product and variant.activo = true)")
+    List<Object[]> findPublicFacetValues();
+
     @Query("select pc.characteristic.id, count(pc) from ProductCharacteristic pc group by pc.characteristic.id")
     List<Object[]> countAllByCharacteristic();
 

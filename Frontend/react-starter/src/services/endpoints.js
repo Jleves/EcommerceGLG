@@ -1,6 +1,12 @@
 const authBase = '/api/auth'
 
 export const ENDPOINTS = Object.freeze({
+  PUBLIC: Object.freeze({
+    CATALOG: '/api/public/catalog',
+    PRODUCTS: '/api/public/products',
+    PRODUCT: (id) => `/api/public/products/${encodeURIComponent(id)}`,
+    RELATED: (id) => `/api/public/products/${encodeURIComponent(id)}/related`,
+  }),
   ADMIN: Object.freeze({
     USERS: '/api/admin/users',
     USER: (id) => `/api/admin/users/${encodeURIComponent(id)}`,
