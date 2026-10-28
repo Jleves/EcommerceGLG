@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,6 +28,20 @@ describe('catálogo público', () => {
     expect(screen.queryByText('Ofertas vigentes')).not.toBeInTheDocument()
     expect(screen.queryByText('Mi carrito')).not.toBeInTheDocument()
     expect(screen.queryByText('Envíos')).not.toBeInTheDocument()
+  })
+
+  it('muestra hasta ocho categorías en el carril y conserva el enlace al catálogo completo', async () => {
+    getPublicCatalog.mockResolvedValue({ ...catalog, categories: Array.from({ length: 9 }, (_, index) => ({
+      id: index + 1, nombre: `Categoría ${index + 1}`, descripcion: '', icono: 'materiales', activo: true,
+    })) })
+    renderRoute('/')
+    const rail = await screen.findByLabelText('Categorías disponibles')
+    const links = within(rail).getAllByRole('link')
+    expect(links).toHaveLength(8)
+    expect(links[0]).toHaveAttribute('href', '/catalog?categoriaId=1')
+    expect(links[7]).toHaveAttribute('href', '/catalog?categoriaId=8')
+    expect(screen.getByRole('link', { name: /Ver todas las categorías/ })).toHaveAttribute('href', '/catalog')
+    expect(screen.getByRole('button', { name: 'Categorías siguientes' })).toBeInTheDocument()
   })
 
   it('combina búsqueda y filtros públicos desde la URL', async () => {

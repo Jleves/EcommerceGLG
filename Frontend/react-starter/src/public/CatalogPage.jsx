@@ -58,7 +58,7 @@ export function CatalogPage() {
   const brands = facets.find((facet) => facet.name.toLowerCase() === 'marca')?.values ?? []
   return <section className="catalog-page public-container">
     <div className="catalog-intro"><span className="eyebrow">Catálogo público</span><h1>Materiales para tu obra</h1><p>Buscá productos y explorá las categorías disponibles.</p></div>
-    <form className="catalog-search" role="search" onSubmit={search}><IconSearch size={20} aria-hidden="true" /><input aria-label="Buscar en el catálogo" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Producto, marca o palabra clave" /><button className="purple-button" type="submit">Buscar</button></form>
+    <form className="catalog-search" role="search" onSubmit={search}><IconSearch size={20} aria-hidden="true" /><input aria-label="Buscar en el catálogo" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Producto, marca o palabra clave" /><button className="accent-button" type="submit">Buscar</button></form>
     <div className="catalog-layout"><aside className="catalog-filters" aria-label="Filtros de productos"><h2>Filtrar productos</h2>
       {catalog.error && <p role="alert">No se pudieron cargar los filtros.</p>}
       <label>Categoría<select value={categoriaId} onChange={(event) => updateParams({ categoriaId: event.target.value })}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nombre}</option>)}</select></label>
