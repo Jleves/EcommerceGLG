@@ -4,6 +4,38 @@ import { IconArrowLeft, IconArrowRight, IconBuildingStore, IconCreditCard, IconB
 import { resolveCategoryIcon } from '../catalog/categories/icons/categoryIcons.js'
 import { brandLogos, campaignPhotos, whatsappNumber } from './publicConfig.js'
 
+const heroFirstPart = 'Los materiales'
+const heroTitle = `${heroFirstPart} de tu próxima historia.`
+
+function HeroTitle() {
+  const [visibleLength, setVisibleLength] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? heroTitle.length : 0)
+
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    let count = 0
+    let timer
+    const typeNext = () => {
+      count += 1
+      setVisibleLength(count)
+      if (count < heroTitle.length) timer = window.setTimeout(typeNext, count === heroFirstPart.length ? 650 : count < heroFirstPart.length ? 45 : 75)
+    }
+    const stopForReducedMotion = () => {
+      if (media?.matches) {
+        window.clearTimeout(timer)
+        setVisibleLength(heroTitle.length)
+      }
+    }
+    if (!media?.matches) timer = window.setTimeout(typeNext, 45)
+    media?.addEventListener('change', stopForReducedMotion)
+    return () => {
+      window.clearTimeout(timer)
+      media?.removeEventListener('change', stopForReducedMotion)
+    }
+  }, [])
+
+  return <h1 aria-label={heroTitle}><span className="hero-title-reserve" aria-hidden="true">{heroTitle}</span><span className={`hero-title-typed${visibleLength < heroTitle.length ? ' is-typing' : ''}`} aria-hidden="true">{heroTitle.slice(0, visibleLength)}</span></h1>
+}
+
 function CampaignCarousel() {
   const [current, setCurrent] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -64,7 +96,7 @@ export function HomePage() {
 
   function moveCategoryRail(direction) {
     const rail = categoryRailRef.current
-    const card = rail?.querySelector('.category-card')
+    const card = rail?.querySelector('.category-stone')
     if (!rail || !card) return
     const gap = parseFloat(window.getComputedStyle(rail).gap) || 0
     rail.scrollBy({
@@ -75,7 +107,7 @@ export function HomePage() {
 
   return <>
     <section className="home-hero"><div className="public-container hero-grid">
-      <div className="hero-copy"><span className="eyebrow">Materiales para tus proyectos</span><h1>Construí con<br /> confianza.</h1><p>Todo lo que necesitás para cada etapa de tu obra, en un solo lugar. Explorá el catálogo y consultanos por WhatsApp.</p><Link className="accent-button" to="/catalog">Explorar categorías <IconArrowRight size={17} /></Link></div>
+      <div className="hero-copy"><span className="eyebrow">Materiales para tus proyectos</span><HeroTitle /><p>Todo lo que necesitás para cada etapa de tu obra, en un solo lugar. Explorá el catálogo y consultanos por WhatsApp.</p><Link className="accent-button" to="/catalog">Explorar categorías <IconArrowRight size={17} /></Link></div>
       <CampaignCarousel />
     </div></section>
     <section className="home-services public-container" aria-label="Información comercial">
@@ -84,7 +116,7 @@ export function HomePage() {
       <article><IconBuildingStore aria-hidden="true" /><div><h2>Sucursal</h2><p>Visitá nuestro local en General Roca.</p></div></article>
     </section>
     <section className="home-categories"><div className="public-container"><div className="section-heading"><div><span className="eyebrow">Explorá por categoría</span><h2>Todo para tu obra</h2><p>Elegí lo que necesitás y encontrá materiales para cada proyecto.</p></div><div className="category-actions"><Link to="/catalog">Ver todas las categorías →</Link>{visibleCategories.length > 1 && <div className="category-controls" aria-label="Desplazar categorías"><button type="button" onClick={() => moveCategoryRail(-1)} disabled={!railPosition.previous} aria-label="Categorías anteriores"><IconArrowLeft size={18} aria-hidden="true" /></button><button type="button" onClick={() => moveCategoryRail(1)} disabled={!railPosition.next} aria-label="Categorías siguientes"><IconArrowRight size={18} aria-hidden="true" /></button></div>}</div></div>
-      {catalog.loading ? <p role="status">Cargando categorías…</p> : catalog.error ? <p role="alert">No pudimos cargar las categorías. Probá nuevamente más tarde.</p> : categories.length === 0 ? <p>Todavía no hay categorías disponibles.</p> : <div className="category-rail" ref={categoryRailRef} aria-label="Categorías disponibles">{visibleCategories.map((category, index) => { const { Icon } = resolveCategoryIcon(category.icono); return <Link className="category-card" to={`/catalog?categoriaId=${category.id}`} key={category.id}><div className="category-art"><Icon size={72} stroke={1.3} aria-hidden="true" /><span>0{index + 1}</span></div><div className="category-label"><strong>{category.nombre}</strong><span>{category.descripcion || 'Ver productos'}</span><b aria-hidden="true">→</b></div></Link> })}</div>}
+      {catalog.loading ? <p role="status">Cargando categorías…</p> : catalog.error ? <p role="alert">No pudimos cargar las categorías. Probá nuevamente más tarde.</p> : categories.length === 0 ? <p>Todavía no hay categorías disponibles.</p> : <div className="category-ground"><div className="category-rail" ref={categoryRailRef} aria-label="Categorías disponibles">{visibleCategories.map((category) => { const { Icon } = resolveCategoryIcon(category.icono); return <div className="category-stone" key={category.id}><Link className="category-card" to={`/catalog?categoriaId=${category.id}`}><span className="category-fasteners" aria-hidden="true"><i /><i /><i /><i /></span><div className="category-art"><Icon size={72} stroke={1.3} aria-hidden="true" /></div><div className="category-label"><strong>{category.nombre}</strong><span>{category.descripcion || 'Ver productos'}</span><b aria-hidden="true">→</b></div></Link></div> })}</div></div>}
     </div></section>
     <section className="home-brands"><div className="public-container"><div className="section-heading"><div><span className="eyebrow">Marcas que nos acompañan</span><h2>Trabajamos con grandes marcas</h2></div></div>{catalog.loading ? <p role="status">Cargando marcas…</p> : visibleBrands.length > 0 ? <div className="brand-track">{visibleBrands.map((brand) => <Link key={brand.name} to={`/catalog?marca=${encodeURIComponent(brand.name)}`} aria-label={`Ver productos de ${brand.name}`}><img src={brand.src} alt={brand.name} loading="lazy" /></Link>)}</div> : <p className="brand-pending">Los logos de marcas se incorporarán próximamente.</p>}</div></section>
   </>

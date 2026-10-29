@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppRouter } from '../app/AppRouter.jsx'
 import { getPublicCatalog, getPublicProducts, getPublicProduct, getRelatedProducts } from './publicService.js'
 
@@ -13,6 +13,7 @@ const product = { id: 7, nombre: 'Cemento Portland', categoriaId: 3, precioRefer
 function renderRoute(path) { return render(<MemoryRouter initialEntries={[path]}><AppRouter /></MemoryRouter>) }
 
 describe('catálogo público', () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
   beforeEach(() => {
     vi.clearAllMocks()
     getPublicCatalog.mockResolvedValue(catalog)
@@ -23,11 +24,31 @@ describe('catálogo público', () => {
 
   it('muestra el home público y solo enlaces listos', async () => {
     renderRoute('/')
-    expect(screen.getByRole('heading', { name: /Construí con confianza/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })).toBeInTheDocument()
     expect((await screen.findAllByRole('link', { name: /Materiales/ }))[0]).toHaveAttribute('href', '/catalog?categoriaId=3')
     expect(screen.queryByText('Ofertas vigentes')).not.toBeInTheDocument()
     expect(screen.queryByText('Mi carrito')).not.toBeInTheDocument()
     expect(screen.queryByText('Envíos')).not.toBeInTheDocument()
+  })
+
+  it('escribe el título en dos tramos con una pausa y mantiene su nombre accesible', () => {
+    vi.useFakeTimers()
+    renderRoute('/')
+    const heading = screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })
+    const typed = heading.querySelector('.hero-title-typed')
+    act(() => vi.advanceTimersByTime(630))
+    expect(typed).toHaveTextContent('Los materiales')
+    act(() => vi.advanceTimersByTime(649))
+    expect(typed.textContent).toBe('Los materiales')
+    act(() => vi.advanceTimersByTime(3000))
+    expect(typed.textContent).toBe('Los materiales de tu próxima historia.')
+  })
+
+  it('muestra el título completo sin animación cuando se prefiere movimiento reducido', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    renderRoute('/')
+    const heading = screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })
+    expect(heading.querySelector('.hero-title-typed').textContent).toBe('Los materiales de tu próxima historia.')
   })
 
   it('muestra hasta ocho categorías en el carril y conserva el enlace al catálogo completo', async () => {

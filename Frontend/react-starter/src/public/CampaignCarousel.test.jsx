@@ -18,11 +18,11 @@ afterEach(() => vi.useRealTimers())
 it('cambia solo la foto con el control manual', async () => {
   const user = userEvent.setup()
   render(<MemoryRouter initialEntries={['/']}><AppRouter /></MemoryRouter>)
-  expect(screen.getByRole('heading', { name: /Construí con confianza/ })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })).toBeInTheDocument()
   expect(screen.getByAltText('Campaña uno')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Foto siguiente' }))
   expect(screen.getByAltText('Campaña dos')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: /Construí con confianza/ })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })).toBeInTheDocument()
 })
 
 it('avanza automáticamente cuando hay fotos', () => {
@@ -30,5 +30,5 @@ it('avanza automáticamente cuando hay fotos', () => {
   render(<MemoryRouter initialEntries={['/']}><AppRouter /></MemoryRouter>)
   act(() => vi.advanceTimersByTime(6000))
   expect(screen.getByAltText('Campaña dos')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: /Construí con confianza/ })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })).toBeInTheDocument()
 })
