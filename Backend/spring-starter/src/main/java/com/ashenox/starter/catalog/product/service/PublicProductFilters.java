@@ -18,7 +18,7 @@ final class PublicProductFilters {
 
     record Attribute(Long id, String value) {}
 
-    static Specification<Product> of(String query, Long categoryId, String brand, List<Attribute> attributes) {
+    static Specification<Product> of(String query, Long categoryId, Long subcategoryId, String brand, List<Attribute> attributes) {
         return (root, criteria, cb) -> {
             List<Predicate> conditions = new ArrayList<>();
             conditions.add(cb.isTrue(root.get("activo")));
@@ -28,6 +28,7 @@ final class PublicProductFilters {
             conditions.add(cb.exists(activeVariant));
 
             if (categoryId != null) conditions.add(cb.equal(root.get("category").get("id"), categoryId));
+            if (subcategoryId != null) conditions.add(cb.equal(root.get("subcategory").get("id"), subcategoryId));
             if (brand != null) conditions.add(characteristicMatches(root, criteria, cb, null, brand, true));
             for (Attribute attribute : attributes) {
                 conditions.add(cb.or(characteristicMatches(root, criteria, cb, attribute.id(), attribute.value(), false),

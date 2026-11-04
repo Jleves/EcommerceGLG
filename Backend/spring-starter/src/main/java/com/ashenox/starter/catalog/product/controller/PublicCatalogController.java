@@ -4,6 +4,8 @@ import com.ashenox.starter.catalog.category.dto.CategoryResponse;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
 import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
 import com.ashenox.starter.catalog.product.dto.PublicCatalogResponse;
+import com.ashenox.starter.catalog.subcategory.dto.SubcategoryResponse;
+import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.catalog.product.variant.repository.VariantCharacteristicRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PublicCatalogController {
     private final CategoryRepository categories;
+    private final SubcategoryRepository subcategories;
     private final ProductCharacteristicRepository characteristics;
     private final VariantCharacteristicRepository variantCharacteristics;
 
@@ -44,7 +47,9 @@ public class PublicCatalogController {
                 .map(facet -> new PublicCatalogResponse.Facet(facet.id, facet.name,
                         facet.values.stream().distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList()))
                 .toList();
-        return new PublicCatalogResponse(publicCategories, facets);
+        List<SubcategoryResponse> publicSubcategories = subcategories.findPublicNavigation().stream()
+                .map(SubcategoryResponse::from).toList();
+        return new PublicCatalogResponse(publicCategories, publicSubcategories, facets);
     }
 
     private static class FacetBuilder {

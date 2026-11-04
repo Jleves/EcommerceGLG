@@ -36,31 +36,63 @@ function HeroTitle() {
   return <h1 aria-label={heroTitle}><span className="hero-title-reserve" aria-hidden="true">{heroTitle}</span><span className={`hero-title-typed${visibleLength < heroTitle.length ? ' is-typing' : ''}`} aria-hidden="true">{heroTitle.slice(0, visibleLength)}</span></h1>
 }
 
+const campaignFadeMs = 400
+
+function CampaignImage({ photo, outgoing = false, entering = false }) {
+  return <div className={`campaign-layer${entering ? ' campaign-layer--entering' : ''}`} aria-hidden={outgoing || undefined}>
+    <img className="campaign-backdrop" src={photo.src} alt="" aria-hidden="true" />
+    <div className={`campaign-slide${photo.portrait ? ' campaign-slide--portrait' : ''}`}>
+      <img src={photo.src} alt={outgoing ? '' : photo.alt} />
+      {photo.caption && <span className="campaign-caption">{photo.caption}</span>}
+    </div>
+  </div>
+}
+
 function CampaignCarousel() {
   const [current, setCurrent] = useState(0)
+  const [previous, setPrevious] = useState(null)
   const [paused, setPaused] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     if (!media) return undefined
-    const update = () => setReducedMotion(media.matches)
+    const update = () => {
+      setReducedMotion(media.matches)
+      if (media.matches) setPrevious(null)
+    }
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
   }, [])
   useEffect(() => {
     if (campaignPhotos.length < 2 || paused || reducedMotion) return undefined
-    const timer = window.setInterval(() => setCurrent((value) => (value + 1) % campaignPhotos.length), 6000)
+    const timer = window.setInterval(() => {
+      setPrevious(current)
+      setCurrent((current + 1) % campaignPhotos.length)
+    }, 6000)
     return () => window.clearInterval(timer)
-  }, [paused, reducedMotion])
+  }, [current, paused, reducedMotion])
+  useEffect(() => {
+    if (previous === null) return undefined
+    const timer = window.setTimeout(() => setPrevious(null), campaignFadeMs)
+    return () => window.clearTimeout(timer)
+  }, [current, previous])
+  function showPhoto(index) {
+    if (index === current) return
+    setPrevious(reducedMotion ? null : current)
+    setCurrent(index)
+  }
   const hasPhotos = campaignPhotos.length > 0
   return (
     <div className="campaign" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocusCapture={() => setPaused(true)} onBlurCapture={() => setPaused(false)} aria-label="Campañas de GLG">
       <div className="campaign-frame">
-        {hasPhotos ? <img src={campaignPhotos[current].src} alt={campaignPhotos[current].alt} /> : <p>Las fotos de campaña estarán disponibles próximamente.</p>}
+        {hasPhotos ? <>
+          {previous !== null && <CampaignImage photo={campaignPhotos[previous]} outgoing />}
+          <CampaignImage key={current} photo={campaignPhotos[current]} entering={previous !== null} />
+        </> : <p>Las fotos de campaña estarán disponibles próximamente.</p>}
       </div>
       {campaignPhotos.length > 1 && <div className="campaign-controls">
-        <div className="campaign-dots" aria-label="Elegir foto de campaña">{campaignPhotos.map((photo, index) => <button key={photo.src} type="button" className={index === current ? 'active' : ''} onClick={() => setCurrent(index)} aria-label={`Ver foto ${index + 1}`} aria-current={index === current ? 'true' : undefined} />)}</div>
-        <div><button type="button" onClick={() => setCurrent((current - 1 + campaignPhotos.length) % campaignPhotos.length)} aria-label="Foto anterior"><IconArrowLeft size={18} /></button><button type="button" onClick={() => setCurrent((current + 1) % campaignPhotos.length)} aria-label="Foto siguiente"><IconArrowRight size={18} /></button></div>
+        <div className="campaign-dots" aria-label="Elegir foto de campaña">{campaignPhotos.map((photo, index) => <button key={photo.src} type="button" className={index === current ? 'active' : ''} onClick={() => showPhoto(index)} aria-label={`Ver foto ${index + 1}`} aria-current={index === current ? 'true' : undefined} />)}</div>
+        <div><button type="button" onClick={() => showPhoto((current - 1 + campaignPhotos.length) % campaignPhotos.length)} aria-label="Foto anterior"><IconArrowLeft size={18} /></button><button type="button" onClick={() => showPhoto((current + 1) % campaignPhotos.length)} aria-label="Foto siguiente"><IconArrowRight size={18} /></button></div>
       </div>}
     </div>
   )

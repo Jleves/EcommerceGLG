@@ -23,9 +23,11 @@ public class PublicProductController {
                                           @RequestParam(defaultValue = "20") int size,
                                           @RequestParam(required = false) String q,
                                           @RequestParam(required = false) Long categoriaId,
+                                          @RequestParam(required = false) Long subcategoriaId,
                                           @RequestParam(required = false) String marca,
                                           @RequestParam(name = "atributo", required = false) List<String> atributos) {
-        return service.list(page, size, q, categoriaId, marca, atributos == null ? List.of() : atributos);
+        return service.list(page, size, q, categoriaId, subcategoriaId, marca,
+                atributos == null ? List.of() : atributos);
     }
 
     @GetMapping("/{id}")

@@ -15,6 +15,8 @@ import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepo
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.model.VariantCharacteristic;
 import com.ashenox.starter.catalog.product.variant.repository.VariantCharacteristicRepository;
+import com.ashenox.starter.catalog.subcategory.model.Subcategory;
+import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +59,7 @@ class PublicProductHttpTest {
     @Autowired ProductVariantRepository variants;
     @Autowired VariantCharacteristicRepository variantCharacteristics;
     @Autowired CategoryRepository categories;
+    @Autowired SubcategoryRepository subcategories;
     @Autowired CharacteristicRepository characteristics;
     @Autowired ProductCharacteristicRepository productCharacteristics;
     @MockitoSpyBean ProductImageRepository images;
@@ -68,8 +71,39 @@ class PublicProductHttpTest {
         variantCharacteristics.deleteAll();
         variants.deleteAll();
         products.deleteAll();
+        subcategories.deleteAll();
         characteristics.deleteAll();
         categories.deleteAll();
+    }
+
+    @Test
+    void publicNavigationListsActiveParentsAndSubcategoriesAndFiltersProducts() throws Exception {
+        Category materials = category();
+        Category hiddenCategory = categories.saveAndFlush(Category.builder().nombre("Oculta")
+                .nombreNormalizado("oculta-" + UUID.randomUUID()).icono("brick").activo(false).build());
+        Subcategory cement = subcategories.saveAndFlush(Subcategory.builder().category(materials)
+                .nombre("Cementos").nombreNormalizado("cementos").build());
+        Subcategory sand = subcategories.saveAndFlush(Subcategory.builder().category(materials)
+                .nombre("Arenas").nombreNormalizado("arenas").build());
+        subcategories.saveAndFlush(Subcategory.builder().category(hiddenCategory)
+                .nombre("No pública").nombreNormalizado("no-publica").build());
+        Product matching = product(materials, "Cemento", true, true);
+        matching.setSubcategory(cement);
+        products.saveAndFlush(matching);
+        Product other = product(materials, "Arena", true, true);
+        other.setSubcategory(sand);
+        products.saveAndFlush(other);
+
+        mvc.perform(get("/api/public/catalog")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories.length()").value(1))
+                .andExpect(jsonPath("$.subcategories.length()").value(2))
+                .andExpect(jsonPath("$.subcategories[0].nombre").value("Arenas"))
+                .andExpect(jsonPath("$.subcategories[1].categoriaId").value(materials.getId()));
+        mvc.perform(get(PATH).param("categoriaId", materials.getId().toString())
+                        .param("subcategoriaId", cement.getId().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(matching.getId()));
+        mvc.perform(get(PATH).param("subcategoriaId", "-1")).andExpect(status().isBadRequest());
     }
 
     @Test

@@ -20,5 +20,9 @@ public interface SubcategoryRepository extends JpaRepository<Subcategory, Long> 
 
     List<Subcategory> findAllByOrderByCategoryIdAscNombreAscIdAsc();
 
+    @Query("select subcategory from Subcategory subcategory join fetch subcategory.category category "
+            + "where category.activo = true order by category.nombre asc, category.id asc, subcategory.nombre asc, subcategory.id asc")
+    List<Subcategory> findPublicNavigation();
+
     List<Subcategory> findByCategoryIdOrderByNombreAscIdAsc(Long categoryId);
 }

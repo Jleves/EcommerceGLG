@@ -9,6 +9,7 @@ export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const q = searchParams.get('q')?.trim() ?? ''
   const categoriaId = searchParams.get('categoriaId') ?? ''
+  const subcategoriaId = searchParams.get('subcategoriaId') ?? ''
   const marca = searchParams.get('marca') ?? ''
   const atributos = searchParams.getAll('atributo')
   const rawPage = searchParams.get('page')
@@ -25,7 +26,8 @@ export function CatalogPage() {
     const rawPage = params.get('page')
     const requestPage = rawPage && /^\d+$/.test(rawPage) ? Number(rawPage) : 0
     getPublicProducts({ page: requestPage, q: params.get('q')?.trim() ?? '',
-      categoriaId: params.get('categoriaId') ?? '', marca: params.get('marca') ?? '',
+      categoriaId: params.get('categoriaId') ?? '', subcategoriaId: params.get('subcategoriaId') ?? '',
+      marca: params.get('marca') ?? '',
       atributos: params.getAll('atributo') }, { signal: controller.signal }).then(
       (data) => setResult({ loading: false, data, error: null }),
       (error) => { if (error.name !== 'AbortError') setResult({ loading: false, data: null, error }) },
@@ -54,6 +56,7 @@ export function CatalogPage() {
   }
 
   const categories = catalog.data?.categories ?? []
+  const subcategories = (catalog.data?.subcategories ?? []).filter((subcategory) => String(subcategory.categoriaId) === categoriaId)
   const facets = catalog.data?.facets ?? []
   const brands = facets.find((facet) => facet.name.toLowerCase() === 'marca')?.values ?? []
   return <section className="catalog-page public-container">
@@ -61,7 +64,8 @@ export function CatalogPage() {
     <form className="catalog-search" role="search" onSubmit={search}><IconSearch size={20} aria-hidden="true" /><input aria-label="Buscar en el catálogo" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Producto, marca o palabra clave" /><button className="accent-button" type="submit">Buscar</button></form>
     <div className="catalog-layout"><aside className="catalog-filters" aria-label="Filtros de productos"><h2>Filtrar productos</h2>
       {catalog.error && <p role="alert">No se pudieron cargar los filtros.</p>}
-      <label>Categoría<select value={categoriaId} onChange={(event) => updateParams({ categoriaId: event.target.value })}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nombre}</option>)}</select></label>
+      <label>Categoría<select value={categoriaId} onChange={(event) => updateParams({ categoriaId: event.target.value, subcategoriaId: '' })}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nombre}</option>)}</select></label>
+      {subcategories.length > 0 && <label>Subcategoría<select value={subcategoriaId} onChange={(event) => updateParams({ subcategoriaId: event.target.value })}><option value="">Todas</option>{subcategories.map((subcategory) => <option key={subcategory.id} value={subcategory.id}>{subcategory.nombre}</option>)}</select></label>}
       <label>Marca<select value={marca} onChange={(event) => updateParams({ marca: event.target.value })}><option value="">Todas</option>{brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
       {facets.filter((facet) => facet.name.toLowerCase() !== 'marca').map((facet) => <label key={facet.id}>{facet.name}<select value={atributos.find((item) => item.startsWith(`${facet.id}:`))?.slice(String(facet.id).length + 1) ?? ''} onChange={(event) => changeAttribute(facet.id, event.target.value)}><option value="">Todos</option>{facet.values.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>)}
       <button className="clear-filters" type="button" onClick={() => { setDraft(''); setSearchParams({}) }}>Limpiar filtros</button>

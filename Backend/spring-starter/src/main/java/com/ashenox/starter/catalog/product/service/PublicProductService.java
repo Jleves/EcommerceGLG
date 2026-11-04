@@ -41,11 +41,11 @@ public class PublicProductService {
 
     @Transactional(readOnly = true)
     public PublicProductPageResponse list(int page, int size) {
-        return list(page, size, null, null, null, List.of());
+        return list(page, size, null, null, null, null, List.of());
     }
 
     @Transactional(readOnly = true)
-    public PublicProductPageResponse list(int page, int size, String query, Long categoryId, String brand,
+    public PublicProductPageResponse list(int page, int size, String query, Long categoryId, Long subcategoryId, String brand,
                                           List<String> rawAttributes) {
         if (page < 0 || size < 1 || size > 100) {
             throw new BusinessException("La página o el tamaño solicitado no es válido.");
@@ -53,9 +53,10 @@ public class PublicProductService {
         String search = normalized(query, 160, "La búsqueda no es válida.");
         String brandFilter = normalized(brand, 160, "La marca no es válida.");
         if (categoryId != null && categoryId < 1) throw new BusinessException("La categoría no es válida.");
+        if (subcategoryId != null && subcategoryId < 1) throw new BusinessException("La subcategoría no es válida.");
         if (rawAttributes.size() > 10) throw new BusinessException("Hay demasiados filtros de atributos.");
         List<PublicProductFilters.Attribute> attributes = rawAttributes.stream().map(this::parseAttribute).toList();
-        Page<Product> result = products.findAll(PublicProductFilters.of(search, categoryId, brandFilter, attributes),
+        Page<Product> result = products.findAll(PublicProductFilters.of(search, categoryId, subcategoryId, brandFilter, attributes),
                 PageRequest.of(page, size, org.springframework.data.domain.Sort.by("nombre", "id")));
         return toPage(result, page, size);
     }
