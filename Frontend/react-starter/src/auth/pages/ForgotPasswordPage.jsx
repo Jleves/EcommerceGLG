@@ -27,12 +27,12 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthCard title="Recuperar contraseña" description="Te enviaremos las instrucciones si encontramos una cuenta asociada." footer={<Link to="/login">Volver al ingreso</Link>}>
-      {message ? <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-700" role="status">{message}</div> : (
+    <AuthCard eyebrow="Acceso para el personal" title="Recuperar contraseña" description="Te enviaremos las instrucciones si encontramos una cuenta asociada." footer={<Link to="/login">Volver al ingreso</Link>}>
+      {message ? <div className="auth-success mt-6" role="status">{message}</div> : (
         <form className="mt-7 grid gap-5" onSubmit={handleSubmit}>
           <RequestError error={error} />
           <FormField id="email" label="Email" type="email" autoComplete="email" required value={email} error={fieldError(error, 'email')} onChange={(event) => setEmail(event.target.value)} />
-          <button className="cursor-pointer rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white transition hover:-translate-y-px hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60" disabled={submitting} type="submit">{submitting ? 'Enviando…' : 'Enviar instrucciones'}</button>
+          <button className="auth-primary cursor-pointer px-4 py-3 transition disabled:cursor-wait" disabled={submitting} type="submit">{submitting ? 'Enviando…' : 'Enviar instrucciones'}</button>
         </form>
       )}
     </AuthCard>

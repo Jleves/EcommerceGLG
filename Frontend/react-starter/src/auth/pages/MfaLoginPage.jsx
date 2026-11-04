@@ -6,7 +6,7 @@ import { FormField } from '../components/FormField.jsx'
 import { RequestError } from '../components/RequestError.jsx'
 import { LoadingScreen } from '../../app/LoadingScreen.jsx'
 
-const buttonClass = 'cursor-pointer rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60'
+const buttonClass = 'auth-primary cursor-pointer px-4 py-3 disabled:cursor-not-allowed'
 const terminalCodes = new Set(['MFA_CHALLENGE_INVALID'])
 
 export function MfaLoginPage() {
@@ -64,11 +64,11 @@ export function MfaLoginPage() {
             pattern="[0-9]{6}" maxLength={6} required value={code} disabled={mfaBusy || expired}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} />
           <button className={buttonClass} type="submit" disabled={mfaBusy || expired || limited || code.length !== 6}>Confirmar código</button>
-          <button className={buttonClass} type="button" disabled={mfaBusy || expired || resendWait > 0} onClick={() => submit('resend')}>
+          <button className={`${buttonClass} auth-secondary`} type="button" disabled={mfaBusy || expired || resendWait > 0} onClick={() => submit('resend')}>
             {resendWait > 0 ? `Reenviar en ${resendWait} s` : 'Reenviar código'}
           </button>
         </>}
-        <button className={buttonClass} type="button" disabled={mfaBusy} onClick={() => { setCode(''); void cancelMfa() }}>Cancelar y volver al login</button>
+        <button className={`${buttonClass} auth-secondary`} type="button" disabled={mfaBusy} onClick={() => { setCode(''); void cancelMfa() }}>Cancelar y volver al login</button>
       </form>
     </AuthCard>
   )

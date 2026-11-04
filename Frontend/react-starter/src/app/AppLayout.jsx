@@ -1,12 +1,46 @@
-import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { RequestError } from '../auth/components/RequestError.jsx'
 import { useAuth } from '../auth/context/useAuth.js'
+import glgLogo from '../assets/glg-logo-black.png'
+import './admin.css'
 
 export function AppLayout() {
   const { user, logout } = useAuth()
   const [error, setError] = useState(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuButton = useRef(null)
+  const navigation = useRef(null)
+  const location = useLocation()
+
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    navigation.current?.querySelector('a[aria-current="page"]')?.focus()
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        menuButton.current?.focus()
+      } else if (event.key === 'Tab') {
+        const links = navigation.current?.querySelectorAll('a')
+        if (!links?.length) return
+        const first = links[0]
+        const last = links[links.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [menuOpen])
+
+  const navClass = ({ isActive }) => `admin-nav-link${isActive ? ' admin-nav-link-active' : ''}`
 
   async function handleLogout() {
     setError(null)
@@ -21,31 +55,38 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="flex min-h-18 items-start justify-between gap-3 border-b border-slate-200 bg-white px-[clamp(1rem,4vw,3rem)] py-3 md:items-center">
-        <NavLink className="text-lg font-extrabold tracking-tight text-slate-900 hover:no-underline" to="/app/profile">GLG Corralón</NavLink>
-        <div className="flex flex-col items-end gap-2 text-sm text-slate-500 md:flex-row md:items-center md:gap-4">
-          <span className="hidden sm:inline">{user?.email}</span>
-          <button className="cursor-pointer rounded-xl bg-emerald-50 px-4 py-3 font-bold text-emerald-800 transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-60" disabled={loggingOut} onClick={handleLogout} type="button">
+    <div className="admin-shell">
+      <header className="admin-header">
+        <div className="admin-header-start">
+          <button ref={menuButton} className="admin-menu-toggle" type="button" aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-controls="admin-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
+            <span aria-hidden="true">☰</span>
+          </button>
+          <NavLink className="admin-brand" to="/app/profile" aria-label="GLG Corralón, ir al perfil"><img src={glgLogo} alt="" /><span>Administración</span></NavLink>
+        </div>
+        <div className="admin-header-account">
+          <span className="admin-account-email">{user?.email}</span>
+          <button className="admin-logout" disabled={loggingOut} onClick={handleLogout} type="button">
             {loggingOut ? 'Cerrando…' : 'Cerrar sesión'}
           </button>
         </div>
       </header>
-      <div className="grid min-h-[calc(100vh-4.5rem)] md:grid-cols-[15rem_1fr]">
-        <aside className="flex gap-2 bg-emerald-950 px-4 py-2 md:flex-col md:py-8" aria-label="Navegación principal">
-          <p className="mx-3 mb-3 hidden text-xs font-extrabold tracking-[.12em] text-emerald-200/75 uppercase md:block">Cuenta</p>
-          <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/profile">Perfil</NavLink>
-          <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/catalog/categories">Categorías</NavLink>
-          <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/catalog/characteristics">Características</NavLink>
-          <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/catalog/products">Productos</NavLink>
+      <div className="admin-layout">
+        {menuOpen && <button className="admin-menu-backdrop" type="button" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)} />}
+        <aside ref={navigation} id="admin-navigation" className={`admin-nav${menuOpen ? ' admin-nav-open' : ''}`} aria-label="Navegación principal">
+          <p className="admin-nav-caption">Gestión</p>
+          <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/profile">Perfil</NavLink>
+          <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/catalog/categories">Categorías</NavLink>
+          <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/catalog/characteristics">Características</NavLink>
+          <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/catalog/products">Productos</NavLink>
           {user?.role === 'SUPER_ADMIN' && (
             <>
-              <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/admin/users" end>Usuarios</NavLink>
-              <NavLink className={({ isActive }) => `rounded-xl px-3 py-3 font-semibold text-emerald-100 transition hover:bg-white/10 hover:no-underline ${isActive ? 'bg-white/15 text-white' : ''}`} to="/app/admin/users/new">Crear usuario</NavLink>
+              <p className="admin-nav-caption admin-nav-caption-secondary">Cuentas</p>
+              <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/admin/users" end>Usuarios</NavLink>
+              <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/admin/users/new">Crear usuario</NavLink>
             </>
           )}
         </aside>
-        <main className="p-[clamp(1.5rem,4vw,3.5rem)] [&>.grid]:mx-auto [&>.grid]:mb-4 [&>.grid]:max-w-5xl">
+        <main className="admin-main" inert={menuOpen}>
           <RequestError error={error} />
           <Outlet />
         </main>

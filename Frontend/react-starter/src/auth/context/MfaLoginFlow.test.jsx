@@ -61,7 +61,7 @@ it('202 bloquea rutas privadas; acepta pegado con ceros y autentica solo tras co
   await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('authenticated'))
   expect(service.verifyMfa).toHaveBeenCalledWith('001234')
   expect(service.cancelMfa).not.toHaveBeenCalled()
-  expect(screen.getByTestId('location')).toHaveTextContent('/app/profile?tab=security')
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/app/profile?tab=security'))
 })
 it('200 ingresa sin pedir código', async () => {
   service.login.mockResolvedValue(authenticated)

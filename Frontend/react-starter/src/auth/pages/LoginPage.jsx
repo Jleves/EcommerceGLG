@@ -47,12 +47,12 @@ export function LoginPage() {
 
   return (
     <AuthCard
-      eyebrow="Bienvenido"
-      title="Ingresá a tu cuenta"
-      description="Usá las credenciales configuradas para tu entorno."
+      eyebrow="Acceso para el personal"
+      title="Ingresá al panel"
+      description="Gestioná el catálogo y tu cuenta con tus credenciales de GLG."
       footer={<span>¿Olvidaste tu contraseña? <Link to="/forgot-password">Recuperarla</Link></span>}
     >
-      {(authNotice === 'password-changed' || location.state?.passwordChanged) && <p className="mt-5 text-emerald-800" role="status">Contraseña actualizada. Ingresá con tu contraseña nueva.</p>}
+      {(authNotice === 'password-changed' || location.state?.passwordChanged) && <p className="auth-success mt-5" role="status">Contraseña actualizada. Ingresá con tu contraseña nueva.</p>}
       <form className="mt-7 grid gap-5" onSubmit={handleSubmit}>
         {authNotice === 'mfa-cancel-unconfirmed' && <p role="status">Volvé a ingresar. No se pudo confirmar la cancelación del código anterior.</p>}
         {authNotice === 'mfa-restart' && <p role="status">No se confirmó una sesión. Ingresá nuevamente para solicitar otro código.</p>}
@@ -66,7 +66,7 @@ export function LoginPage() {
         <FormField id="email" label="Email" type="email" autoComplete="email" required value={form.email} error={fieldError(error, 'email')} onChange={(event) => setForm({ ...form, email: event.target.value })} />
         <FormField id="password" label="Contraseña" type="password" autoComplete="current-password" required value={form.password} error={fieldError(error, 'password')} onChange={(event) => setForm({ ...form, password: event.target.value })} />
         {wait > 0 && <p role="status">Podés volver a intentar en {wait} segundos.</p>}
-        <button className="cursor-pointer rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white transition hover:-translate-y-px hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60" disabled={submitting || wait > 0} type="submit">
+        <button className="auth-primary cursor-pointer px-4 py-3 transition disabled:cursor-wait" disabled={submitting || wait > 0} type="submit">
           {submitting ? 'Ingresando…' : 'Ingresar'}
         </button>
       </form>
