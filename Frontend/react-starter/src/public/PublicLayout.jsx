@@ -1,17 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { IconBrandWhatsapp, IconSearch } from '@tabler/icons-react'
 import headerLogo from '../assets/glg-logo-black.png'
 import footerLogo from '../assets/glg-logo-white.png'
 import { whatsappNumber } from './publicConfig.js'
 import { getPublicCatalog } from './publicService.js'
 import { DesktopCategoryNavigation, MobileCategoryNavigation } from './CategoryNavigation.jsx'
+import { CartProvider } from './cart.jsx'
+import { CartPanel } from './CartPanel.jsx'
 import './public.css'
 
 export function PublicLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [catalog, setCatalog] = useState({ loading: true, data: null, error: null })
   const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    setQuery(location.pathname === '/catalog' ? new URLSearchParams(location.search).get('q') ?? '' : '')
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -29,7 +36,7 @@ export function PublicLayout() {
   }
 
   return (
-    <div className="public-site">
+    <CartProvider><div className="public-site">
       <header className="site-header">
         <div className="site-announcement"><span>GLG CONSTRUCCIONES / GENERAL ROCA</span><span>Materiales para construir en el Alto Valle</span></div>
         <div className="site-main-header">
@@ -39,6 +46,7 @@ export function PublicLayout() {
             <input aria-label="Buscar productos o marcas" placeholder="Buscar materiales, marcas o productos" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button type="submit" aria-label="Buscar">Buscar</button>
           </form>
+          <CartPanel />
           {whatsappNumber && <a className="site-chat" href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer"><IconBrandWhatsapp size={18} /> Chatear</a>}
           <MobileCategoryNavigation catalog={catalog} />
         </div>
@@ -53,6 +61,6 @@ export function PublicLayout() {
         </div>
         <div className="footer-bottom public-container">© GLG Construcciones</div>
       </footer>
-    </div>
+    </div></CartProvider>
   )
 }
