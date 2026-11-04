@@ -88,7 +88,7 @@ describe('ProductForm', () => {
     const user = userEvent.setup()
     const submit = vi.fn()
     render(<ProductForm categories={categories} characteristics={characteristics} onSubmit={submit} onCancel={() => {}} />)
-    expect(screen.getByRole('textbox', { name: 'Identificador de la variante (opcional)' })).toHaveAttribute('maxLength', '160')
+    expect(screen.getByRole('textbox', { name: 'Código (SKU) del sistema de la tienda (opcional)' })).toHaveAttribute('maxLength', '160')
     await user.type(screen.getByRole('textbox', { name: 'Nombre' }), 'Pintura')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Categoría' }), '1')
     await user.type(screen.getByRole('textbox', { name: 'Precio de referencia' }), '100')

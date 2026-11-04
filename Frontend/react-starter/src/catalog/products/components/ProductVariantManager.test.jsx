@@ -26,7 +26,7 @@ describe('ProductVariantManager', () => {
     const whiteForm = within(screen.getByRole('form', { name: 'Editar variante Color: Blanco' }))
     expect(whiteForm.getByRole('textbox', { name: 'Valor de la variante' })).toBeInTheDocument()
     expect(whiteForm.getByRole('combobox', { name: 'Unidad' })).toBeInTheDocument()
-    expect(whiteForm.getByRole('textbox', { name: 'Identificador de la variante' })).toBeInTheDocument()
+    expect(whiteForm.getByRole('textbox', { name: 'Código (SKU) del sistema de la tienda (opcional)' })).toBeInTheDocument()
     expect(whiteForm.getByRole('combobox', { name: 'Disponibilidad' })).toBeInTheDocument()
     await user.clear(whiteForm.getByRole('textbox', { name: 'Precio' }))
     await user.type(whiteForm.getByRole('textbox', { name: 'Precio' }), '125')
@@ -102,7 +102,7 @@ describe('ProductVariantManager', () => {
     const onCreate = vi.fn()
     const labeled = { ...initial, caracteristicaId: 3, caracteristicaNombre: 'Color', valor: 'Rojo' }
     render(<ProductVariantManager product={{ ...product, variantes: [labeled] }} characteristics={characteristics} onCreate={onCreate} onUpdateInitial={vi.fn()} onReview={vi.fn()} onClose={vi.fn()} />)
-    expect(screen.getByRole('textbox', { name: 'Identificador de la variante (opcional)' })).toHaveAttribute('maxLength', '160')
+    expect(screen.getByRole('textbox', { name: 'Código (SKU) del sistema de la tienda (opcional)' })).toHaveAttribute('maxLength', '160')
     expect(screen.getByRole('textbox', { name: 'Valor de la nueva variante' })).toHaveAttribute('maxLength', '500')
     expect(screen.getByRole('combobox', { name: 'Unidad de la nueva variante' })).toHaveTextContent('Kilogramo (kg)')
     await user.type(screen.getByRole('textbox', { name: 'Valor de la nueva variante' }), 'Blanco')

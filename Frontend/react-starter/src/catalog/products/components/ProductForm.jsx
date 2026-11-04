@@ -125,7 +125,7 @@ export function ProductForm({ initialValues, categories, subcategories = [], cha
           </label>
         </div>
         {!editing && <>
-          <label className={labelClass} htmlFor="product-initial-sku">Identificador de la variante (opcional)
+          <label className={labelClass} htmlFor="product-initial-sku">Código (SKU) del sistema de la tienda (opcional)
             <input id="product-initial-sku" maxLength={160} value={values.sku} onChange={(event) => setValues({ ...values, sku: event.target.value })} className={fieldClass} />
           </label>
           <label className={labelClass} htmlFor="product-initial-characteristic">Atributo variable opcional

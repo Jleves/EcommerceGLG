@@ -32,6 +32,19 @@ describe('catálogo público', () => {
     expect(screen.queryByText('Envíos')).not.toBeInTheDocument()
   })
 
+  it('muestra el acceso flotante a WhatsApp solo en el home', () => {
+    const home = renderRoute('/')
+    expect(screen.getByRole('link', { name: 'Chatear por WhatsApp' })).toHaveAttribute('href', 'https://wa.me/5492984400705')
+    home.unmount()
+
+    const catalogPage = renderRoute('/catalog')
+    expect(screen.queryByRole('link', { name: 'Chatear por WhatsApp' })).not.toBeInTheDocument()
+    catalogPage.unmount()
+
+    renderRoute('/products/7')
+    expect(screen.queryByRole('link', { name: 'Chatear por WhatsApp' })).not.toBeInTheDocument()
+  })
+
   it('despliega categorías y subcategorías en escritorio y filtra al navegar', async () => {
     const user = userEvent.setup()
     renderRoute('/')
@@ -213,8 +226,33 @@ describe('catálogo público', () => {
     expect(within(dialog).getByText('Color: Blanco')).toBeInTheDocument()
     expect(within(dialog).getByText('No disponible')).toBeInTheDocument()
     expect(within(dialog).getByText(/Subtotal:.*6.000/)).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Pedir presupuesto' })).toBeDisabled()
-    expect(within(dialog).getByText(/Falta configurar el número/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Pedir presupuesto' })).toBeEnabled()
+    expect(within(dialog).queryByText(/Falta configurar el número/)).not.toBeInTheDocument()
+  })
+
+  it('envía desde el carrito el SKU y la presentación vigentes', async () => {
+    const user = userEvent.setup()
+    const popup = { location: { href: '' }, close: vi.fn() }
+    vi.stubGlobal('open', vi.fn(() => popup))
+    renderRoute('/catalog')
+    await user.click(await screen.findByRole('button', { name: 'Agregar al carrito' }))
+    getPublicProduct.mockResolvedValue({ ...product, nombre: 'Cemento actualizado', images: [], variantes: [{ id: 12, sku: 'CEM-50', precioReferencia: 1200, disponible: true, caracteristicaNombre: 'Peso', valor: '50', unidad: 'kg' }] })
+    await user.click(screen.getByRole('button', { name: 'Abrir carrito, 1 unidad' }))
+    await user.click(await within(screen.getByRole('dialog', { name: 'Mi carrito' })).findByRole('button', { name: 'Pedir presupuesto' }))
+    await waitFor(() => expect(popup.location.href).toContain('https://wa.me/5492984400705?text='))
+    expect(new URL(popup.location.href).searchParams.get('text')).toBe('Hola, quisiera pedir un presupuesto:\n\nProducto: Cemento actualizado\nPresentación: Peso 50 kg\nCantidad: 1 unidad\nCódigo: CEM-50')
+  })
+
+  it('envía desde el detalle una ficha sin código ni opción interna si faltan', async () => {
+    const user = userEvent.setup()
+    const popup = { location: { href: '' }, close: vi.fn() }
+    vi.stubGlobal('open', vi.fn(() => popup))
+    renderRoute('/products/7')
+    await screen.findByRole('heading', { name: 'Cemento Portland' })
+    getPublicProduct.mockResolvedValue({ ...product, nombre: 'Cemento actualizado', images: [], variantes: [{ id: 12, sku: null, precioReferencia: 1200, disponible: true, caracteristicaNombre: null, valor: null, unidad: null }] })
+    await user.click(screen.getByRole('button', { name: 'Pedir presupuesto' }))
+    await waitFor(() => expect(popup.location.href).toContain('https://wa.me/5492984400705?text='))
+    expect(new URL(popup.location.href).searchParams.get('text')).toBe('Hola, quisiera pedir un presupuesto:\n\nProducto: Cemento actualizado\nCantidad: 1 unidad')
   })
 
   it('marca una variante retirada y permite reintentar después de un fallo de red', async () => {

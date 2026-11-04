@@ -3,13 +3,13 @@ import { IconShoppingCart, IconX, IconTrash } from '@tabler/icons-react'
 import { formatPrice } from './formatPrice.js'
 import { getPublicProduct } from './publicService.js'
 import { useCart } from './cartContext.js'
-import { cartMessage, variantLabel } from './cartUtils.js'
+import { cartMessage, quoteVariantDetails, variantLabel } from './cartUtils.js'
 import { whatsappNumber } from './publicConfig.js'
 
 function refreshedLine(line, product) {
   const variant = product.variantes.find((item) => item.id === line.variantId)
   if (!variant) return { ...line, missing: true }
-  return { ...line, name: product.nombre, variantName: variantLabel(variant),
+  return { ...line, name: product.nombre, variantName: variantLabel(variant), ...quoteVariantDetails(variant),
     unitPrice: variant.precioReferencia, available: variant.disponible, missing: false,
     imageUrl: product.images?.find((image) => image.primary)?.thumbnailUrl || line.imageUrl }
 }

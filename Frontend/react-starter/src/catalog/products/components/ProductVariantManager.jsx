@@ -56,7 +56,7 @@ function VariantRow({ variant, variants, pending, reviewRequired, onUpdate, onCh
         </label>
         <UnitSelect id={`variant-unit-${variant.id}`} label="Unidad" value={unit} onChange={setUnit} />
       </div>}
-      <label className={labelClass} htmlFor={`variant-sku-${variant.id}`}>Identificador de la variante
+      <label className={labelClass} htmlFor={`variant-sku-${variant.id}`}>Código (SKU) del sistema de la tienda (opcional)
         <input id={`variant-sku-${variant.id}`} maxLength={160} value={sku} onChange={(event) => setSku(event.target.value)} className={fieldClass} />
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -152,7 +152,7 @@ export function ProductVariantManager({ product, characteristics, pending, revie
       <h3 className="text-lg font-bold">Variantes confirmadas</h3>
       {variants.map((variant) => editing ? <VariantRow key={`${variant.id}-${variant.sku}-${variant.precioReferencia}-${variant.disponible}-${variant.activo}-${variant.valor}-${variant.unidad}`} variant={variant} variants={variants} pending={pending} reviewRequired={reviewRequired} onUpdate={onUpdate} onChangeStatus={onChangeStatus} /> : <div key={variant.id} className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
         <p className="font-semibold">Variante {variantDescription(variant)}</p>
-        <p>Identificador de la variante: {variant.sku || 'Sin identificador'} · Precio de referencia: {variant.precioReferencia} · {variant.disponible ? 'Disponible' : 'No disponible'}</p>
+        <p>Código (SKU) del sistema de la tienda: {variant.sku || 'Sin código'} · Precio de referencia: {variant.precioReferencia} · {variant.disponible ? 'Disponible' : 'No disponible'}</p>
       </div>)}
     </section>
     {!canAdd ? <form onSubmit={assignInitial} className="grid gap-4 rounded-xl border border-emerald-200 p-4">
@@ -179,7 +179,7 @@ export function ProductVariantManager({ product, characteristics, pending, revie
           <input id="new-variant-value" maxLength={500} value={value} onChange={(event) => setValue(event.target.value)} className={fieldClass} />
         </label>
         <UnitSelect id="new-variant-unit" label="Unidad de la nueva variante" value={unit} onChange={setUnit} />
-        <label className={labelClass} htmlFor="new-variant-sku">Identificador de la variante (opcional)
+        <label className={labelClass} htmlFor="new-variant-sku">Código (SKU) del sistema de la tienda (opcional)
           <input id="new-variant-sku" maxLength={160} value={sku} onChange={(event) => setSku(event.target.value)} className={fieldClass} />
         </label>
         <label className={labelClass} htmlFor="new-variant-price">Precio de referencia

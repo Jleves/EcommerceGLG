@@ -3,6 +3,20 @@ export function variantLabel(variant) {
   return variant.sku || `Opción ${variant.id}`
 }
 
+export function quoteVariantDetails(variant) {
+  return {
+    presentation: variant.caracteristicaNombre && variant.valor
+      ? `${variant.caracteristicaNombre} ${variant.valor}${variant.unidad ? ` ${variant.unidad}` : ''}`
+      : null,
+    sku: variant.sku?.trim() || null,
+  }
+}
+
 export function cartMessage(lines) {
-  return `Hola, quisiera pedir un presupuesto para:\n${lines.map((line) => `• ${line.name} — ${line.variantName} — ${line.quantity} ${line.quantity === 1 ? 'unidad' : 'unidades'}`).join('\n')}`
+  return `Hola, quisiera pedir un presupuesto:\n\n${lines.map((line) => [
+    `Producto: ${line.name}`,
+    ...(line.presentation ? [`Presentación: ${line.presentation}`] : []),
+    `Cantidad: ${line.quantity} ${line.quantity === 1 ? 'unidad' : 'unidades'}`,
+    ...(line.sku ? [`Código: ${line.sku}`] : []),
+  ].join('\n')).join('\n\n')}`
 }

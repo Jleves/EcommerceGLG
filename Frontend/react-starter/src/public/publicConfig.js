@@ -22,4 +22,4 @@ export const campaignPhotos = [
   },
 ]
 export const brandLogos = []
-export const whatsappNumber = ''
+export const whatsappNumber = '5492984400705'

@@ -5,7 +5,7 @@ import { ProductCard } from './ProductCard.jsx'
 import { formatPrice } from './formatPrice.js'
 import { getPublicProduct, getRelatedProducts } from './publicService.js'
 import { useCart } from './cartContext.js'
-import { cartMessage, variantLabel } from './cartUtils.js'
+import { cartMessage, quoteVariantDetails } from './cartUtils.js'
 import { whatsappNumber } from './publicConfig.js'
 
 export function ProductDetailPage() {
@@ -48,7 +48,7 @@ export function ProductDetailPage() {
       const current = await getPublicProduct(product.id)
       const variant = current.variantes.find((item) => item.id === selected.id)
       if (!variant) { popup?.close(); setFeedback('Esta variante ya no está publicada.'); return }
-      const line = { name: current.nombre, variantName: variantLabel(variant), quantity }
+      const line = { name: current.nombre, ...quoteVariantDetails(variant), quantity }
       const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(cartMessage([line]))}`
       if (popup) { popup.opener = null; popup.location.href = url }
       else window.location.href = url
