@@ -251,6 +251,16 @@ sequenceDiagram
 
 **INC-003 — Agente de Mockito.** Tanda 4. Esperado: Maven ejecuta los tests. Obtenido: la carga dinámica de Byte Buddy se bloqueó en una tubería local. Clasificación: entorno. Resolución: ejecutar Maven con `-DargLine=-javaagent:<ruta de byte-buddy-agent 1.18.10>`. Código productivo, tests y configuración: sin cambios por este incidente. Resultado posterior: tests dirigidos E6-2 PASS. Riesgo residual: la suite depende de ese argumento en este Windows.
 
+### Corrección posterior — exportación HTTP asíncrona
+
+**Incidente:** en Tomcat real, `GET /api/admin/subscriptions/export` terminaba su despacho inicial con 200 y un usuario autenticado, pero el despacho `ASYNC` posterior era rechazado por `AuthorizationFilter` cuando la respuesta ya estaba comprometida. La prueba anterior con `MockMvc.with(user(...))` no reproducía la autenticación por cookie JWT.
+
+**Cambio:** `JwtRequestFilter.shouldNotFilterAsyncDispatch()` devuelve `false`. El filtro vuelve a leer y validar la cookie en el despacho asíncrono; las reglas de roles de `SecurityConfig` no cambiaron. No hubo migración ni cambio de contrato HTTP.
+
+**Verificación:** `AdminSubscriptionHttpTest` inició Tomcat en puerto aleatorio con H2, creó sesiones válidas y usó cookies JWT por HTTP. Abrió el XLSX completo para `ADMIN` y `SUPER_ADMIN`; comprobó 403 para `USER` y 401 para anónimo. Pasaron también `AdminSubscriptionTest` (5), `AuthCookieFlowIntegrationTest` (30) y `AccessSessionDatabaseFailureIntegrationTest` (1): **37 tests, 0 fallas y 0 errores**. `mvnw.cmd -DskipTests package` pasó. El primer intento de la prueba HTTP no pudo iniciar Tomcat por una restricción de loopback del sandbox; se repitió con acceso local permitido y pasó.
+
+**Pendiente:** no se repitió la suite completa, que antes registró errores SMTP ajenos a E6-2. Continúan pendientes MySQL y el recorrido visual en navegador. Estado de la validación integral: **PARCIAL**.
+
 ## Decisiones pendientes
 
 Ninguna. El usuario definió: tabla con bajas, exportación solo de activos, `ADMIN` y `SUPER_ADMIN`, contacto y fechas, más recientes primero, XLSX completo. Tamaño 20 según el patrón existente. `docs/trello-backlog.md` menciona `origen`, pero prevalece `docs/modelo-inicial.md`, que lo descartó.

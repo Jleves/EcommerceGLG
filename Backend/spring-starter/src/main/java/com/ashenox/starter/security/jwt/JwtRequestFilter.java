@@ -38,6 +38,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     private final AccessSessionValidator sessionValidator;
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String jwt = cookieService.readAccessToken(request).orElse(null);
