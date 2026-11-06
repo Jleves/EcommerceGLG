@@ -2,16 +2,19 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppRouter } from '../app/AppRouter.jsx'
-import { getPublicCatalog } from './publicService.js'
+import { getPublicCatalog, getPublicOffers } from './publicService.js'
 
-vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn() }))
+vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn(), getPublicOffers: vi.fn() }))
 
 function renderRoute(path = '/contacto') {
   return render(<MemoryRouter initialEntries={[path]}><AppRouter /></MemoryRouter>)
 }
 
 describe('página de contacto', () => {
-  beforeEach(() => getPublicCatalog.mockResolvedValue({ categories: [], subcategories: [], facets: [] }))
+  beforeEach(() => {
+    getPublicCatalog.mockResolvedValue({ categories: [], subcategories: [], facets: [] })
+    getPublicOffers.mockResolvedValue({ content: [], page: 0, size: 6, totalElements: 0, totalPages: 0 })
+  })
   afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals() })
 
   it('abre desde el encabezado y muestra ubicación, mapa y horarios', async () => {

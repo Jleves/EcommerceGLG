@@ -32,8 +32,8 @@ export function ProductCard({ product }) {
       <div className="product-card-info">
         <span className="product-card-eyebrow">Producto</span>
         <h3>{product.nombre}</h3>
-        <strong>{formatPrice(product.precioReferencia)}</strong>
-        <span className="product-card-availability">{product.disponible ? 'Precio de referencia' : 'No disponible'}</span>
+        {product.precioOferta != null ? <div className="offer-price"><del aria-label={`Precio original ${formatPrice(product.precioReferencia)}`}>{formatPrice(product.precioReferencia)}</del><strong>{formatPrice(product.precioOferta)}</strong><span className="offer-discount">{product.porcentajeDescuento === 0 ? '<1 %' : `${product.porcentajeDescuento} %`} de descuento</span></div> : <strong>{formatPrice(product.precioReferencia)}</strong>}
+        <span className="product-card-availability">{product.disponible ? product.precioOferta != null ? 'Precio de oferta' : 'Precio de referencia' : 'No disponible'}</span>
         <span className="product-card-action">Ver producto →</span>
       </div>
       </Link>

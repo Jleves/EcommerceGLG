@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppRouter } from '../app/AppRouter.jsx'
-import { getPublicCatalog, getPublicProducts, getPublicProduct, getRelatedProducts } from './publicService.js'
+import { getPublicCatalog, getPublicProducts, getPublicProduct, getRelatedProducts, getPublicOffers } from './publicService.js'
 
-vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn(), getPublicProducts: vi.fn(), getPublicProduct: vi.fn(), getRelatedProducts: vi.fn() }))
+vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn(), getPublicProducts: vi.fn(), getPublicProduct: vi.fn(), getRelatedProducts: vi.fn(), getPublicOffers: vi.fn() }))
 
 const catalog = { categories: [{ id: 3, nombre: 'Materiales', descripcion: 'Cemento y áridos', icono: 'materiales', activo: true }, { id: 4, nombre: 'Herramientas', descripcion: '', icono: 'tools', activo: true }], subcategories: [{ id: 11, categoriaId: 3, nombre: 'Cementos' }], facets: [{ id: 8, name: 'Marca', values: ['Acme'] }, { id: 9, name: 'Color', values: ['Gris'] }] }
 const product = { id: 7, nombre: 'Cemento Portland', categoriaId: 3, precioReferencia: 1200, disponible: true, primaryThumbnailUrl: null, selectedVariantId: 12 }
@@ -19,6 +19,7 @@ describe('catálogo público', () => {
     localStorage.clear()
     getPublicCatalog.mockResolvedValue(catalog)
     getPublicProducts.mockResolvedValue({ content: [product], page: 0, size: 20, totalElements: 1, totalPages: 1 })
+    getPublicOffers.mockResolvedValue({ content: [], page: 0, size: 6, totalElements: 0, totalPages: 0 })
     getRelatedProducts.mockResolvedValue({ content: [] })
     getPublicProduct.mockResolvedValue({ ...product, descripcion: 'Para obra', images: [], caracteristicas: [], variantes: [{ id: 12, precioReferencia: 1200, disponible: true, caracteristicaNombre: 'Color', valor: 'Gris' }, { id: 13, precioReferencia: 1500, disponible: false, caracteristicaNombre: 'Color', valor: 'Blanco' }] })
   })
@@ -27,7 +28,9 @@ describe('catálogo público', () => {
     const { container } = renderRoute('/')
     expect(screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })).toBeInTheDocument()
     expect((await screen.findAllByRole('link', { name: /Materiales/ }))[0]).toHaveAttribute('href', '/catalog?categoriaId=3')
-    expect(screen.queryByText('Ofertas vigentes')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Ver todas las ofertas/ })).toHaveAttribute('href', '/ofertas')
+    expect([...container.querySelectorAll('main > section')].map((section) => section.className).indexOf('home-offers'))
+      .toBeLessThan([...container.querySelectorAll('main > section')].map((section) => section.className).indexOf('home-categories'))
     expect(screen.queryByText('Mi carrito')).not.toBeInTheDocument()
     expect(screen.queryByText('Envíos')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Enterate de lo nuevo en GLG' })).toBeInTheDocument()
@@ -269,5 +272,122 @@ describe('catálogo público', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Reintentar' }))
     expect(await within(dialog).findByText('Ya no está publicado')).toBeInTheDocument()
     expect(within(dialog).getByText(/Quitá los productos/)).toBeInTheDocument()
+  })
+
+  it('muestra seis ofertas ordenadas en el home y enlaza a la página completa', async () => {
+    const offers = Array.from({ length: 6 }, (_, index) => ({ ...product, id: index + 1, nombre: `Oferta ${index + 1}`, selectedVariantId: index + 20, precioOferta: 900 - index * 10, porcentajeDescuento: 25 + index }))
+    getPublicOffers.mockResolvedValue({ content: offers, page: 0, size: 6, totalElements: 8, totalPages: 2 })
+    renderRoute('/')
+    const rail = await screen.findByLabelText('Ofertas destacadas')
+    expect(getPublicOffers).toHaveBeenCalledWith(0, 6, expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    expect(within(rail).getAllByRole('article')).toHaveLength(6)
+    expect(within(rail).getAllByRole('heading').map((heading) => heading.textContent)).toEqual(offers.map((offer) => offer.nombre))
+    expect(screen.getByRole('link', { name: /Ver todas las ofertas/ })).toHaveAttribute('href', '/ofertas')
+    expect(screen.getByRole('button', { name: 'Ofertas siguientes' })).toBeInTheDocument()
+  })
+
+  it('explica carga, ausencia y error del carril sin afectar el resto del home', async () => {
+    getPublicOffers.mockReturnValueOnce(new Promise(() => {}))
+    const loading = renderRoute('/')
+    expect(screen.getByText('Cargando ofertas…')).toHaveAttribute('role', 'status')
+    loading.unmount()
+
+    const empty = renderRoute('/')
+    expect(await screen.findByText('Todavía no hay ofertas disponibles.')).toBeInTheDocument()
+    empty.unmount()
+
+    getPublicOffers.mockRejectedValueOnce(new Error('network'))
+    renderRoute('/')
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos cargar las ofertas')
+    expect(screen.getByRole('link', { name: /Ver todas las ofertas/ })).toHaveAttribute('href', '/ofertas')
+  })
+
+  it('pagina ofertas sin filtros y distingue carga, vacío y error', async () => {
+    const user = userEvent.setup()
+    getPublicOffers.mockImplementation((page) => Promise.resolve({ content: [{ ...product, id: page + 7, nombre: `Oferta página ${page + 1}`, precioOferta: 800, porcentajeDescuento: 33 }], page, size: 20, totalElements: 21, totalPages: 2 }))
+    const first = renderRoute('/ofertas')
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando ofertas')
+    expect(await screen.findByText('Oferta página 1')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(await screen.findByText('Oferta página 2')).toBeInTheDocument()
+    expect(getPublicOffers).toHaveBeenLastCalledWith(1, 20, expect.anything())
+    expect(screen.queryByRole('complementary', { name: 'Filtros de productos' })).not.toBeInTheDocument()
+    first.unmount()
+
+    getPublicOffers.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
+    const empty = renderRoute('/ofertas')
+    expect(await screen.findByText('Todavía no hay ofertas disponibles.')).toBeInTheDocument()
+    empty.unmount()
+
+    getPublicOffers.mockRejectedValue(new Error('network'))
+    renderRoute('/ofertas')
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos cargar las ofertas')
+  })
+
+  it('muestra precio tachado y porcentaje de la variante seleccionada, incluso menor a 1 %', async () => {
+    const user = userEvent.setup()
+    getPublicProduct.mockResolvedValue({ ...product, images: [], caracteristicas: [], variantes: [
+      { id: 12, precioReferencia: 1200, precioOferta: 900, porcentajeDescuento: 25, disponible: true, caracteristicaNombre: 'Color', valor: 'Gris' },
+      { id: 13, precioReferencia: 1500, precioOferta: 1499, porcentajeDescuento: 0, disponible: true, caracteristicaNombre: 'Color', valor: 'Blanco' },
+      { id: 14, precioReferencia: 2000, precioOferta: null, porcentajeDescuento: null, disponible: true, caracteristicaNombre: 'Color', valor: 'Negro' },
+    ] })
+    renderRoute('/products/7')
+    expect(await screen.findByRole('heading', { name: 'Cemento Portland' })).toBeInTheDocument()
+    expect(document.querySelector('.detail-offer-price del')).toHaveTextContent(/1.200/)
+    expect(document.querySelector('.detail-offer-price strong')).toHaveTextContent(/900/)
+    expect(document.querySelector('.detail-offer-price .offer-discount')).toHaveTextContent('25 %')
+    await user.click(screen.getByRole('radio', { name: /Blanco/ }))
+    expect(document.querySelector('.detail-offer-price strong')).toHaveTextContent(/1.499/)
+    expect(document.querySelector('.detail-offer-price .offer-discount')).toHaveTextContent('<1 %')
+    await user.click(screen.getByRole('radio', { name: /Negro/ }))
+    expect(document.querySelector('.detail-offer-price')).not.toBeInTheDocument()
+    expect(document.querySelector('.detail-price')).toHaveTextContent(/2.000/)
+  })
+
+  it('muestra oferta en resultados filtrados y relacionados sin cambiar el precio de productos normales', async () => {
+    getPublicProducts.mockResolvedValue({ content: [{ ...product, precioOferta: 900, porcentajeDescuento: 25 }], page: 0, size: 20, totalElements: 1, totalPages: 1 })
+    const catalogPage = renderRoute('/catalog?categoriaId=3')
+    expect(await screen.findByText('25 % de descuento')).toBeInTheDocument()
+    expect(document.querySelector('.product-card del')).toHaveTextContent(/1.200/)
+    expect(getPublicProducts).toHaveBeenCalledWith(expect.objectContaining({ categoriaId: '3' }), expect.anything())
+    catalogPage.unmount()
+
+    getRelatedProducts.mockResolvedValue({ content: [{ ...product, id: 8, nombre: 'Cal', precioOferta: 1100, porcentajeDescuento: 8 }, { ...product, id: 9, nombre: 'Arena' }] })
+    renderRoute('/products/7')
+    const related = await screen.findByRole('heading', { name: 'Productos relacionados' })
+    const section = related.closest('section')
+    expect(within(section).getByText('8 % de descuento')).toBeInTheDocument()
+    expect(within(section).getByText('Arena').closest('.product-card').querySelector('del')).toBeNull()
+  })
+
+  it('usa el precio vigente al agregar, refrescar y presupuestar después de editar y terminar una oferta', async () => {
+    const user = userEvent.setup()
+    const popup = { location: { href: '' }, close: vi.fn() }
+    vi.stubGlobal('open', vi.fn(() => popup))
+    let offerPrice = 900
+    getPublicProducts.mockResolvedValue({ content: [{ ...product, precioOferta: 900, porcentajeDescuento: 25 }], page: 0, size: 20, totalElements: 1, totalPages: 1 })
+    getPublicProduct.mockImplementation(() => Promise.resolve({ ...product, images: [], variantes: [{ id: 12, precioReferencia: 1200, precioOferta: offerPrice, porcentajeDescuento: offerPrice == null ? null : 25, disponible: true, sku: 'CEM-50' }] }))
+    renderRoute('/catalog?categoriaId=3')
+    expect(await screen.findByText('25 % de descuento')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Agregar al carrito' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir carrito, 1 unidad' }))
+    const dialog = screen.getByRole('dialog', { name: 'Mi carrito' })
+    expect(await within(dialog).findByText(/Subtotal:.*900/)).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('glg-public-cart-v1'))[0].unitPrice).toBe(900)
+    await user.click(within(dialog).getByRole('button', { name: 'Cerrar carrito' }))
+
+    offerPrice = 800
+    await user.click(screen.getByRole('button', { name: 'Abrir carrito, 1 unidad' }))
+    expect(await within(screen.getByRole('dialog', { name: 'Mi carrito' })).findByText(/Subtotal:.*800/)).toBeInTheDocument()
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('glg-public-cart-v1'))[0].unitPrice).toBe(800))
+    await user.click(within(screen.getByRole('dialog', { name: 'Mi carrito' })).getByRole('button', { name: 'Cerrar carrito' }))
+
+    offerPrice = null
+    await user.click(screen.getByRole('button', { name: 'Abrir carrito, 1 unidad' }))
+    expect(await within(screen.getByRole('dialog', { name: 'Mi carrito' })).findByText(/Subtotal:.*1.200/)).toBeInTheDocument()
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('glg-public-cart-v1'))[0].unitPrice).toBe(1200))
+    await user.click(within(screen.getByRole('dialog', { name: 'Mi carrito' })).getByRole('button', { name: 'Pedir presupuesto' }))
+    await waitFor(() => expect(popup.location.href).toContain('https://wa.me/'))
+    expect(new URL(popup.location.href).searchParams.get('text')).not.toMatch(/\$|1200|1\.200|800|900/)
   })
 })

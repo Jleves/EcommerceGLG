@@ -32,7 +32,7 @@ export function CartProvider({ children }) {
     update((current) => {
       const index = current.findIndex((line) => line.productId === product.id && line.variantId === variant.id)
       const snapshot = { productId: product.id, variantId: variant.id, name: product.nombre,
-        variantName: variantLabel(variant), unitPrice: variant.precioReferencia,
+        variantName: variantLabel(variant), unitPrice: variant.precioOferta ?? variant.precioReferencia,
         available: variant.disponible, imageUrl: product.primaryThumbnailUrl || product.images?.find((image) => image.primary)?.thumbnailUrl || null }
       if (index < 0) return [...current, { ...snapshot, quantity: amount }]
       return current.map((line, position) => position === index ? { ...line, ...snapshot, quantity: Math.min(9999, line.quantity + amount), missing: false } : line)

@@ -4,6 +4,7 @@ export const ENDPOINTS = Object.freeze({
   PUBLIC: Object.freeze({
     CATALOG: '/api/public/catalog',
     PRODUCTS: '/api/public/products',
+    OFFERS: '/api/public/offers',
     PRODUCT: (id) => `/api/public/products/${encodeURIComponent(id)}`,
     RELATED: (id) => `/api/public/products/${encodeURIComponent(id)}/related`,
     SUBSCRIPTIONS: '/api/public/subscriptions',

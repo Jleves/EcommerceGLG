@@ -1,6 +1,6 @@
 # Ofertas sin vencimiento — plan de implementación por tandas
 
-**Estado:** Tandas 0–3 completas al 06/11/2026; tandas 4–5 pendientes de ejecución.
+**Estado:** Tandas 0–4 completas al 06/11/2026; tanda 5 pendiente de ejecución.
 
 Este documento transforma las decisiones acordadas sobre ofertas en un mapa de trabajo. **No autoriza comenzar automáticamente ninguna tanda:** el solicitante indicará cuál ejecutar. Antes de cada ejecución, aplicar `PROMPT_EJECUTAR_TANDA.md`; ante una decisión relevante no prevista, detener la parte afectada y registrarla como `DECISIÓN PENDIENTE`, sin iniciar la tanda siguiente.
 
@@ -91,7 +91,7 @@ Lectura pública objetivo: `PublicOfferController.list(...)` → `PublicOfferSer
 | 1 | Persistencia, reglas y API privada | 0 | Completa |
 | 2 | Contratos y consultas públicas | 1 | Completa |
 | 3 | Gestión en el panel y botón en Productos | 1 | Completa |
-| 4 | Home, página pública, catálogo, ficha y carrito | 2 | Planificada |
+| 4 | Home, página pública, catálogo, ficha y carrito | 2 | Completa |
 | 5 | Recorrido integral y cierre documental | 3 y 4 | Planificada |
 
 ```text
@@ -412,7 +412,7 @@ sequenceDiagram
 
 ### Tests necesarios
 
-- **Home/página:** ocho mejores, enlace, páginas siguientes, vacío/carga/error; demuestra navegación y orden recibido.
+- **Home/página:** seis mejores, enlace, páginas siguientes, vacío/carga/error; demuestra navegación y orden recibido.
 - **Tarjeta/ficha:** original tachado, final, porcentaje, variante seleccionada y cambio a variante sin oferta; demuestra precio correcto y accesibilidad.
 - **Carrito:** alta, edición y terminación de oferta reflejadas tras refrescar; total y persistencia local coherentes; demuestra que no se usa una copia vieja al pedir presupuesto.
 - **Regresión:** productos sin oferta, catálogo filtrado, relacionados y mensaje de WhatsApp; demuestra que el flujo anterior conserva su contrato.
@@ -431,7 +431,21 @@ TRATAMIENTO: refresco al abrir y antes de presupuestar; comprobar el recorrido e
 
 **Criterio de cierre:** precios y navegación consistentes en pruebas; carrito usa importe vigente; lint y build pasan.
 
-**Resultado de ejecución:** **PENDIENTE DE EJECUCIÓN**.
+### Resultado de ejecución
+
+**Estado:** COMPLETA (06/11/2026).
+
+**Cambios realizados:** el home consulta y muestra seis ofertas en un carril desplazable con enlace a `/ofertas`; tras revisión visual, sus tarjetas quedaron horizontales y compactas. La nueva página muestra 20 por página sin filtros. Tarjetas y ficha muestran precio original tachado, precio final y porcentaje por variante. El carrito guarda y refresca el precio efectivo; WhatsApp conserva su texto sin importes.
+
+**Diferencias respecto del plan:** la referencia a «ocho mejores» en Tests necesarios era una errata; se corrigió a seis según confirmación del solicitante. No se necesitó un componente de precio compartido.
+
+**Tests ejecutados:** pruebas enfocadas de páginas y servicio público; suite completa `npm test`; `npm run lint`; `npm run build`; `git diff --check`. **Tests exitosos:** 350/350 en 40 archivos, lint y build PASS. Las pruebas nuevas cubren carril, página, precios por variante, catálogo, relacionados y ciclo de precios del carrito.
+
+**Tests fallidos:** una primera ejecución enfocada falló por una consulta ambigua del test ante varios `role="status"` en el home; se corrigió el test y la repetición pasó. **Incidentes:** INC-401 en [RESULTADO_TANDA_4.md](RESULTADO_TANDA_4.md).
+
+**Tests faltantes:** ninguno de los planificados para la tanda 4. **Riesgos residuales:** `localStorage` puede conservar un precio anterior hasta que se abre el carrito; el panel refresca al abrir y antes de presupuestar. No se hizo recorrido con API/MySQL y navegador reales, reservado a la tanda 5.
+
+**Decisiones pendientes descubiertas:** ninguna. **Archivos modificados:** ruta, servicio y vistas públicas, carrito, estilos, pruebas, este plan y [RESULTADO_TANDA_4.md](RESULTADO_TANDA_4.md). No se inició la tanda 5 ni se creó commit.
 
 ---
 
@@ -472,11 +486,11 @@ IMPLEMENTADO AHORA
 Producto activo → variantes con precioReferencia → oferta por variante → API privada
 → listado público ordenado y precios de oferta en catálogo/ficha API → baja física
 → panel Ofertas y botón/cartel en Productos
-→ frontend actual con precioReferencia → carrito → WhatsApp
+→ carril y /ofertas públicos → precios comparados en tarjeta/ficha/carrito
+→ precio base visible tras la baja → WhatsApp sin importes
 
 PLANIFICADO; SIN EJECUTAR
-Carril y /ofertas públicos → precios comparados en tarjeta/ficha/carrito
-→ precio base visible tras la baja
+Recorrido integral con API, MySQL y navegador reales → cierre documental
 ```
 
 Al cerrar cada tanda, actualizar este mapa con lo efectivamente implementado, sin adelantar estados.

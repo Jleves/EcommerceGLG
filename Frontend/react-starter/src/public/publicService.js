@@ -19,6 +19,11 @@ export function getPublicProducts(params = {}, { signal } = {}) {
   return apiRequest(`${ENDPOINTS.PUBLIC.PRODUCTS}?${query}`, { ...publicOptions, signal })
 }
 
+export function getPublicOffers(page = 0, size = 20, { signal } = {}) {
+  const query = new URLSearchParams({ page: String(page), size: String(size) })
+  return apiRequest(`${ENDPOINTS.PUBLIC.OFFERS}?${query}`, { ...publicOptions, signal })
+}
+
 export function getPublicProduct(id, { signal } = {}) {
   return apiRequest(ENDPOINTS.PUBLIC.PRODUCT(id), { ...publicOptions, signal })
 }

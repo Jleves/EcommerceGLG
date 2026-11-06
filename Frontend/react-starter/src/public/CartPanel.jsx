@@ -10,7 +10,7 @@ function refreshedLine(line, product) {
   const variant = product.variantes.find((item) => item.id === line.variantId)
   if (!variant) return { ...line, missing: true }
   return { ...line, name: product.nombre, variantName: variantLabel(variant), ...quoteVariantDetails(variant),
-    unitPrice: variant.precioReferencia, available: variant.disponible, missing: false,
+    unitPrice: variant.precioOferta ?? variant.precioReferencia, available: variant.disponible, missing: false,
     imageUrl: product.images?.find((image) => image.primary)?.thumbnailUrl || line.imageUrl }
 }
 
@@ -103,7 +103,7 @@ export function CartPanel() {
               {!line.missing && <span className="cart-line-subtotal">Subtotal: {formatPrice(Number(line.unitPrice) * line.quantity)}</span>}
             </div>
           </article>)}</div>
-          <div className="cart-summary"><div><strong>Total orientativo</strong><strong>{formatPrice(total)}</strong></div><p>Precios de referencia. GLG confirmará el presupuesto.</p>
+          <div className="cart-summary"><div><strong>Total orientativo</strong><strong>{formatPrice(total)}</strong></div><p>Precios orientativos. GLG confirmará el presupuesto.</p>
             {status === 'loading' && <p role="status">Actualizando productos…</p>}
             {status === 'error' && <><p role="alert">{message}</p><button type="button" onClick={refresh}>Reintentar</button></>}
             {hasMissing && <p role="alert">Quitá los productos que ya no están publicados para pedir presupuesto.</p>}

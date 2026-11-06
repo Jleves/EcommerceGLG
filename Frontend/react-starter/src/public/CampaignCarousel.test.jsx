@@ -3,16 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AppRouter } from '../app/AppRouter.jsx'
-import { getPublicCatalog } from './publicService.js'
+import { getPublicCatalog, getPublicOffers } from './publicService.js'
 
-vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn() }))
+vi.mock('./publicService.js', () => ({ getPublicCatalog: vi.fn(), getPublicOffers: vi.fn() }))
 vi.mock('./publicConfig.js', () => ({ campaignPhotos: [
   { src: 'data:image/png;base64,one', alt: 'Campaña uno', caption: 'Estamos en General Roca', portrait: true },
   { src: 'data:image/png;base64,two', alt: 'Campaña dos' },
   { src: 'data:image/png;base64,three', alt: 'Campaña tres' },
 ], brandLogos: [], whatsappNumber: '' }))
 
-beforeEach(() => getPublicCatalog.mockResolvedValue({ categories: [], facets: [] }))
+beforeEach(() => {
+  getPublicCatalog.mockResolvedValue({ categories: [], facets: [] })
+  getPublicOffers.mockResolvedValue({ content: [], page: 0, size: 6, totalElements: 0, totalPages: 0 })
+})
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()

@@ -4,6 +4,8 @@ import { IconArrowLeft, IconArrowRight, IconBuildingStore, IconCreditCard, IconB
 import { resolveCategoryIcon } from '../catalog/categories/icons/categoryIcons.js'
 import { brandLogos, campaignPhotos, whatsappNumber } from './publicConfig.js'
 import { SubscriptionForms } from './SubscriptionForms.jsx'
+import { ProductCard } from './ProductCard.jsx'
+import { getPublicOffers } from './publicService.js'
 
 const heroFirstPart = 'Los materiales'
 const heroTitle = `${heroFirstPart} de tu próxima historia.`
@@ -104,9 +106,34 @@ export function HomePage() {
   const categories = catalog.data?.categories ?? []
   const visibleCategories = categories.slice(0, 8)
   const categoryRailRef = useRef(null)
+  const offerRailRef = useRef(null)
   const [railPosition, setRailPosition] = useState({ previous: false, next: false })
+  const [offerRailPosition, setOfferRailPosition] = useState({ previous: false, next: false })
+  const [offers, setOffers] = useState({ loading: true, data: null, error: null })
   const brandFacet = catalog.data?.facets?.find((facet) => facet.name.toLowerCase() === 'marca')
   const visibleBrands = brandLogos.filter((brand) => brandFacet?.values.some((value) => value.toLowerCase() === brand.name.toLowerCase()))
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getPublicOffers(0, 6, { signal: controller.signal }).then(
+      (data) => setOffers({ loading: false, data, error: null }),
+      (error) => { if (error.name !== 'AbortError') setOffers({ loading: false, data: null, error }) },
+    )
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const rail = offerRailRef.current
+    if (!rail) return undefined
+    const updatePosition = () => setOfferRailPosition({ previous: rail.scrollLeft > 2,
+      next: rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2 })
+    updatePosition()
+    rail.addEventListener('scroll', updatePosition, { passive: true })
+    window.addEventListener('resize', updatePosition)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updatePosition)
+    observer?.observe(rail)
+    return () => { rail.removeEventListener('scroll', updatePosition); window.removeEventListener('resize', updatePosition); observer?.disconnect() }
+  }, [offers.data])
 
   useEffect(() => {
     const rail = categoryRailRef.current
@@ -138,16 +165,28 @@ export function HomePage() {
     })
   }
 
+  function moveOfferRail(direction) {
+    const rail = offerRailRef.current
+    const card = rail?.querySelector('.product-card')
+    if (!rail || !card) return
+    const gap = parseFloat(window.getComputedStyle(rail).gap) || 0
+    rail.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap),
+      behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
+
   return <>
     <section className="home-hero"><div className="public-container hero-grid">
       <div className="hero-copy"><span className="eyebrow">Materiales para tus proyectos</span><HeroTitle /><p>Todo lo que necesitás para cada etapa de tu obra, en un solo lugar. Explorá el catálogo y consultanos por WhatsApp.</p><Link className="accent-button" to="/catalog">Explorar categorías <IconArrowRight size={17} /></Link></div>
       <CampaignCarousel />
     </div></section>
-    <section className="home-services public-container" aria-label="Información comercial">
+    <section className="home-services" aria-label="Información comercial"><div className="public-container home-services-grid">
       <article><IconCreditCard aria-hidden="true" /><div><h2>Medios de pago</h2><p>Consultá las opciones disponibles.</p></div></article>
       <article><IconBrandWhatsapp aria-hidden="true" /><div><h2>WhatsApp</h2><p>{whatsappNumber ? <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer">Te ayudamos con tu compra.</a> : 'Te ayudamos con tu compra.'}</p></div></article>
       <article><IconBuildingStore aria-hidden="true" /><div><h2>Sucursal</h2><p><Link to="/contacto">Visitá nuestro local en General Roca.</Link></p></div></article>
-    </section>
+    </div></section>
+    <section className="home-offers"><div className="public-container"><div className="section-heading"><div><span className="eyebrow">Precios especiales</span><h2>Ofertas para tu obra</h2><p>Conocé los materiales con descuento.</p></div><div className="category-actions"><Link to="/ofertas">Ver todas las ofertas →</Link>{(offers.data?.content.length ?? 0) > 1 && <div className="category-controls" aria-label="Desplazar ofertas"><button type="button" onClick={() => moveOfferRail(-1)} disabled={!offerRailPosition.previous} aria-label="Ofertas anteriores"><IconArrowLeft size={18} aria-hidden="true" /></button><button type="button" onClick={() => moveOfferRail(1)} disabled={!offerRailPosition.next} aria-label="Ofertas siguientes"><IconArrowRight size={18} aria-hidden="true" /></button></div>}</div></div>
+      {offers.loading ? <p role="status">Cargando ofertas…</p> : offers.error ? <p role="alert">No pudimos cargar las ofertas. Probá nuevamente más tarde.</p> : offers.data.content.length === 0 ? <p>Todavía no hay ofertas disponibles.</p> : <div className="offer-rail" ref={offerRailRef} aria-label="Ofertas destacadas">{offers.data.content.map((product) => <ProductCard key={product.id} product={product} />)}</div>}
+    </div></section>
     <section className="home-categories"><div className="public-container"><div className="section-heading"><div><span className="eyebrow">Explorá por categoría</span><h2>Todo para tu obra</h2><p>Elegí lo que necesitás y encontrá materiales para cada proyecto.</p></div><div className="category-actions"><Link to="/catalog">Ver todas las categorías →</Link>{visibleCategories.length > 1 && <div className="category-controls" aria-label="Desplazar categorías"><button type="button" onClick={() => moveCategoryRail(-1)} disabled={!railPosition.previous} aria-label="Categorías anteriores"><IconArrowLeft size={18} aria-hidden="true" /></button><button type="button" onClick={() => moveCategoryRail(1)} disabled={!railPosition.next} aria-label="Categorías siguientes"><IconArrowRight size={18} aria-hidden="true" /></button></div>}</div></div>
       {catalog.loading ? <p role="status">Cargando categorías…</p> : catalog.error ? <p role="alert">No pudimos cargar las categorías. Probá nuevamente más tarde.</p> : categories.length === 0 ? <p>Todavía no hay categorías disponibles.</p> : <div className="category-ground"><div className="category-rail" ref={categoryRailRef} aria-label="Categorías disponibles">{visibleCategories.map((category) => { const { Icon } = resolveCategoryIcon(category.icono); return <div className="category-stone" key={category.id}><Link className="category-card" to={`/catalog?categoriaId=${category.id}`}><span className="category-fasteners" aria-hidden="true"><i /><i /><i /><i /></span><div className="category-art"><Icon size={72} stroke={1.3} aria-hidden="true" /></div><div className="category-label"><strong>{category.nombre}</strong><span>{category.descripcion || 'Ver productos'}</span><b aria-hidden="true">→</b></div></Link></div> })}</div></div>}
     </div></section>

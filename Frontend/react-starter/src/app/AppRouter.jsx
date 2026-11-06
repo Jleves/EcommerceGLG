@@ -17,6 +17,7 @@ import { ProtectedRoute } from './ProtectedRoute.jsx'
 import { PublicOnlyRoute } from './PublicOnlyRoute.jsx'
 import { PublicLayout } from '../public/PublicLayout.jsx'
 import { HomePage } from '../public/HomePage.jsx'
+import { OffersPage } from '../public/OffersPage.jsx'
 import { ContactPage } from '../public/ContactPage.jsx'
 import { CatalogPage } from '../public/CatalogPage.jsx'
 import { ProductDetailPage } from '../public/ProductDetailPage.jsx'
@@ -28,6 +29,7 @@ export function AppRouter() {
         <Route path="/" element={<HomePage />} />
         <Route path="/contacto" element={<ContactPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
+        <Route path="/ofertas" element={<OffersPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
       </Route>
       <Route element={<PublicOnlyRoute />}>
