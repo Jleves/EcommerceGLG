@@ -6,6 +6,7 @@ export const ENDPOINTS = Object.freeze({
     PRODUCTS: '/api/public/products',
     PRODUCT: (id) => `/api/public/products/${encodeURIComponent(id)}`,
     RELATED: (id) => `/api/public/products/${encodeURIComponent(id)}/related`,
+    SUBSCRIPTIONS: '/api/public/subscriptions',
   }),
   ADMIN: Object.freeze({
     USERS: '/api/admin/users',

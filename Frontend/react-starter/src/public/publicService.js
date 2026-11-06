@@ -26,3 +26,12 @@ export function getPublicProduct(id, { signal } = {}) {
 export function getRelatedProducts(id, { signal } = {}) {
   return apiRequest(ENDPOINTS.PUBLIC.RELATED(id), { ...publicOptions, signal })
 }
+
+export function subscribe(channel, contact, consent) {
+  return apiRequest(ENDPOINTS.PUBLIC.SUBSCRIPTIONS, {
+    ...publicOptions,
+    method: 'POST',
+    body: { channel, contact, consent },
+    expectedStatus: 204,
+  })
+}

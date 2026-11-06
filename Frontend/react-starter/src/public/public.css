@@ -151,6 +151,28 @@
 .category-label span { display:block; width:calc(100% - 22px); font-size:11px; color:#d2d0c7; margin-top:auto; padding-top:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .category-label b { position:absolute; right:18px; bottom:22px; color:var(--accent-light); }
 .home-brands { padding-block:65px 75px; background:var(--sand); color:var(--ink); }
+.home-subscriptions { background:var(--accent); color:var(--surface); padding-block:66px 76px; }
+.subscription-intro { max-width:750px; margin-bottom:28px; }
+.subscription-intro .eyebrow { color:#ffe0c8; }
+.subscription-intro h2 { font:400 clamp(30px,3vw,42px)/1.15 'Allerta Stencil',sans-serif; margin-bottom:10px; }
+.subscription-intro p { line-height:1.55; margin:0; }
+.subscription-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+.subscription-card { padding:28px; border-radius:12px; background:var(--surface); color:var(--ink); box-shadow:0 12px 26px #53271930; }
+.subscription-card-heading { display:flex; align-items:center; gap:12px; margin-bottom:23px; }
+.subscription-card-heading h3 { margin:0; font-size:22px; }
+.subscription-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:9px; background:#f4e3d9; color:var(--accent-dark); }
+.subscription-field { display:grid; gap:8px; font-weight:700; font-size:14px; }
+.subscription-field input { width:100%; min-height:46px; padding:10px 12px; border:1px solid #b9aa9e; border-radius:6px; background:white; color:var(--ink); }
+.subscription-field input:focus-visible,.subscription-consent input:focus-visible,.subscription-card button:focus-visible { outline:3px solid var(--accent-dark); outline-offset:2px; }
+.subscription-help { margin:8px 0 0; color:var(--muted); font-size:12px; }
+.subscription-consent { display:flex; gap:10px; align-items:start; margin:22px 0; font-size:13px; line-height:1.45; }
+.subscription-consent input { flex:none; width:17px; height:17px; margin:1px 0 0; accent-color:var(--accent-dark); }
+.subscription-card button { min-height:46px; padding:0 23px; border:0; border-radius:6px; background:var(--accent-dark); color:white; font-weight:700; cursor:pointer; }
+.subscription-card button:hover:not(:disabled) { background:var(--charcoal-deep); }
+.subscription-card button:disabled { opacity:.55; cursor:default; }
+.subscription-feedback { margin:14px 0 0; color:#27633d; font-weight:700; font-size:13px; }
+.subscription-feedback-error { color:#a12525; }
+@media (max-width:700px) { .home-subscriptions { padding-block:44px 50px; } .subscription-grid { grid-template-columns:1fr; } .subscription-card { padding:22px; } }
 .home-brands .eyebrow { color:var(--accent-dark); }
 .brand-track { display:flex; gap:15px; overflow-x:auto; padding-bottom:8px; }
 .brand-track a { flex:0 0 180px; height:84px; display:flex; justify-content:center; align-items:center; padding:15px; border:1px solid #d7c8b0; border-radius:7px; background:var(--surface); }

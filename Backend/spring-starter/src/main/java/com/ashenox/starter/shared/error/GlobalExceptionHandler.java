@@ -41,6 +41,22 @@ public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final ApiErrorResponder responder;
 
+    @ExceptionHandler(com.ashenox.starter.subscription.SubscriptionRateLimitedException.class)
+    public ResponseEntity<ApiError> handleSubscriptionRateLimit(
+            com.ashenox.starter.subscription.SubscriptionRateLimitedException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", Long.toString(exception.getRetryAfterSeconds()))
+                .body(responder.create(request, 429, ApiErrorCode.SUBSCRIPTION_RATE_LIMITED,
+                        exception.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(com.ashenox.starter.subscription.SubscriptionValidationException.class)
+    public ResponseEntity<ApiError> handleInvalidSubscription(com.ashenox.starter.subscription.SubscriptionValidationException exception,
+                                                               HttpServletRequest request) {
+        return response(request, HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, exception.getMessage());
+    }
+
     @ExceptionHandler({CategoryConflictException.class, CharacteristicConflictException.class,
             SubcategoryConflictException.class, ProductVariantConflictException.class})
     public ResponseEntity<ApiError> handleCategoryConflict(RuntimeException exception,

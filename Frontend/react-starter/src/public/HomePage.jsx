@@ -3,6 +3,7 @@ import { Link, useOutletContext } from 'react-router-dom'
 import { IconArrowLeft, IconArrowRight, IconBuildingStore, IconCreditCard, IconBrandWhatsapp } from '@tabler/icons-react'
 import { resolveCategoryIcon } from '../catalog/categories/icons/categoryIcons.js'
 import { brandLogos, campaignPhotos, whatsappNumber } from './publicConfig.js'
+import { SubscriptionForms } from './SubscriptionForms.jsx'
 
 const heroFirstPart = 'Los materiales'
 const heroTitle = `${heroFirstPart} de tu próxima historia.`
@@ -151,6 +152,7 @@ export function HomePage() {
       {catalog.loading ? <p role="status">Cargando categorías…</p> : catalog.error ? <p role="alert">No pudimos cargar las categorías. Probá nuevamente más tarde.</p> : categories.length === 0 ? <p>Todavía no hay categorías disponibles.</p> : <div className="category-ground"><div className="category-rail" ref={categoryRailRef} aria-label="Categorías disponibles">{visibleCategories.map((category) => { const { Icon } = resolveCategoryIcon(category.icono); return <div className="category-stone" key={category.id}><Link className="category-card" to={`/catalog?categoriaId=${category.id}`}><span className="category-fasteners" aria-hidden="true"><i /><i /><i /><i /></span><div className="category-art"><Icon size={72} stroke={1.3} aria-hidden="true" /></div><div className="category-label"><strong>{category.nombre}</strong><span>{category.descripcion || 'Ver productos'}</span><b aria-hidden="true">→</b></div></Link></div> })}</div></div>}
     </div></section>
     <section className="home-brands"><div className="public-container"><div className="section-heading"><div><span className="eyebrow">Marcas que nos acompañan</span><h2>Trabajamos con grandes marcas</h2></div></div>{catalog.loading ? <p role="status">Cargando marcas…</p> : visibleBrands.length > 0 ? <div className="brand-track">{visibleBrands.map((brand) => <Link key={brand.name} to={`/catalog?marca=${encodeURIComponent(brand.name)}`} aria-label={`Ver productos de ${brand.name}`}><img src={brand.src} alt={brand.name} loading="lazy" /></Link>)}</div> : <p className="brand-pending">Los logos de marcas se incorporarán próximamente.</p>}</div></section>
+    <SubscriptionForms />
     {whatsappNumber && <a className="home-whatsapp" href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" aria-label="Chatear por WhatsApp"><IconBrandWhatsapp size={30} stroke={1.8} aria-hidden="true" /></a>}
   </>
 }

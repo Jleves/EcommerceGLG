@@ -4,5 +4,6 @@ public enum AuthRateLimitScope {
     MFA_CODE_ISSUE,
     MFA_CODE_FAILURE,
     LOGIN_ACCOUNT,
-    LOGIN_IP
+    LOGIN_IP,
+    SUBSCRIPTION_IP
 }

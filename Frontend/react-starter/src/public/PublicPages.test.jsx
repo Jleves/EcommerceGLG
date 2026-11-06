@@ -24,12 +24,14 @@ describe('catálogo público', () => {
   })
 
   it('muestra el home público y solo enlaces listos', async () => {
-    renderRoute('/')
+    const { container } = renderRoute('/')
     expect(screen.getByRole('heading', { name: 'Los materiales de tu próxima historia.' })).toBeInTheDocument()
     expect((await screen.findAllByRole('link', { name: /Materiales/ }))[0]).toHaveAttribute('href', '/catalog?categoriaId=3')
     expect(screen.queryByText('Ofertas vigentes')).not.toBeInTheDocument()
     expect(screen.queryByText('Mi carrito')).not.toBeInTheDocument()
     expect(screen.queryByText('Envíos')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Enterate de lo nuevo en GLG' })).toBeInTheDocument()
+    expect(container.querySelector('.home-brands')?.nextElementSibling).toHaveClass('home-subscriptions')
   })
 
   it('muestra el acceso flotante a WhatsApp solo en el home', () => {
