@@ -10,6 +10,9 @@ import com.ashenox.starter.catalog.product.image.model.ProductImage;
 import com.ashenox.starter.catalog.product.image.repository.ProductImageRepository;
 import com.ashenox.starter.catalog.product.image.service.ProductImageUrlService;
 import com.ashenox.starter.catalog.product.model.Product;
+import com.ashenox.starter.catalog.product.offer.model.VariantOffer;
+import com.ashenox.starter.catalog.product.offer.repository.OfferRepository;
+import com.ashenox.starter.catalog.product.offer.service.PublicOfferPrice;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
@@ -24,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator;
 import java.util.Locale;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class PublicProductService {
     private final ProductRepository products;
     private final ProductVariantRepository variants;
+    private final OfferRepository offers;
     private final ProductVariantService variantService;
     private final ProductImageRepository images;
     private final ProductCharacteristicRepository characteristics;
@@ -78,19 +81,37 @@ public class PublicProductService {
 
     private PublicProductPageResponse toPage(Page<Product> result, int page, int size) {
         List<Long> productIds = result.getContent().stream().map(Product::getId).toList();
-        Map<Long, ProductVariant> selectedByProduct = productIds.isEmpty() ? Map.of()
-                : variants.findActiveByProductIds(productIds).stream().collect(Collectors.toMap(
+        List<ProductVariant> active = productIds.isEmpty() ? List.of() : variants.findActiveByProductIds(productIds);
+        Map<Long, VariantOffer> offersByVariant = offersFor(active);
+        Map<Long, ProductVariant> selectedByProduct = active.stream().collect(Collectors.toMap(
                 variant -> variant.getProduct().getId(), Function.identity(),
-                (left, right) -> preferred().compare(left, right) <= 0 ? left : right));
+                (left, right) -> PublicOfferPrice.preferred(offersByVariant).compare(left, right) <= 0 ? left : right));
         Map<Long, ProductImage> primaryByProduct = productIds.isEmpty() ? Map.of()
                 : images.findPublishedPrimaryByProductIds(productIds).stream()
                 .collect(Collectors.toMap(image -> image.getProduct().getId(), Function.identity()));
         List<PublicProductSummaryResponse> content = result.getContent().stream().map(product -> {
             ProductImage primary = primaryByProduct.get(product.getId());
-            return PublicProductSummaryResponse.from(product, selectedByProduct.get(product.getId()),
-                    primary == null ? null : urls.toCloudFrontUrl(primary.getThumbnailKey()));
+            ProductVariant selected = selectedByProduct.get(product.getId());
+            return PublicProductSummaryResponse.from(product, selected,
+                    primary == null ? null : urls.toCloudFrontUrl(primary.getThumbnailKey()),
+                    offersByVariant.get(selected.getId()));
         }).toList();
         return new PublicProductPageResponse(content, page, size, result.getTotalElements(), result.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public PublicProductPageResponse offersPage(Page<Long> ids, int page, int size) {
+        Map<Long, Product> byId = products.findAllById(ids.getContent()).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        List<Product> ordered = ids.getContent().stream().map(byId::get).toList();
+        return toPage(new org.springframework.data.domain.PageImpl<>(ordered, PageRequest.of(page, size),
+                ids.getTotalElements()), page, size);
+    }
+
+    private Map<Long, VariantOffer> offersFor(List<ProductVariant> active) {
+        if (active.isEmpty()) return Map.of();
+        return offers.findByVariantIdIn(active.stream().map(ProductVariant::getId).toList()).stream()
+                .collect(Collectors.toMap(offer -> offer.getVariant().getId(), Function.identity()));
     }
 
     private String normalized(String value, int max, String error) {
@@ -120,18 +141,15 @@ public class PublicProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
         List<ProductVariant> active = variants.findByProductIdAndActivoTrueOrderByIdAsc(id);
         if (active.isEmpty()) throw new ResourceNotFoundException("El producto solicitado no existe.");
-        ProductVariant selected = active.stream().min(preferred()).orElseThrow();
+        Map<Long, VariantOffer> offersByVariant = offersFor(active);
+        ProductVariant selected = active.stream().min(PublicOfferPrice.preferred(offersByVariant)).orElseThrow();
         return PublicProductDetailResponse.from(product, selected,
                 characteristics.findByProductIdWithCharacteristic(id).stream()
                         .map(ProductCharacteristicResponse::from).toList(),
                 images.findByProductIdAndStatusOrderByPositionAscIdAsc(id, "PUBLISHED")
                         .stream().map(urls::toResponse).toList(),
-                variantService.responses(active).stream().map(PublicProductVariantResponse::from).toList());
-    }
-
-    private static Comparator<ProductVariant> preferred() {
-        return Comparator.comparing((ProductVariant variant) -> !variant.isDisponible())
-                .thenComparing(ProductVariant::getPrecioReferencia)
-                .thenComparing(ProductVariant::getId);
+                variantService.responses(active).stream()
+                        .map(variant -> PublicProductVariantResponse.from(variant, offersByVariant.get(variant.id())))
+                        .toList(), offersByVariant.get(selected.getId()));
     }
 }

@@ -118,7 +118,8 @@ public class SecurityConfig  {
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/reset-password/validate").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/products", "/api/public/products/{id}",
-                                "/api/public/products/{id}/related", "/api/public/catalog").permitAll()
+                                "/api/public/products/{id}/related", "/api/public/catalog",
+                                "/api/public/offers").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/subscriptions").permitAll()
                         .requestMatchers("/api/public/**").denyAll()
                         .requestMatchers("/api/admin/subscriptions", "/api/admin/subscriptions/**")

@@ -1,6 +1,6 @@
 # Ofertas sin vencimiento — plan de implementación por tandas
 
-**Estado:** Tanda 0 completa: documento creado el 06/11/2026. Tandas 1–5 pendientes de ejecución.
+**Estado:** Tandas 0–2 completas al 06/11/2026. Tandas 3–5 pendientes de ejecución.
 
 Este documento transforma las decisiones acordadas sobre ofertas en un mapa de trabajo. **No autoriza comenzar automáticamente ninguna tanda:** el solicitante indicará cuál ejecutar. Antes de cada ejecución, aplicar `PROMPT_EJECUTAR_TANDA.md`; ante una decisión relevante no prevista, detener la parte afectada y registrarla como `DECISIÓN PENDIENTE`, sin iniciar la tanda siguiente.
 
@@ -88,8 +88,8 @@ Lectura pública objetivo: `PublicOfferController.list(...)` → `PublicOfferSer
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 0 | Crear y revisar este plan | Ninguna | Completa |
-| 1 | Persistencia, reglas y API privada | 0 | Planificada |
-| 2 | Contratos y consultas públicas | 1 | Planificada |
+| 1 | Persistencia, reglas y API privada | 0 | Completa |
+| 2 | Contratos y consultas públicas | 1 | Completa |
 | 3 | Gestión en el panel y botón en Productos | 1 | Planificada |
 | 4 | Home, página pública, catálogo, ficha y carrito | 2 | Planificada |
 | 5 | Recorrido integral y cierre documental | 3 y 4 | Planificada |
@@ -271,7 +271,21 @@ TRATAMIENTO: Tanda 4.
 
 **Criterio de cierre:** página ordenada correctamente en MySQL; contratos y visibilidad verificados; regresiones públicas comprobadas.
 
-**Resultado de ejecución:** **PENDIENTE DE EJECUCIÓN**.
+### Resultado de ejecución
+
+**Estado:** COMPLETA (06/11/2026).
+
+**Cambios realizados:** `GET /api/public/offers` anónimo con página de productos distintos ordenada por máximo descuento decimal en MySQL; resúmenes y ficha incorporan precio de oferta y porcentaje nullable; catálogo, relacionados y ficha eligen la mejor variante ofertada activa. La carga de variantes, ofertas e imágenes de cada página se realiza por lotes.
+
+**Diferencias respecto del plan:** `PublicProductPageResponse` conserva su estructura y se reutiliza para la página de ofertas. La ficha incluye los dos campos nuevos también en el nivel superior, correspondientes a la variante seleccionada. `package` se ejecutó con `-DskipTests` porque la suite completa acababa de pasar por separado.
+
+**Tests ejecutados y exitosos:** `PublicOfferHttpTest` (3), `PublicOfferPageMySqlTest` (1), `PublicProductHttpTest` (7) y suite completa `./mvnw.cmd test`: 648 tests, 0 fallos, 0 errores, 0 omitidos, con Docker/MySQL accesible fuera del sandbox. `./mvnw.cmd -DskipTests package` generó el JAR. `git diff --check` pasó.
+
+**Tests fallidos:** ninguno en la ejecución final. **Incidentes:** el primer arranque de Surefire usó por error Mockito 5.3.1 como agente y terminó antes de ejecutar tests; luego se usó 5.23.0. Dentro del sandbox Docker no era accesible y el caso MySQL se omitió allí; se volvió a ejecutar fuera del sandbox y pasó. Detalle en [RESULTADO_TANDA_2.md](RESULTADO_TANDA_2.md).
+
+**Tests faltantes:** ninguno de los planificados para la tanda 2. **Riesgos residuales:** la interfaz y el carrito aún consumen solo `precioReferencia` hasta la tanda 4; no se validó el entorno de despliegue.
+
+**Decisiones pendientes descubiertas:** ninguna. **Archivos modificados:** consulta de ofertas, servicio y controller públicos, DTO públicos, seguridad, dos clases de test, este apartado y [RESULTADO_TANDA_2.md](RESULTADO_TANDA_2.md). No se inició otra tanda ni se creó commit.
 
 ---
 
@@ -455,12 +469,13 @@ Cuando falle un test o aparezca un defecto relevante durante una tanda, registra
 
 ```text
 IMPLEMENTADO AHORA
-Producto activo → variantes con precioReferencia → catálogo/ficha → carrito → WhatsApp
+Producto activo → variantes con precioReferencia → oferta por variante → API privada
+→ listado público ordenado y precios de oferta en catálogo/ficha API → baja física
+→ frontend actual con precioReferencia → carrito → WhatsApp
 
 PLANIFICADO; SIN EJECUTAR
-Oferta única por variante → API privada → lectura pública ordenada
-→ panel Ofertas y botón en Productos → carril y /ofertas
-→ precios comparados en tarjeta/ficha/carrito → baja física → precio base visible
+Panel Ofertas y botón en Productos → carril y /ofertas
+→ precios comparados en tarjeta/ficha/carrito → precio base visible tras la baja
 ```
 
 Al cerrar cada tanda, actualizar este mapa con lo efectivamente implementado, sin adelantar estados.
