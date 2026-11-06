@@ -148,7 +148,7 @@ export async function apiRequest(endpoint, options = {}) {
     })
   }
 
-  const data = await parseResponse(response, responseType)
+  const data = await parseResponse(response, response.ok ? responseType : 'auto')
 
   if (response.ok) {
     if (expectedStatus != null && response.status !== expectedStatus) {

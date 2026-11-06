@@ -121,6 +121,8 @@ public class SecurityConfig  {
                                 "/api/public/products/{id}/related", "/api/public/catalog").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/subscriptions").permitAll()
                         .requestMatchers("/api/public/**").denyAll()
+                        .requestMatchers("/api/admin/subscriptions", "/api/admin/subscriptions/**")
+                        .hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/admin/users", "/api/admin/users/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/admin/**")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")

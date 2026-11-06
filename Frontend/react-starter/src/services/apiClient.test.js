@@ -9,6 +9,12 @@ function jsonResponse(data, status = 200) {
 }
 
 describe('apiClient', () => {
+  it('lee el JSON de error aun si se solicitó una descarga binaria', async () => {
+    __resetApiClientForTests()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ code: 'ACCESS_DENIED', message: 'Sin permiso' }, 403)))
+    await expect(apiRequest('/api/admin/subscriptions/export', { responseType: 'blob' }))
+      .rejects.toMatchObject({ status: 403, code: 'ACCESS_DENIED' })
+  })
   beforeEach(() => {
     __resetApiClientForTests()
     document.cookie = 'XSRF-TOKEN=; Path=/; Max-Age=0'

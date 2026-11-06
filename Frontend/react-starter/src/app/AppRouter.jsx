@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { CreateUserPage } from '../admin/pages/CreateUserPage.jsx'
 import { UserDetailPage } from '../admin/pages/UserDetailPage.jsx'
 import { UserListPage } from '../admin/pages/UserListPage.jsx'
+import { SubscriptionListPage } from '../admin/pages/SubscriptionListPage.jsx'
 import { ForgotPasswordPage } from '../auth/pages/ForgotPasswordPage.jsx'
 import { LoginPage } from '../auth/pages/LoginPage.jsx'
 import { MfaLoginPage } from '../auth/pages/MfaLoginPage.jsx'
@@ -42,6 +43,10 @@ export function AppRouter() {
           <Route path="catalog/categories" element={<CategoryManagementPage />} />
           <Route path="catalog/characteristics" element={<CharacteristicManagementPage />} />
           <Route path="catalog/products" element={<ProductManagementPage />} />
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']} />}>
+            <Route path="admin/subscriptions/email" element={<SubscriptionListPage channel="EMAIL" />} />
+            <Route path="admin/subscriptions/whatsapp" element={<SubscriptionListPage channel="WHATSAPP" />} />
+          </Route>
           <Route element={<ProtectedRoute requiredRole="SUPER_ADMIN" />}>
             <Route path="admin/users" element={<UserListPage />} />
             <Route path="admin/users/new" element={<CreateUserPage />} />

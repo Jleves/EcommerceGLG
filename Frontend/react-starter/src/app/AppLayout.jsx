@@ -78,6 +78,13 @@ export function AppLayout() {
           <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/catalog/categories">Categorías</NavLink>
           <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/catalog/characteristics">Características</NavLink>
           <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/catalog/products">Productos</NavLink>
+          {['ADMIN', 'SUPER_ADMIN'].includes(user?.role) && (
+            <>
+              <p className="admin-nav-caption admin-nav-caption-secondary">Suscriptores</p>
+              <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/admin/subscriptions/email">Email</NavLink>
+              <NavLink className={navClass} onClick={() => setMenuOpen(false)} to="/app/admin/subscriptions/whatsapp">WhatsApp</NavLink>
+            </>
+          )}
           {user?.role === 'SUPER_ADMIN' && (
             <>
               <p className="admin-nav-caption admin-nav-caption-secondary">Cuentas</p>

@@ -9,6 +9,8 @@ export const ENDPOINTS = Object.freeze({
     SUBSCRIPTIONS: '/api/public/subscriptions',
   }),
   ADMIN: Object.freeze({
+    SUBSCRIPTIONS: '/api/admin/subscriptions',
+    SUBSCRIPTIONS_EXPORT: '/api/admin/subscriptions/export',
     USERS: '/api/admin/users',
     USER: (id) => `/api/admin/users/${encodeURIComponent(id)}`,
     USER_EMAIL: (id) => `/api/admin/users/${encodeURIComponent(id)}/email`,
