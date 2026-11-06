@@ -4,6 +4,7 @@ import com.ashenox.starter.catalog.characteristic.model.Characteristic;
 import com.ashenox.starter.catalog.characteristic.repository.CharacteristicRepository;
 import com.ashenox.starter.catalog.characteristic.repository.ProductCharacteristicRepository;
 import com.ashenox.starter.catalog.product.model.Product;
+import com.ashenox.starter.catalog.product.offer.service.OfferService;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.variant.dto.CreateVariantRequest;
 import com.ashenox.starter.catalog.product.variant.dto.UpdateVariantRequest;
@@ -33,6 +34,7 @@ public class ProductVariantService {
     private final VariantCharacteristicRepository attributes;
     private final CharacteristicRepository characteristics;
     private final ProductCharacteristicRepository sharedAttributes;
+    private final OfferService offerService;
 
     @Transactional(readOnly = true)
     public List<ProductVariantResponse> list(Long productId) {
@@ -89,6 +91,7 @@ public class ProductVariantService {
         String cleanedSku = clean(request.sku());
         String normalizedSku = normalize(cleanedSku);
         checkSku(normalizedSku, variantId);
+        offerService.validateBasePrice(variantId, request.precioReferencia());
         variant.setSku(cleanedSku);
         variant.setSkuNormalizado(normalizedSku);
         variant.setPrecioReferencia(request.precioReferencia());

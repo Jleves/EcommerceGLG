@@ -133,6 +133,8 @@ public class SecurityConfig  {
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
                         .requestMatchers("/api/catalog/products", "/api/catalog/products/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
+                        .requestMatchers("/api/catalog/offers", "/api/catalog/offers/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "USER")
 
 
                         .requestMatchers(HttpMethod.POST, "/api/auth/mfa/login/verify",

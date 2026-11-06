@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
+    @Query("select variant.product.id from ProductVariant variant where variant.id = :id")
+    Optional<Long> findProductIdByVariantId(Long id);
     Optional<ProductVariant> findByProductId(Long productId);
     List<ProductVariant> findByProductIdIn(Collection<Long> productIds);
     List<ProductVariant> findByProductIdOrderByIdAsc(Long productId);

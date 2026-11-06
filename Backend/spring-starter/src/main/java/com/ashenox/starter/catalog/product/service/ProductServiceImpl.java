@@ -15,6 +15,7 @@ import com.ashenox.starter.catalog.product.dto.ProductPageResponse;
 import com.ashenox.starter.catalog.product.dto.ProductSummaryResponse;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
+import com.ashenox.starter.catalog.product.offer.service.OfferService;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
@@ -53,6 +54,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductVariantRepository productVariantRepository;
     private final VariantCharacteristicRepository variantCharacteristicRepository;
     private final ProductVariantService productVariantService;
+    private final OfferService offerService;
 
     @Override
     @Transactional(readOnly = true)
@@ -258,6 +260,7 @@ public class ProductServiceImpl implements ProductService {
         ProductVariant variant = variants.getFirst();
         if (variants.size() == 1) {
             if (request.precioReferenciaPresente()) {
+                offerService.validateBasePrice(variant.getId(), request.precioReferencia());
                 variant.setPrecioReferencia(request.precioReferencia());
             }
             if (request.disponiblePresente()) {

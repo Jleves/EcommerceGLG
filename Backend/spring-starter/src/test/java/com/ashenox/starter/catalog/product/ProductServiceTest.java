@@ -7,6 +7,7 @@ import com.ashenox.starter.catalog.characteristic.repository.ProductCharacterist
 import com.ashenox.starter.catalog.product.dto.CreateProductRequest;
 import com.ashenox.starter.catalog.product.dto.UpdateProductRequest;
 import com.ashenox.starter.catalog.product.model.Product;
+import com.ashenox.starter.catalog.product.offer.service.OfferService;
 import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.service.ProductCategoryInactiveException;
 import com.ashenox.starter.catalog.product.service.ProductServiceImpl;
@@ -35,10 +36,11 @@ class ProductServiceTest {
     private final SubcategoryRepository subcategories = mock(SubcategoryRepository.class);
     private final ProductVariantRepository variants = mock(ProductVariantRepository.class);
     private final VariantCharacteristicRepository variantValues = mock(VariantCharacteristicRepository.class);
+    private final OfferService offerService = mock(OfferService.class);
     private final ProductVariantService variantService = new ProductVariantService(products, variants, variantValues,
-            characteristics, values);
+            characteristics, values, offerService);
     private final ProductServiceImpl service = new ProductServiceImpl(categories, products, characteristics, values,
-            subcategories, variants, variantValues, variantService);
+            subcategories, variants, variantValues, variantService, offerService);
 
     @BeforeEach
     void setUpVariants() {
