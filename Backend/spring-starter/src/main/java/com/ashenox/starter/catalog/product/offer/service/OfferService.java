@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +33,16 @@ public class OfferService {
         Page<VariantOffer> result = offers.findAdministrativePage(PageRequest.of(page, size));
         return new OfferPageResponse(result.getContent().stream().map(OfferResponse::from).toList(),
                 page, size, result.getTotalElements(), result.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OfferResponse> listByProducts(List<Long> productIds) {
+        if (productIds == null || productIds.isEmpty() || productIds.size() > 100 ||
+                productIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new BusinessException("Los IDs de producto solicitados no son válidos.");
+        }
+        return offers.findAdministrativeByProductIds(productIds.stream().distinct().toList())
+                .stream().map(OfferResponse::from).toList();
     }
 
     @Transactional

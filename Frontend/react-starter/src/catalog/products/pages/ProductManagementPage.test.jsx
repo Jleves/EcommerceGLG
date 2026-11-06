@@ -7,11 +7,13 @@ import { listCharacteristics } from '../../characteristics/services/characterist
 import { listSubcategories } from '../../subcategories/services/subcategoryService.js'
 import { createProduct, createVariant, deactivateProduct, deactivateVariant, getProduct, listProductImages, listProducts, reactivateProduct, reactivateVariant, updateProduct, updateVariant } from '../services/productService.js'
 import { ProductManagementPage } from './ProductManagementPage.jsx'
+import { createOffer, listOffersByProducts } from '../../offers/services/offerService.js'
 
 vi.mock('../services/productService.js', () => ({ listProducts: vi.fn(), getProduct: vi.fn(), createProduct: vi.fn(), createVariant: vi.fn(), updateVariant: vi.fn(), deactivateVariant: vi.fn(), reactivateVariant: vi.fn(), updateProduct: vi.fn(), deactivateProduct: vi.fn(), reactivateProduct: vi.fn(), listProductImages: vi.fn() }))
 vi.mock('../../categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
 vi.mock('../../characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn() }))
 vi.mock('../../subcategories/services/subcategoryService.js', () => ({ listSubcategories: vi.fn() }))
+vi.mock('../../offers/services/offerService.js', () => ({ listOffersByProducts: vi.fn(), createOffer: vi.fn(), updateOffer: vi.fn() }))
 
 const active = { id: 1, nombre: 'Arena', categoriaId: 3, descripcion: 'Fina', precioReferencia: 250, disponible: true, activo: true, destacado: false }
 const inactive = { id: 2, nombre: 'Cemento', categoriaId: 4, descripcion: '', precioReferencia: 500, disponible: false, activo: false, destacado: true }
@@ -34,6 +36,38 @@ describe('ProductManagementPage', () => {
     listCharacteristics.mockResolvedValue([{ id: 7, nombre: 'Color' }, { id: 8, nombre: 'Peso' }])
     listSubcategories.mockResolvedValue([])
     listProductImages.mockResolvedValue([])
+    listOffersByProducts.mockResolvedValue([])
+  })
+
+  it('marca el producto con oferta y abre su formulario sin depender de destacado', async () => {
+    const user = userEvent.setup()
+    listProducts.mockResolvedValue(makePage(0, [active, inactive], 1))
+    listOffersByProducts.mockResolvedValue([{ id: 8, productoId: 1, varianteId: 11, precioOferta: 80 }])
+    getProduct.mockResolvedValue({ ...active, variantes: [{ id: 11, activo: true, disponible: true, precioReferencia: 100 }] })
+    renderPage()
+    const card = (await screen.findByRole('heading', { name: 'Arena' })).closest('li')
+    expect(within(card).getByText('En oferta')).toBeInTheDocument()
+    expect(within(screen.getByRole('heading', { name: 'Cemento' }).closest('li')).queryByText('En oferta')).not.toBeInTheDocument()
+    await user.click(within(card).getByRole('button', { name: 'Oferta de Arena' }))
+    expect(await screen.findByRole('dialog', { name: 'Oferta de Arena' })).toBeInTheDocument()
+    await waitFor(() => expect(listOffersByProducts).toHaveBeenCalledWith([1], { signal: expect.any(AbortSignal) }))
+  })
+
+  it('crea desde Productos y actualiza el cartel tras recargar la página', async () => {
+    const user = userEvent.setup()
+    listProducts.mockResolvedValue(makePage(0, [active], 1))
+    const offer = { id: 8, productoId: 1, varianteId: 11, precioOferta: 80 }
+    listOffersByProducts.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValue([offer])
+    getProduct.mockResolvedValue({ ...active, variantes: [{ id: 11, activo: true, disponible: true, precioReferencia: 100 }] })
+    createOffer.mockResolvedValue({ id: 8, varianteId: 11 })
+    renderPage()
+    const card = (await screen.findByRole('heading', { name: 'Arena' })).closest('li')
+    await user.click(within(card).getByRole('button', { name: 'Oferta de Arena' }))
+    await screen.findByRole('dialog', { name: 'Oferta de Arena' })
+    await user.type(screen.getByRole('textbox', { name: 'Precio final de oferta' }), '80')
+    await user.click(screen.getByRole('button', { name: 'Crear oferta' }))
+    await waitFor(() => expect(createOffer).toHaveBeenCalledWith(11, '80'))
+    expect(await screen.findByText('En oferta')).toBeInTheDocument()
   })
 
   it('abre las imágenes del producto elegido y limpia el modal al cambiar de producto', async () => {

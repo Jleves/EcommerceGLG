@@ -19,6 +19,9 @@ public interface OfferRepository extends JpaRepository<VariantOffer, Long> {
 
     List<VariantOffer> findByVariantIdIn(Collection<Long> variantIds);
 
+    @Query("select offer from VariantOffer offer join fetch offer.variant variant join fetch variant.product product where product.id in :productIds order by product.id, variant.id")
+    List<VariantOffer> findAdministrativeByProductIds(Collection<Long> productIds);
+
     @Query(value = """
             select p.id from products p
             join product_variants v on v.product_id = p.id

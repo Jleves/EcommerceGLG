@@ -10,6 +10,7 @@ import { ResetPasswordPage } from '../auth/pages/ResetPasswordPage.jsx'
 import { CategoryManagementPage } from '../catalog/categories/pages/CategoryManagementPage.jsx'
 import { CharacteristicManagementPage } from '../catalog/characteristics/pages/CharacteristicManagementPage.jsx'
 import { ProductManagementPage } from '../catalog/products/pages/ProductManagementPage.jsx'
+import { OfferManagementPage } from '../catalog/offers/pages/OfferManagementPage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { ProfilePage } from './ProfilePage.jsx'
 import { ProtectedRoute } from './ProtectedRoute.jsx'
@@ -43,6 +44,7 @@ export function AppRouter() {
           <Route path="catalog/categories" element={<CategoryManagementPage />} />
           <Route path="catalog/characteristics" element={<CharacteristicManagementPage />} />
           <Route path="catalog/products" element={<ProductManagementPage />} />
+          <Route path="catalog/offers" element={<OfferManagementPage />} />
           <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']} />}>
             <Route path="admin/subscriptions/email" element={<SubscriptionListPage channel="EMAIL" />} />
             <Route path="admin/subscriptions/whatsapp" element={<SubscriptionListPage channel="WHATSAPP" />} />

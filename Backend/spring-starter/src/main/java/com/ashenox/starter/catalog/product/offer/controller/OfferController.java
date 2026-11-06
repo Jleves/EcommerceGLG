@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/catalog/offers")
@@ -31,6 +32,11 @@ public class OfferController {
     public OfferPageResponse list(@RequestParam(defaultValue = "0") int page,
                                   @RequestParam(defaultValue = "20") int size) {
         return service.list(page, size);
+    }
+
+    @GetMapping("/by-products")
+    public List<OfferResponse> listByProducts(@RequestParam List<Long> productIds) {
+        return service.listByProducts(productIds);
     }
 
     @PostMapping

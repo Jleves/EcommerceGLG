@@ -7,6 +7,8 @@ import { listSubcategories } from '../../subcategories/services/subcategoryServi
 import { ProductForm } from '../components/ProductForm.jsx'
 import { ProductImageManager } from '../components/ProductImageManager.jsx'
 import { ProductVariantManager } from '../components/ProductVariantManager.jsx'
+import { OfferForm } from '../../offers/components/OfferForm.jsx'
+import { listOffersByProducts } from '../../offers/services/offerService.js'
 import { createProduct, createVariant, deactivateProduct, deactivateVariant, getProduct, listProducts, reactivateProduct, reactivateVariant, updateProduct, updateVariant } from '../services/productService.js'
 
 const buttonInteraction = 'shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
@@ -36,6 +38,8 @@ export function ProductManagementPage() {
   const [state, setState] = useState({ key, version, loading: true, data: null, error: null })
   const [formTarget, setFormTarget] = useState(null)
   const [imageTarget, setImageTarget] = useState(null)
+  const [offerTarget, setOfferTarget] = useState(null)
+  const [offerBusy, setOfferBusy] = useState(false)
   const [formData, setFormData] = useState(null)
   const [createdProduct, setCreatedProduct] = useState(null)
   const [creationStep, setCreationStep] = useState('form')
@@ -54,6 +58,7 @@ export function ProductManagementPage() {
   const dialog = useRef(null)
   const creationConfirmDialog = useRef(null)
   const confirmDialog = useRef(null)
+  const offerDialog = useRef(null)
   const loadingForm = formTarget !== null && formData === null && !formError
   const currentState = state.key === key && state.version === version
     ? state : { loading: true, data: null, error: null }
@@ -83,14 +88,15 @@ export function ProductManagementPage() {
     if (invalidUrlNombre) return undefined
     const controller = new AbortController()
     let current = true
-    listProducts(page, nombre, { signal: controller.signal, ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }) }).then(
-      (data) => {
+    listProducts(page, nombre, { signal: controller.signal, ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }) })
+      .then(async (data) => ({ data, offers: await listOffersByProducts(data.content.map((product) => product.id), { signal: controller.signal }) })).then(
+      ({ data, offers }) => {
         if (!current) return
         if (page > 0 && data.content.length === 0 && page >= data.totalPages) {
           const lastPage = Math.max(0, data.totalPages - 1)
           setSearchParams({ ...(nombre !== undefined && { nombre }), ...(categoriaId && { categoriaId }), ...(subcategoriaId && { subcategoriaId }), page: String(lastPage) })
         } else {
-          setState({ key, version, loading: false, data, error: null })
+          setState({ key, version, loading: false, data: { ...data, offers }, error: null })
           if (reviewing.current) {
             reviewing.current = false
             setNeedsReview(false)
@@ -142,8 +148,15 @@ export function ProductManagementPage() {
     }
   }, [confirming])
 
+  useEffect(() => {
+    if (offerTarget && offerDialog.current && !offerDialog.current.open) {
+      if (offerDialog.current.showModal) offerDialog.current.showModal()
+      else offerDialog.current.setAttribute('open', '')
+    }
+  }, [offerTarget])
+
   function openForm(target) {
-    if (inFlight.current || needsReview || confirming || imageTarget || currentState.loading || currentState.error) return
+    if (inFlight.current || needsReview || confirming || imageTarget || offerTarget || currentState.loading || currentState.error) return
     setFormData(null)
     setFormRevision(0)
     setCreatedProduct(null)
@@ -351,6 +364,10 @@ export function ProductManagementPage() {
           </div>
         </div>
       </dialog>}
+      {offerTarget && <dialog ref={offerDialog} aria-label={`Oferta de ${offerTarget.nombre}`} onCancel={(event) => { if (offerBusy) event.preventDefault(); else setOfferTarget(null) }} className="m-auto max-h-[90vh] w-[min(94vw,40rem)] overflow-y-auto rounded-xl border-0 p-5 shadow-2xl backdrop:bg-slate-950/60">
+        <h2 className="mb-4 text-xl font-bold">Oferta de {offerTarget.nombre}</h2>
+        <OfferForm key={offerTarget.id} productId={offerTarget.id} onBusyChange={setOfferBusy} onSaved={() => { setOfferTarget(null); setNotice('Oferta guardada.'); setVersion((value) => value + 1) }} onCancel={() => setOfferTarget(null)} />
+      </dialog>}
       {creationStep === 'confirm' && createdProduct && <dialog ref={creationConfirmDialog} aria-labelledby="creation-confirm-title" aria-describedby="creation-confirm-description" onCancel={finishCreation} className="m-auto w-[min(92vw,27rem)] rounded-2xl border-0 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50">
         <div className="border-t-4 border-emerald-700 p-5 sm:p-6">
           <h2 id="creation-confirm-title" className="text-lg font-bold">Producto creado</h2>
@@ -411,7 +428,8 @@ export function ProductManagementPage() {
           {currentState.data.content.length === 0 ? <p role="status">No hay productos en esta página.</p> : (
             <ul className="grid gap-3">
               {currentState.data.content.map((product) => (
-                <li className={`rounded-xl border p-4 ${product.activo ? activeCard : inactiveCard}`} key={product.id}>
+                <li className={`relative rounded-xl border p-4 ${product.activo ? activeCard : inactiveCard}`} key={product.id}>
+                  {currentState.data.offers?.some((offer) => offer.productoId === product.id) && <span className="absolute right-4 top-4 rounded bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900">En oferta</span>}
                   <h2 className="font-bold">{product.nombre}</h2>
                   {product.descripcion && <p className="mt-1">{product.descripcion}</p>}
                   <p className="mt-2 text-sm">ID {product.id} · Categoría {product.categoriaId} · {product.activo ? 'Activo' : 'Inactivo'} · {product.disponible ? 'Disponible' : 'No disponible'}</p>
@@ -420,6 +438,7 @@ export function ProductManagementPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button aria-label={`Editar ${product.nombre}`} className={`rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white enabled:hover:bg-slate-700 focus-visible:outline-slate-800 ${buttonInteraction}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => openForm(product.id)} type="button">Editar</button>
                     <button aria-label={`Imágenes de ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${lightButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => setImageTarget(product)} type="button">Imágenes</button>
+                    <button aria-label={`Oferta de ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${amberButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || Boolean(offerTarget) || pending} onClick={() => setOfferTarget(product)} type="button">Oferta</button>
                     <button aria-label={`${product.activo ? 'Desactivar' : 'Reactivar'} ${product.nombre}`} className={`rounded-lg px-4 py-2 font-semibold ${product.activo ? deactivateButton : reactivateButton}`} disabled={needsReview || Boolean(formTarget) || Boolean(imageTarget) || Boolean(confirming) || pending} onClick={() => requestStatusChange(product)} type="button">{product.activo ? 'Desactivar' : 'Reactivar'}</button>
                   </div>
                 </li>

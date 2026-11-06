@@ -18,7 +18,7 @@ describe('página de contacto', () => {
     renderRoute('/')
     fireEvent.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Contacto' }))
 
-    expect(screen.getByRole('heading', { name: 'Encontranos en General Roca o escribinos para consultar lo que necesitás.' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Encontranos en General Roca' })).toBeInTheDocument()
     expect(screen.getByText('Evita 1929, General Roca, Río Negro')).toBeInTheDocument()
     expect(screen.getByTitle('Mapa de GLG Corralón en Evita 1929, General Roca')).toHaveAttribute('loading', 'lazy')
     expect(screen.getByTitle('Mapa de GLG Corralón en Evita 1929, General Roca').getAttribute('src')).toContain('output=embed')

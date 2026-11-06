@@ -1,6 +1,6 @@
 # Ofertas sin vencimiento — plan de implementación por tandas
 
-**Estado:** Tandas 0–2 completas al 06/11/2026. Tandas 3–5 pendientes de ejecución.
+**Estado:** Tandas 0–3 completas al 06/11/2026; tandas 4–5 pendientes de ejecución.
 
 Este documento transforma las decisiones acordadas sobre ofertas en un mapa de trabajo. **No autoriza comenzar automáticamente ninguna tanda:** el solicitante indicará cuál ejecutar. Antes de cada ejecución, aplicar `PROMPT_EJECUTAR_TANDA.md`; ante una decisión relevante no prevista, detener la parte afectada y registrarla como `DECISIÓN PENDIENTE`, sin iniciar la tanda siguiente.
 
@@ -90,7 +90,7 @@ Lectura pública objetivo: `PublicOfferController.list(...)` → `PublicOfferSer
 | 0 | Crear y revisar este plan | Ninguna | Completa |
 | 1 | Persistencia, reglas y API privada | 0 | Completa |
 | 2 | Contratos y consultas públicas | 1 | Completa |
-| 3 | Gestión en el panel y botón en Productos | 1 | Planificada |
+| 3 | Gestión en el panel y botón en Productos | 1 | Completa |
 | 4 | Home, página pública, catálogo, ficha y carrito | 2 | Planificada |
 | 5 | Recorrido integral y cierre documental | 3 y 4 | Planificada |
 
@@ -355,7 +355,7 @@ TRATAMIENTO: refrescar producto/oferta al resolver un conflicto y comprobar nave
 
 **Criterio de cierre:** ambas entradas operativas; estados de carga, conflicto y baja verificados; navegación accesible a roles permitidos.
 
-**Resultado de ejecución:** **PENDIENTE DE EJECUCIÓN**.
+**Resultado de ejecución:** **COMPLETA** (06/11/2026). Se implementaron `/app/catalog/offers`, el botón y cartel en Productos, el formulario compartido y la consulta privada por IDs de producto acordada durante la planificación. Backend `package`: 649 tests exitosos y JAR generado. Frontend `npm test`: 343/343; lint y build pasan. El test de Contacto se ajustó al encabezado corto confirmado por el solicitante, sin cambiar la página. No se inició la tanda 4 ni se creó commit. Cambios, incidentes, pruebas faltantes y checklist: [RESULTADO_TANDA_3.md](RESULTADO_TANDA_3.md).
 
 ---
 
@@ -471,11 +471,12 @@ Cuando falle un test o aparezca un defecto relevante durante una tanda, registra
 IMPLEMENTADO AHORA
 Producto activo → variantes con precioReferencia → oferta por variante → API privada
 → listado público ordenado y precios de oferta en catálogo/ficha API → baja física
+→ panel Ofertas y botón/cartel en Productos
 → frontend actual con precioReferencia → carrito → WhatsApp
 
 PLANIFICADO; SIN EJECUTAR
-Panel Ofertas y botón en Productos → carril y /ofertas
-→ precios comparados en tarjeta/ficha/carrito → precio base visible tras la baja
+Carril y /ofertas públicos → precios comparados en tarjeta/ficha/carrito
+→ precio base visible tras la baja
 ```
 
 Al cerrar cada tanda, actualizar este mapa con lo efectivamente implementado, sin adelantar estados.

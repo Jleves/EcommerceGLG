@@ -7,10 +7,12 @@ import { listProducts } from '../catalog/products/services/productService.js'
 import { listCategories } from '../catalog/categories/services/categoryService.js'
 import { createCharacteristic, deleteCharacteristic, getCharacteristic, listCharacteristics, updateCharacteristic } from '../catalog/characteristics/services/characteristicService.js'
 import { AppRouter } from './AppRouter.jsx'
+import { listOffers, listOffersByProducts } from '../catalog/offers/services/offerService.js'
 
 vi.mock('../catalog/products/services/productService.js', () => ({ listProducts: vi.fn() }))
 vi.mock('../catalog/categories/services/categoryService.js', () => ({ listCategories: vi.fn() }))
 vi.mock('../catalog/characteristics/services/characteristicService.js', () => ({ listCharacteristics: vi.fn(), getCharacteristic: vi.fn(), createCharacteristic: vi.fn(), updateCharacteristic: vi.fn(), deleteCharacteristic: vi.fn() }))
+vi.mock('../catalog/offers/services/offerService.js', () => ({ listOffers: vi.fn(), listOffersByProducts: vi.fn(), createOffer: vi.fn(), updateOffer: vi.fn(), deleteOffer: vi.fn() }))
 vi.mock('../auth/pages/LoginPage.jsx', () => ({ LoginPage: () => <p>Ingreso público</p> }))
 vi.mock('../admin/pages/UserListPage.jsx', () => ({ UserListPage: () => <p>Administración de usuarios</p> }))
 
@@ -29,6 +31,8 @@ describe('rutas administrativas del catálogo', () => {
     listProducts.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
     listCategories.mockResolvedValue([])
     listCharacteristics.mockResolvedValue([])
+    listOffers.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
+    listOffersByProducts.mockResolvedValue([])
   })
 
   it.each(['SUPER_ADMIN', 'ADMIN', 'USER'])('permite consultar productos con sesión %s', async (role) => {
@@ -42,6 +46,19 @@ describe('rutas administrativas del catálogo', () => {
     renderRoute('/app/catalog/products?nombre=arena&page=1', null)
     expect(screen.getByText('Ingreso público')).toBeInTheDocument()
     expect(listProducts).not.toHaveBeenCalled()
+  })
+
+  it.each(['SUPER_ADMIN', 'ADMIN', 'USER'])('permite Ofertas con sesión %s', async (role) => {
+    renderRoute('/app/catalog/offers', role)
+    expect(await screen.findByRole('heading', { name: 'Ofertas' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ofertas' })).toHaveAttribute('href', '/app/catalog/offers')
+    expect(listOffers).toHaveBeenCalledWith(0, { signal: expect.any(AbortSignal) })
+  })
+
+  it('protege Ofertas sin sesión', () => {
+    renderRoute('/app/catalog/offers', null)
+    expect(screen.getByText('Ingreso público')).toBeInTheDocument()
+    expect(listOffers).not.toHaveBeenCalled()
   })
 
   it.each(['SUPER_ADMIN', 'ADMIN', 'USER'])('permite consultar características con sesión %s', async (role) => {

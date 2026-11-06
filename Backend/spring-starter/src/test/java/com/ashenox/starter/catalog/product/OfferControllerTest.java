@@ -147,6 +147,36 @@ class OfferControllerTest {
     }
 
     @Test
+    void byProductsReturnsOnlyRequestedOffersIncludingHiddenAndProtectsAccess() throws Exception {
+        ProductVariant visible = variant(true, true, true, "100.00");
+        ProductVariant hidden = variant(false, true, false, "200.00");
+        ProductVariant other = variant(true, true, true, "300.00");
+        Cookie admin = access(Role.ADMIN);
+        for (ProductVariant variant : new ProductVariant[] {visible, hidden, other}) {
+            var offer = new com.ashenox.starter.catalog.product.offer.model.VariantOffer();
+            offer.setVariant(variant);
+            offer.setPrecioOferta(new BigDecimal("50.00"));
+            offers.saveAndFlush(offer);
+        }
+        String query = PATH + "/by-products?productIds=" + visible.getProduct().getId()
+                + "&productIds=" + hidden.getProduct().getId();
+        for (Role role : new Role[] {Role.SUPER_ADMIN, Role.ADMIN, Role.USER}) {
+            mvc.perform(get(query).cookie(access(role)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].varianteId").value(visible.getId()))
+                    .andExpect(jsonPath("$[1].varianteId").value(hidden.getId()))
+                    .andExpect(jsonPath("$[1].productoActivo").value(false))
+                    .andExpect(jsonPath("$[2]").doesNotExist());
+        }
+        mvc.perform(get(PATH + "/by-products?productIds=" + other.getProduct().getId()).cookie(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].varianteId").value(other.getId()));
+        mvc.perform(get(PATH + "/by-products?productIds=999999").cookie(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get(PATH + "/by-products?productIds=-1").cookie(admin)).andExpect(status().isBadRequest());
+        mvc.perform(get(query)).andExpect(status().isUnauthorized());
+        mvc.perform(get(query).with(user("unsupported").roles("OTHER"))).andExpect(status().isForbidden());
+    }
+
+    @Test
     void duplicateAndInactiveCreationConflictButExistingOfferCanBeEditedAndDeleted() throws Exception {
         ProductVariant variant = variant(true, true, true, "100.00");
         Cookie access = access(Role.USER);
