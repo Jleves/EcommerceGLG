@@ -144,18 +144,21 @@ describe('catálogo público', () => {
     expect(heading.querySelector('.hero-title-typed').textContent).toBe('Los materiales de tu próxima historia.')
   })
 
-  it('muestra hasta ocho categorías en el carril y conserva el enlace al catálogo completo', async () => {
+  it('muestra hasta ocho categorías compactas y conserva el enlace al catálogo completo', async () => {
     getPublicCatalog.mockResolvedValue({ ...catalog, categories: Array.from({ length: 9 }, (_, index) => ({
       id: index + 1, nombre: `Categoría ${index + 1}`, descripcion: '', icono: 'materiales', activo: true,
     })) })
     renderRoute('/')
-    const rail = await screen.findByLabelText('Categorías disponibles')
-    const links = within(rail).getAllByRole('link')
+    const grid = await screen.findByLabelText('Categorías disponibles')
+    const links = within(grid).getAllByRole('link')
     expect(links).toHaveLength(8)
     expect(links[0]).toHaveAttribute('href', '/catalog?categoriaId=1')
     expect(links[7]).toHaveAttribute('href', '/catalog?categoriaId=8')
+    expect(links[0]).toHaveTextContent('Categoría 1')
+    expect(links[0]).not.toHaveTextContent('Ver productos')
     expect(screen.getByRole('link', { name: /Ver todas las categorías/ })).toHaveAttribute('href', '/catalog')
-    expect(screen.getByRole('button', { name: 'Categorías siguientes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Categorías siguientes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Categorías anteriores' })).not.toBeInTheDocument()
   })
 
   it('combina búsqueda y filtros públicos desde la URL', async () => {
