@@ -19,6 +19,9 @@ import { PublicLayout } from '../public/PublicLayout.jsx'
 import { HomePage } from '../public/HomePage.jsx'
 import { OffersPage } from '../public/OffersPage.jsx'
 import { ContactPage } from '../public/ContactPage.jsx'
+import { AboutPage } from '../public/AboutPage.jsx'
+import { aboutPagePublished } from '../public/aboutContent.js'
+import { aboutPreviewContent } from '../public/aboutPreviewContent.js'
 import { CatalogPage } from '../public/CatalogPage.jsx'
 import { ProductDetailPage } from '../public/ProductDetailPage.jsx'
 
@@ -28,6 +31,8 @@ export function AppRouter() {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/contacto" element={<ContactPage />} />
+        <Route path="/quienes-somos" element={aboutPagePublished ? <AboutPage /> : <Navigate to="/" replace />} />
+        {import.meta.env.DEV && <Route path="/quienes-somos/vista-previa" element={<AboutPage content={{ ...aboutPreviewContent, preview: true }} />} />}
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/ofertas" element={<OffersPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />

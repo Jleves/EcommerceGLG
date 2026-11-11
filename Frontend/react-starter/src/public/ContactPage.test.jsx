@@ -19,7 +19,7 @@ describe('página de contacto', () => {
 
   it('abre desde el encabezado y muestra ubicación, mapa y horarios', async () => {
     renderRoute('/')
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Contacto' }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navegación pública' })).getByRole('link', { name: 'Contacto' }))
 
     expect(screen.getByRole('heading', { name: 'Encontranos en General Roca' })).toBeInTheDocument()
     expect(screen.getByText('Evita 1929, General Roca, Río Negro')).toBeInTheDocument()
