@@ -1,6 +1,6 @@
 # Plan de implementación por tandas — segundo nivel de subcategorías
 
-**Estado:** tanda 0 completa; tandas 1 a 3 no iniciadas.
+**Estado:** tandas 0 y 1 completas; tandas 2 y 3 no iniciadas.
 **Fuente de alcance:** decisiones acordadas para Sprint 8 y `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.  
 **Fuente del comportamiento actual:** código y pruebas del repositorio revisados durante la planificación.
 
@@ -10,7 +10,7 @@ El catálogo admitirá `Categoría → subcategoría de primer nivel → subcate
 
 Se usará la tabla `subcategories` con una referencia opcional a otra fila de la misma tabla. La profundidad máxima será dos; el padre quedará fijo después del alta y el nombre será único entre hermanos. Ambos niveles serán visibles y seleccionables en el catálogo público. Filtrar por un nodo padre incluirá sus productos directos y los de sus descendientes. El borrado físico de una categoría o subcategoría se rechazará si tiene hijos o productos asociados directamente; nunca desvinculará productos de manera automática. La desactivación de categorías conservará su comportamiento propio.
 
-## COMPROBADO EN EL CÓDIGO ACTUAL
+## COMPROBADO EN EL CÓDIGO AL PLANIFICAR (antes de la tanda 1)
 
 - `V8__create_subcategories.sql` crea `subcategories(category_id, nombre_normalizado, ...)` y agrega `products.subcategory_id` opcional. Su unicidad es `(category_id, nombre_normalizado)`; no hay relación entre subcategorías. `Product` mantiene `category` obligatorio y `subcategory` opcional.
 - `SubcategoryController` ofrece alta, listado, detalle, edición y `DELETE`. `SubcategoryServiceImpl.create(...)` exige categoría activa, normaliza el nombre y fija la categoría. `update(...)` no permite cambiarla. `delete(...)` llama a `ProductRepository.clearSubcategoryAndTouchUpdatedAt(...)` y luego borra la subcategoría en una transacción.
@@ -21,9 +21,9 @@ Se usará la tabla `subcategories` con una referencia opcional a otra fila de la
 - `SubcategoryConflictException` y `CategoryConflictException` se traducen a HTTP `409 RESOURCE_CONFLICT` mediante `GlobalExceptionHandler`. Los endpoints administrativos de categorías, subcategorías y productos usan `SUPER_ADMIN`, `ADMIN` o `USER`.
 - Hay cambios locales previos sin confirmar en archivos del frontend público, incluido `CategoryNavigation.jsx`. Las tandas futuras deben partir de ese estado real y preservar trabajo ajeno a este alcance.
 
-El [modelo inicial](../modelo-inicial.md) describe un solo nivel y el borrado de subcategorías con desvinculación. Es una decisión histórica, **no** el comportamiento objetivo de Sprint 8. La nueva regla de borrado requiere actualizar esa descripción cuando se implemente el cambio, sin reescribirla durante esta planificación.
+El [modelo inicial](../modelo-inicial.md) describía un solo nivel y el borrado con desvinculación al planificar; se actualizó al implementar la tanda 1.
 
-### Flujo actual: borrar una subcategoría
+### Flujo histórico antes de la tanda 1: borrar una subcategoría
 
 ```mermaid
 sequenceDiagram
@@ -101,7 +101,7 @@ sequenceDiagram
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
 | 0 | Persistir una jerarquía de dos niveles sin alterar datos existentes | — | Completa |
-| 1 | Gestionar nodos y restringir borrados de subcategoría y categoría | 0 | Planificada |
+| 1 | Gestionar nodos y restringir borrados de subcategoría y categoría | 0 | Completa |
 | 2 | Asignar productos y consultar filtros con descendientes | 1 | Planificada |
 | 3 | Gestionar y navegar ambos niveles en React | 2 | Planificada |
 
@@ -279,7 +279,23 @@ Sin migración nueva. Contratos: `subcategoriaPadreId` opcional en alta y respue
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** contratos y validaciones de jerarquía, borrados restringidos, DELETE de categoría y coordinación de bloqueos. Sin migraciones ni cambios de interfaz o filtros.
+
+**Diferencias respecto del plan:** el orden de búsqueda de categoría y producto en actualización cambió para coordinar el borrado.
+
+**Tests ejecutados y exitosos:** pruebas HTTP y de seguridad H2, unitarias, regresión relacionada y pruebas MySQL de borrado y concurrencia. Detalle y cantidades en el [resultado de la tanda 1](resultado-tanda-1-segundo-nivel-subcategorias.md).
+
+**Tests fallidos e incidentes:** hubo expectativas y preparación obsoletas en intentos iniciales, y Docker estuvo restringido inicialmente; los reintentos específicos pasaron. Ver INC-004 a INC-007.
+
+**Tests faltantes y riesgos residuales:** no se ejecutó la suite completa; faltan dos intercalados inversos de concurrencia detallados en el resultado. La interfaz todavía describe la desvinculación anterior y los filtros por descendientes no están implementados.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** backend de categorías, subcategorías y producto; pruebas asociadas; modelo inicial, este plan y el documento de resultado.
+
+**Cierre:** [x] reglas de jerarquía; [x] borrados y conservación de productos; [x] HTTP, MySQL y concurrencia pertinentes; [x] riesgos e incidentes registrados.
 
 ---
 
@@ -449,11 +465,9 @@ Durante la ejecución, registrar cada incidente relevante una sola vez como `INC
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY — TANDA 0 COMPLETA
-Persistencia y mapeo preparados para padre opcional; validación MySQL realizada.
-Categoría obligatoria → subcategoría opcional de un nivel
-                   → producto consultable por igualdad exacta de subcategoriaId
-                   → borrado de subcategoría desvincula productos
+IMPLEMENTADO HOY — TANDAS 0 Y 1 COMPLETAS
+Persistencia y gestión de dos niveles; borrado restringido de categorías y subcategorías.
+Producto consultable por igualdad exacta de subcategoriaId; interfaz todavía de un nivel.
 
 OBJETIVO TODAVÍA NO IMPLEMENTADO
 Categoría → subcategoría de primer nivel → subcategoría de segundo nivel

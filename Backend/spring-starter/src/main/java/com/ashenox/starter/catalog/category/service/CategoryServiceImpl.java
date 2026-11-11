@@ -5,6 +5,8 @@ import com.ashenox.starter.catalog.category.dto.CreateCategoryRequest;
 import com.ashenox.starter.catalog.category.dto.UpdateCategoryRequest;
 import com.ashenox.starter.catalog.category.model.Category;
 import com.ashenox.starter.catalog.category.repository.CategoryRepository;
+import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
+import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,8 @@ import java.util.Locale;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final SubcategoryRepository subcategories;
+    private final ProductRepository products;
 
     @Override
     @Transactional
@@ -73,6 +77,23 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         category.setActivo(active);
         return CategoryResponse.from(categoryRepository.saveAndFlush(category));
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        Category category = categoryRepository.lockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
+        long children = subcategories.countByCategoryId(id);
+        long linkedProducts = products.countByCategoryId(id);
+        if (children > 0 || linkedProducts > 0) {
+            throw new CategoryConflictException("No se puede borrar: existen "
+                    + (children > 0 ? "subcategorías" : "")
+                    + (children > 0 && linkedProducts > 0 ? " y " : "")
+                    + (linkedProducts > 0 ? "productos asociados" : "") + ".");
+        }
+        categoryRepository.delete(category);
+        categoryRepository.flush();
     }
 
     @Override

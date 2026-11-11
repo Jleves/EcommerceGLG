@@ -179,8 +179,8 @@ public class ProductServiceImpl implements ProductService {
         // Las nuevas asignaciones bloquean categoría, subcategoría y producto, en ese orden.
         // Esto coordina la desactivación del padre y el borrado de la subcategoría.
         boolean assigning = request.subcategoriaIdPresente() && request.subcategoriaId() != null;
-        Category category = assigning ? categoryRepository.lockById(request.categoriaId())
-                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe.")) : null;
+        Category category = categoryRepository.lockById(request.categoriaId())
+                .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         Subcategory assigned = assigning ? lockAssignableSubcategory(request.subcategoriaId(), category) : null;
         Product product = productRepository.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El producto solicitado no existe."));
@@ -192,10 +192,6 @@ public class ProductServiceImpl implements ProductService {
         if (variants.size() == 1 && (request.precioReferenciaPresente() && request.precioReferencia() == null
                 || request.disponiblePresente() && request.disponible() == null)) {
             throw new BusinessException("Precio y disponibilidad no pueden ser null.");
-        }
-        if (!assigning) {
-            category = categoryRepository.findById(request.categoriaId())
-                    .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         }
         if (!request.subcategoriaIdPresente() && product.getSubcategory() != null
                 && !product.getSubcategory().getCategory().getId().equals(category.getId())) {

@@ -27,17 +27,25 @@ public class SubcategoryServiceImpl implements SubcategoryService {
     @Override
     @Transactional
     public SubcategoryResponse create(CreateSubcategoryRequest request) {
-        Category parent = categories.findById(request.categoriaId())
+        Category parent = categories.lockById(request.categoriaId())
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría solicitada no existe."));
         if (!parent.isActivo()) {
             throw new SubcategoryConflictException("La categoría solicitada está inactiva.");
         }
+        Subcategory ancestor = request.subcategoriaPadreId() == null ? null
+                : subcategories.lockById(request.subcategoriaPadreId())
+                .orElseThrow(() -> new ResourceNotFoundException("La subcategoría padre no existe."));
+        if (ancestor != null && (!ancestor.getCategory().getId().equals(parent.getId())
+                || ancestor.getParentSubcategory() != null)) {
+            throw new SubcategoryConflictException("El padre debe pertenecer a la categoría y ser de primer nivel.");
+        }
         String nombre = request.nombre().strip();
         String normalized = nombre.toLowerCase(Locale.ROOT);
-        if (subcategories.existsByCategoryIdAndNombreNormalizado(parent.getId(), normalized)) {
+        if (subcategories.existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizado(
+                parent.getId(), request.subcategoriaPadreId(), normalized)) {
             throw new SubcategoryConflictException("Ya existe una subcategoría con ese nombre en la categoría.");
         }
-        Subcategory subcategory = Subcategory.builder().category(parent).nombre(nombre)
+        Subcategory subcategory = Subcategory.builder().category(parent).parentSubcategory(ancestor).nombre(nombre)
                 .nombreNormalizado(normalized).descripcion(request.descripcion()).build();
         return SubcategoryResponse.from(subcategories.saveAndFlush(subcategory));
     }
@@ -56,18 +64,21 @@ public class SubcategoryServiceImpl implements SubcategoryService {
     public SubcategoryDetailResponse getById(Long id) {
         Subcategory subcategory = subcategories.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La subcategoría solicitada no existe."));
-        return SubcategoryDetailResponse.from(subcategory, products.countBySubcategoryId(id));
+        return SubcategoryDetailResponse.from(subcategory, products.countBySubcategoryId(id), subcategories.countByParentSubcategoryId(id));
     }
 
     @Override
     @Transactional
     public SubcategoryResponse update(Long id, UpdateSubcategoryRequest request) {
+        categories.lockBySubcategoryId(id)
+                .orElseThrow(() -> new ResourceNotFoundException("La subcategoría solicitada no existe."));
         Subcategory subcategory = subcategories.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La subcategoría solicitada no existe."));
         String nombre = request.nombre().strip();
         String normalized = nombre.toLowerCase(Locale.ROOT);
-        if (subcategories.existsByCategoryIdAndNombreNormalizadoAndIdNot(
-                subcategory.getCategory().getId(), normalized, id)) {
+        if (subcategories.existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizadoAndIdNot(
+                subcategory.getCategory().getId(), subcategory.getParentSubcategory() == null ? null
+                        : subcategory.getParentSubcategory().getId(), normalized, id)) {
             throw new SubcategoryConflictException("Ya existe una subcategoría con ese nombre en la categoría.");
         }
         subcategory.setNombre(nombre);
@@ -81,7 +92,14 @@ public class SubcategoryServiceImpl implements SubcategoryService {
     public void delete(Long id) {
         Subcategory subcategory = subcategories.lockById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La subcategoría solicitada no existe."));
-        products.clearSubcategoryAndTouchUpdatedAt(id);
+        long children = subcategories.countByParentSubcategoryId(id);
+        long linkedProducts = products.countBySubcategoryId(id);
+        if (children > 0 || linkedProducts > 0) {
+            throw new SubcategoryConflictException("No se puede borrar: existen "
+                    + (children > 0 ? "subcategorías hijas" : "")
+                    + (children > 0 && linkedProducts > 0 ? " y " : "")
+                    + (linkedProducts > 0 ? "productos asociados" : "") + ".");
+        }
         subcategories.delete(subcategory);
         subcategories.flush();
     }

@@ -161,6 +161,70 @@ class SubcategoryControllerTest {
         assertThat(subcategories.existsById(id)).isTrue();
     }
 
+    @Test
+    void hierarchyEnforcesParentDepthAndSiblingNames() throws Exception {
+        Category category = category(true);
+        Category other = category(true);
+        Cookie access = access(Role.ADMIN);
+        long root = createNode(access, category.getId(), "Raiz", null);
+        long root2 = createNode(access, category.getId(), "Otra", null);
+        long child = createNode(access, category.getId(), "Hijo", root);
+        createNode(access, category.getId(), "Hijo", root2);
+        mvc.perform(get(PATH + "/" + child).cookie(access)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.subcategoriaPadreId").value(root));
+        mvc.perform(put(PATH + "/" + child).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Hijo editado\",\"subcategoriaPadreId\":" + root2 + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.subcategoriaPadreId").value(root));
+        mvc.perform(put(PATH + "/" + child).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Hijo\"}")).andExpect(status().isOk());
+        mvc.perform(get(PATH + "/" + root).cookie(access)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.hijosAsociados").value(1));
+        for (long invalid : new long[]{root, child}) {
+            String name = invalid == root ? "HIJO" : "Nieto";
+            mvc.perform(post(PATH).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"categoriaId\":" + category.getId() + ",\"nombre\":\"" + name
+                            + "\",\"subcategoriaPadreId\":" + invalid + "}"))
+                    .andExpect(status().isConflict());
+        }
+        mvc.perform(post(PATH).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"categoriaId\":" + other.getId() + ",\"nombre\":\"X\",\"subcategoriaPadreId\":" + root + "}"))
+                .andExpect(status().isConflict());
+        mvc.perform(post(PATH).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"categoriaId\":" + category.getId() + ",\"nombre\":\"X\",\"subcategoriaPadreId\":999999}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete(PATH + "/" + root).cookie(access).with(csrf())).andExpect(status().isConflict());
+        mvc.perform(delete("/api/catalog/categories/" + category.getId()).cookie(access).with(csrf()))
+                .andExpect(status().isConflict());
+        subcategories.deleteAll(subcategories.findByParentSubcategoryIdOrderByNombreAscIdAsc(root));
+        subcategories.deleteAll(subcategories.findByParentSubcategoryIdOrderByNombreAscIdAsc(root2));
+        mvc.perform(delete(PATH + "/" + root).cookie(access).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(delete(PATH + "/" + root2).cookie(access).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/catalog/categories/" + category.getId()).cookie(access).with(csrf()))
+                .andExpect(status().isNoContent());
+        mvc.perform(delete("/api/catalog/categories/" + category.getId()).cookie(access).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void categoryDeleteRequiresRoleAndCsrfAndAllowsInactiveEmptyCategory() throws Exception {
+        Category inactive = category(false);
+        String path = "/api/catalog/categories/" + inactive.getId();
+        Cookie access = access(Role.USER);
+        mvc.perform(delete(path).with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(delete(path).cookie(access)).andExpect(status().isForbidden());
+        mvc.perform(delete(path).with(user("outsider").roles("OTHER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete(path).cookie(access).with(csrf())).andExpect(status().isNoContent());
+    }
+
+    private long createNode(Cookie access, long categoryId, String name, Long parentId) throws Exception {
+        String body = "{\"categoriaId\":" + categoryId + ",\"nombre\":\"" + name + "\""
+                + (parentId == null ? "" : ",\"subcategoriaPadreId\":" + parentId) + "}";
+        var result = mvc.perform(post(PATH).cookie(access).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(body)).andExpect(status().isCreated()).andReturn();
+        return ((Number) com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id")).longValue();
+    }
+
     private Category category(boolean active) {
         String suffix = UUID.randomUUID().toString();
         return categories.saveAndFlush(Category.builder().nombre("Category " + suffix)

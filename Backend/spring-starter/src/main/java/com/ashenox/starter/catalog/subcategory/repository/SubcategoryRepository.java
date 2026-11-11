@@ -19,6 +19,8 @@ public interface SubcategoryRepository extends JpaRepository<Subcategory, Long> 
     boolean existsByCategoryIdAndNombreNormalizadoAndIdNot(Long categoryId, String nombreNormalizado, Long id);
 
     List<Subcategory> findByParentSubcategoryIdOrderByNombreAscIdAsc(Long parentId);
+    long countByParentSubcategoryId(Long parentId);
+    long countByCategoryId(Long categoryId);
 
     boolean existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizado(
             Long categoryId, Long parentId, String nombreNormalizado);

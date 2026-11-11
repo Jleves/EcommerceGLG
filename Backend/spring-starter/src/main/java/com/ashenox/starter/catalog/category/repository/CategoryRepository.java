@@ -15,6 +15,10 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> lockById(Long id);
 
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select category from Category category where category.id = (select s.category.id from Subcategory s where s.id = :subcategoryId)")
+    Optional<Category> lockBySubcategoryId(Long subcategoryId);
+
     boolean existsByNombreNormalizado(String nombreNormalizado);
 
     boolean existsByNombreNormalizadoAndIdNot(String nombreNormalizado, Long id);

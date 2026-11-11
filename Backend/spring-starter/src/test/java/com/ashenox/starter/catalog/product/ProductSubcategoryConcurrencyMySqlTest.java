@@ -53,7 +53,7 @@ class ProductSubcategoryConcurrencyMySqlTest {
     @Autowired JdbcTemplate jdbc;
 
     @Test
-    void createAssignmentCommitsFirstThenDeleteUnlinksIt() throws Exception {
+    void createAssignmentCommitsFirstThenDeleteConflicts() throws Exception {
         Category category = category();
         Subcategory subcategory = subcategory(category);
         var waiting = new AtomicReference<Future<?>>();
@@ -65,7 +65,8 @@ class ProductSubcategoryConcurrencyMySqlTest {
                 productId.set(productService.create(request(category.getId(), subcategory.getId())).id());
                 waiting.set(pool.submit(() -> {
                     started.countDown();
-                    subcategoryService.delete(subcategory.getId());
+                    assertThatThrownBy(() -> subcategoryService.delete(subcategory.getId()))
+                            .isInstanceOf(com.ashenox.starter.catalog.subcategory.service.SubcategoryConflictException.class);
                 }));
                 await(started);
                 awaitDatabaseWait("subcategories");
@@ -73,9 +74,9 @@ class ProductSubcategoryConcurrencyMySqlTest {
             });
             waiting.get().get(15, TimeUnit.SECONDS);
         }
-        assertThat(subcategories.existsById(subcategory.getId())).isFalse();
+        assertThat(subcategories.existsById(subcategory.getId())).isTrue();
         assertThat(jdbc.queryForObject("select subcategory_id from products where id = ?", Long.class,
-                productId.get())).isNull();
+                productId.get())).isEqualTo(subcategory.getId());
         assertThat(products.findById(productId.get()).orElseThrow().getCategory().getId())
                 .isEqualTo(category.getId());
     }
@@ -121,7 +122,8 @@ class ProductSubcategoryConcurrencyMySqlTest {
                 productService.update(id, update);
                 waiting.set(pool.submit(() -> {
                     started.countDown();
-                    subcategoryService.delete(subcategory.getId());
+                    assertThatThrownBy(() -> subcategoryService.delete(subcategory.getId()))
+                            .isInstanceOf(com.ashenox.starter.catalog.subcategory.service.SubcategoryConflictException.class);
                 }));
                 await(started);
                 awaitDatabaseWait("subcategories");
@@ -130,8 +132,60 @@ class ProductSubcategoryConcurrencyMySqlTest {
             waiting.get().get(15, TimeUnit.SECONDS);
         }
         assertThat(jdbc.queryForObject("select subcategory_id from products where id = ?", Long.class, id))
-                .isNull();
+                .isEqualTo(subcategory.getId());
         assertThat(products.findById(id).orElseThrow().getNombre()).isEqualTo("Actualizado");
+    }
+
+    @Test
+    void childCreationFirstMakesParentDeletionConflict() throws Exception {
+        Category category = category();
+        Subcategory parent = subcategory(category);
+        var waiting = new AtomicReference<Future<?>>();
+        var started = new CountDownLatch(1);
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                subcategoryService.create(new com.ashenox.starter.catalog.subcategory.dto.CreateSubcategoryRequest(
+                        category.getId(), "Hijo", null, parent.getId()));
+                waiting.set(pool.submit(() -> {
+                    started.countDown();
+                    assertThatThrownBy(() -> subcategoryService.delete(parent.getId()))
+                            .isInstanceOf(com.ashenox.starter.catalog.subcategory.service.SubcategoryConflictException.class);
+                }));
+                await(started);
+                awaitDatabaseWait("subcategories");
+                assertThat(waiting.get()).isNotDone();
+            });
+            waiting.get().get(15, TimeUnit.SECONDS);
+        }
+        assertThat(subcategories.existsById(parent.getId())).isTrue();
+        assertThat(subcategories.countByParentSubcategoryId(parent.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void categoryChangeFirstMakesCategoryDeletionConflict() throws Exception {
+        Category source = category();
+        Category destination = category();
+        long id = productService.create(request(source.getId(), null)).id();
+        var waiting = new AtomicReference<Future<?>>();
+        var started = new CountDownLatch(1);
+        UpdateProductRequest update = new UpdateProductRequest("Actualizado", destination.getId(), null,
+                new BigDecimal("12.50"), true);
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                productService.update(id, update);
+                waiting.set(pool.submit(() -> {
+                    started.countDown();
+                    assertThatThrownBy(() -> categoryService.delete(destination.getId()))
+                            .isInstanceOf(com.ashenox.starter.catalog.category.service.CategoryConflictException.class);
+                }));
+                await(started);
+                awaitDatabaseWait("categories");
+                assertThat(waiting.get()).isNotDone();
+            });
+            waiting.get().get(15, TimeUnit.SECONDS);
+        }
+        assertThat(categories.existsById(destination.getId())).isTrue();
+        assertThat(products.findById(id).orElseThrow().getCategory().getId()).isEqualTo(destination.getId());
     }
 
     @Test

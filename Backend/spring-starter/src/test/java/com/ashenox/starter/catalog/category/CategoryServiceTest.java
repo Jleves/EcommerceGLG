@@ -23,7 +23,9 @@ import static org.mockito.Mockito.when;
 class CategoryServiceTest {
 
     private final CategoryRepository repository = mock(CategoryRepository.class);
-    private final CategoryServiceImpl service = new CategoryServiceImpl(repository);
+    private final com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository subcategories = mock(com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository.class);
+    private final com.ashenox.starter.catalog.product.repository.ProductRepository products = mock(com.ashenox.starter.catalog.product.repository.ProductRepository.class);
+    private final CategoryServiceImpl service = new CategoryServiceImpl(repository, subcategories, products);
 
     @Test
     void createsActiveCategoryWithTrimmedNameAndNormalizedKey() {
@@ -146,6 +148,24 @@ class CategoryServiceTest {
         assertThat(result).extracting(response -> response.nombre()).containsExactly("Arena", "Cemento");
         assertThat(result).extracting(response -> response.activo()).containsExactly(false, true);
         assertThat(result).extracting(response -> response.id()).containsExactly(2L, 1L);
+    }
+
+    @Test
+    void deleteRejectsDependenciesAndAllowsEmptyInactiveCategory() {
+        Category category = category(7L, "Arena", false);
+        when(repository.lockById(7L)).thenReturn(Optional.of(category));
+        when(subcategories.countByCategoryId(7L)).thenReturn(1L, 0L, 1L, 0L);
+        when(products.countByCategoryId(7L)).thenReturn(0L, 1L, 1L, 0L);
+        assertThatThrownBy(() -> service.delete(7L)).isInstanceOf(CategoryConflictException.class)
+                .hasMessageContaining("subcategorías");
+        assertThatThrownBy(() -> service.delete(7L)).isInstanceOf(CategoryConflictException.class)
+                .hasMessageContaining("productos");
+        assertThatThrownBy(() -> service.delete(7L)).isInstanceOf(CategoryConflictException.class)
+                .hasMessageContaining("subcategorías").hasMessageContaining("productos");
+        verify(repository, never()).delete(any());
+        service.delete(7L);
+        verify(repository).delete(category);
+        assertThatThrownBy(() -> service.delete(99L)).isInstanceOf(ResourceNotFoundException.class);
     }
 
     private Category category(Long id, String nombre, boolean activo) {

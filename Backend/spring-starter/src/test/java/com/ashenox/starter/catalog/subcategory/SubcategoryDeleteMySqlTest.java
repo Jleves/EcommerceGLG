@@ -18,9 +18,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,54 +47,29 @@ class SubcategoryDeleteMySqlTest {
     }
 
     @Test
-    void unlinksAllProductsAndTouchesOnlyTheirTimestamps() {
-        Category parent = category();
-        Category otherParent = category();
-        long id = service.create(new CreateSubcategoryRequest(parent.getId(), "Chapas", null)).id();
-        Subcategory subcategory = subcategories.findById(id).orElseThrow();
-        Product first = product(parent, subcategory);
-        Product second = product(parent, subcategory);
-        Product other = product(otherParent, null);
-        LocalDateTime old = LocalDateTime.of(2020, 1, 1, 0, 0);
-        jdbc.update("UPDATE products SET updated_at = ? WHERE id IN (?, ?, ?)",
-                Timestamp.valueOf(old), first.getId(), second.getId(), other.getId());
-
-        assertThat(service.getById(id).productosAsociados()).isEqualTo(2);
-        service.delete(id);
-
-        assertThat(subcategories.existsById(id)).isFalse();
-        for (Product linked : new Product[]{first, second}) {
-            assertThat(jdbc.queryForObject("SELECT category_id FROM products WHERE id = ?", Long.class, linked.getId()))
-                    .isEqualTo(parent.getId());
-            assertThat(jdbc.queryForObject("SELECT subcategory_id FROM products WHERE id = ?", Long.class, linked.getId()))
-                    .isNull();
-            assertThat(jdbc.queryForObject("SELECT updated_at FROM products WHERE id = ?", Timestamp.class,
-                    linked.getId()).toLocalDateTime()).isAfter(old);
-        }
-        assertThat(jdbc.queryForObject("SELECT updated_at FROM products WHERE id = ?", Timestamp.class,
-                other.getId()).toLocalDateTime()).isEqualTo(old);
-        assertThat(products.count()).isGreaterThanOrEqualTo(3);
-    }
-
-    @Test
-    void databaseFailureAfterUnlinkRollsBackEverything() {
+    void rejectsDeletionAndPreservesProducts() {
         Category parent = category();
         long id = service.create(new CreateSubcategoryRequest(parent.getId(), "Chapas", null)).id();
         Product product = product(parent, subcategories.findById(id).orElseThrow());
-        jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS subcategory_delete_guard (
-                    id BIGINT PRIMARY KEY, subcategory_id BIGINT NOT NULL,
-                    CONSTRAINT fk_delete_guard FOREIGN KEY (subcategory_id) REFERENCES subcategories(id))
-                """);
-        jdbc.update("INSERT INTO subcategory_delete_guard (id, subcategory_id) VALUES (?, ?)", id, id);
-        try {
-            assertThatThrownBy(() -> service.delete(id)).isInstanceOf(Exception.class);
-            assertThat(subcategories.existsById(id)).isTrue();
-            assertThat(jdbc.queryForObject("SELECT subcategory_id FROM products WHERE id = ?", Long.class,
-                    product.getId())).isEqualTo(id);
-        } finally {
-            jdbc.update("DELETE FROM subcategory_delete_guard WHERE id = ?", id);
-        }
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(com.ashenox.starter.catalog.subcategory.service.SubcategoryConflictException.class);
+        assertThat(subcategories.existsById(id)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT subcategory_id FROM products WHERE id = ?", Long.class,
+                product.getId())).isEqualTo(id);
+    }
+
+    @Test
+    void rejectsDeletionWhenChildrenAndProductsExist() {
+        Category category = category();
+        long id = service.create(new CreateSubcategoryRequest(category.getId(), "Padre", null)).id();
+        long child = service.create(new CreateSubcategoryRequest(category.getId(), "Hijo", null, id)).id();
+        Product linked = product(category, subcategories.findById(id).orElseThrow());
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(com.ashenox.starter.catalog.subcategory.service.SubcategoryConflictException.class)
+                .hasMessageContaining("hijas").hasMessageContaining("productos");
+        assertThat(subcategories.existsById(child)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT subcategory_id FROM products WHERE id = ?", Long.class,
+                linked.getId())).isEqualTo(id);
     }
 
     private Category category() {

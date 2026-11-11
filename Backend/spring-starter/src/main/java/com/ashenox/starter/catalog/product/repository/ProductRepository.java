@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
@@ -15,9 +14,7 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
     long countBySubcategoryId(Long subcategoryId);
 
-    @Modifying(flushAutomatically = true)
-    @Query(value = "UPDATE products SET subcategory_id = NULL, updated_at = CURRENT_TIMESTAMP(6) WHERE subcategory_id = :id", nativeQuery = true)
-    int clearSubcategoryAndTouchUpdatedAt(Long id);
+    long countByCategoryId(Long categoryId);
 
     @Query(value = "select product from Product product where (:pattern is null or lower(product.nombre) like lower(:pattern) escape '!') and (:categoryId is null or product.category.id = :categoryId) and (:subcategoryId is null or product.subcategory.id = :subcategoryId) order by product.nombre asc, product.id asc",
             countQuery = "select count(product) from Product product where (:pattern is null or lower(product.nombre) like lower(:pattern) escape '!') and (:categoryId is null or product.category.id = :categoryId) and (:subcategoryId is null or product.subcategory.id = :subcategoryId)")

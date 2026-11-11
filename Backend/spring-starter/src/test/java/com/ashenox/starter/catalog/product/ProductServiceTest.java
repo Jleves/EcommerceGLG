@@ -124,7 +124,7 @@ class ProductServiceTest {
                 .descripcion("Anterior")
                 .activo(false).destacado(true).build();
         when(products.lockById(11L)).thenReturn(Optional.of(product));
-        when(categories.findById(8L)).thenReturn(Optional.of(destination));
+        when(categories.lockById(8L)).thenReturn(Optional.of(destination));
         when(products.saveAndFlush(product)).thenReturn(product);
 
         var response = service.update(11L, new UpdateProductRequest(
@@ -133,8 +133,7 @@ class ProductServiceTest {
         verify(products).saveAndFlush(argThat(saved -> saved.getCategory() == destination
                 && saved.getNombre().equals("Arena fina") && saved.getDescripcion() == null
                 && !saved.isActivo() && saved.isDestacado()));
-        verify(categories).findById(8L);
-        verify(categories, never()).lockById(8L);
+        verify(categories).lockById(8L);
         assertThat(response.id()).isEqualTo(11L);
         assertThat(response.categoriaId()).isEqualTo(8L);
         assertThat(response.nombre()).isEqualTo("Arena fina");
@@ -150,10 +149,11 @@ class ProductServiceTest {
 
     @Test
     void missingProductDoesNotLookUpCategoryOrSave() {
+        when(categories.lockById(7L)).thenReturn(Optional.of(Category.builder().id(7L).build()));
         assertThatThrownBy(() -> service.update(99L, updateRequest("Arena", 7L)))
                 .isInstanceOf(ResourceNotFoundException.class);
         verify(products).lockById(99L);
-        verifyNoInteractions(categories);
+        verify(categories).lockById(7L);
         verify(products, never()).saveAndFlush(any());
     }
 
@@ -168,7 +168,7 @@ class ProductServiceTest {
         assertThatThrownBy(() -> service.update(11L, updateRequest("Nuevo", 99L)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(categories).findById(99L);
+        verify(categories).lockById(99L);
         verify(products, never()).saveAndFlush(any());
         assertThat(product.getCategory()).isSameAs(previous);
         assertThat(product.getNombre()).isEqualTo("Original");
@@ -180,7 +180,7 @@ class ProductServiceTest {
         Product product = Product.builder().id(11L).category(Category.builder().id(7L).build())
                 .nombre("Original").descripcion("Antes").build();
         when(products.lockById(11L)).thenReturn(Optional.of(product));
-        when(categories.findById(7L)).thenReturn(Optional.of(product.getCategory()));
+        when(categories.lockById(7L)).thenReturn(Optional.of(product.getCategory()));
         when(products.saveAndFlush(product)).thenReturn(product);
 
         service.update(11L, updateRequest("Arena", 7L));

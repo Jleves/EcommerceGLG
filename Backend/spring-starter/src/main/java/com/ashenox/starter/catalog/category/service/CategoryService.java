@@ -16,5 +16,7 @@ public interface CategoryService {
 
     CategoryResponse reactivate(Long id);
 
+    void delete(Long id);
+
     List<CategoryResponse> list();
 }
