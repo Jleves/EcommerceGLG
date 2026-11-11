@@ -18,6 +18,14 @@ public interface SubcategoryRepository extends JpaRepository<Subcategory, Long> 
 
     boolean existsByCategoryIdAndNombreNormalizadoAndIdNot(Long categoryId, String nombreNormalizado, Long id);
 
+    List<Subcategory> findByParentSubcategoryIdOrderByNombreAscIdAsc(Long parentId);
+
+    boolean existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizado(
+            Long categoryId, Long parentId, String nombreNormalizado);
+
+    boolean existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizadoAndIdNot(
+            Long categoryId, Long parentId, String nombreNormalizado, Long id);
+
     List<Subcategory> findAllByOrderByCategoryIdAscNombreAscIdAsc();
 
     @Query("select subcategory from Subcategory subcategory join fetch subcategory.category category "

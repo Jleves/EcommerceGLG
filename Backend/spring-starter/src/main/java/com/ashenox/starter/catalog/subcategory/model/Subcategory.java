@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,8 +18,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "subcategories", uniqueConstraints =
-        @UniqueConstraint(name = "uk_subcategories_category_name", columnNames = {"category_id", "nombre_normalizado"}))
+@Table(name = "subcategories")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,6 +33,10 @@ public class Subcategory extends EntidadAuditable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_subcategory_id")
+    private Subcategory parentSubcategory;
 
     @Column(nullable = false, length = 160)
     private String nombre;

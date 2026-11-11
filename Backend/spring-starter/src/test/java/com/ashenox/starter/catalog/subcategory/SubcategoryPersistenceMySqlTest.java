@@ -77,11 +77,31 @@ class SubcategoryPersistenceMySqlTest {
         assertThat(jdbc.queryForList("""
                 SELECT index_name FROM information_schema.statistics
                 WHERE table_schema = DATABASE() AND table_name = 'subcategories'
-                """, String.class)).contains("uk_subcategories_category_name", "idx_subcategories_category_id");
+                """, String.class)).contains("uk_subcategories_root_name", "uk_subcategories_sibling_name",
+                "idx_subcategories_category_id", "idx_subcategories_parent_id");
         assertThat(jdbc.queryForList("""
                 SELECT index_name FROM information_schema.statistics
                 WHERE table_schema = DATABASE() AND table_name = 'products'
                 """, String.class)).contains("idx_products_subcategory_id");
+    }
+
+    @Test
+    void hierarchyEnforcesSiblingAndRootUniquenessAndParentForeignKey() {
+        Category category = category();
+        Subcategory root = subcategories.saveAndFlush(subcategory(category, "Raíz", "raiz"));
+        Subcategory otherRoot = subcategories.saveAndFlush(subcategory(category, "Otra", "otra"));
+        String insert = "INSERT INTO subcategories (category_id, parent_subcategory_id, nombre, nombre_normalizado, created_at, updated_at) VALUES (?, ?, 'Nombre', ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))";
+        jdbc.update(insert, category.getId(), root.getId(), "comun");
+        jdbc.update(insert, category.getId(), otherRoot.getId(), "comun");
+        jdbc.update(insert, category.getId(), root.getId(), "otra");
+        assertThatThrownBy(() -> jdbc.update(insert, category.getId(), null, "raiz"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update(insert, category.getId(), root.getId(), "comun"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update(insert, category.getId(), Long.MAX_VALUE, "invalido"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM subcategories WHERE id = ?", root.getId()))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private Category category() {

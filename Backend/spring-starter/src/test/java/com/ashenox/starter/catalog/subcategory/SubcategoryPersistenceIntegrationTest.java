@@ -74,6 +74,24 @@ class SubcategoryPersistenceIntegrationTest {
         assertThat(subcategories.lockById(firstA.getId())).isPresent();
     }
 
+    @Test
+    void mapsParentAndFindsNamesWithinEachSiblingScope() {
+        Category category = category("Jerarquía");
+        Subcategory root = subcategories.saveAndFlush(subcategory(category, "Raíz", "raiz"));
+        Subcategory child = subcategory(category, "Hijo", "hijo");
+        child.setParentSubcategory(root);
+        child = subcategories.saveAndFlush(child);
+        Long childId = child.getId();
+        entityManager.clear();
+
+        assertThat(subcategories.findById(childId).orElseThrow().getParentSubcategory().getId()).isEqualTo(root.getId());
+        assertThat(subcategories.findByParentSubcategoryIdOrderByNombreAscIdAsc(root.getId()))
+                .extracting(Subcategory::getId).containsExactly(childId);
+        assertThat(subcategories.existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizado(category.getId(), root.getId(), "hijo")).isTrue();
+        assertThat(subcategories.existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizado(category.getId(), null, "hijo")).isFalse();
+        assertThat(subcategories.existsByCategoryIdAndParentSubcategoryIdAndNombreNormalizadoAndIdNot(category.getId(), root.getId(), "hijo", childId)).isFalse();
+    }
+
     private Category category(String name) {
         String suffix = UUID.randomUUID().toString();
         return categories.saveAndFlush(Category.builder()

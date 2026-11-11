@@ -1,6 +1,6 @@
 # Plan de implementación por tandas — segundo nivel de subcategorías
 
-**Estado:** planificación; ninguna tanda iniciada.  
+**Estado:** tanda 0 completa; tandas 1 a 3 no iniciadas.
 **Fuente de alcance:** decisiones acordadas para Sprint 8 y `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.  
 **Fuente del comportamiento actual:** código y pruebas del repositorio revisados durante la planificación.
 
@@ -100,7 +100,7 @@ sequenceDiagram
 
 | Tanda | Objetivo | Depende de | Estado |
 | --- | --- | --- | --- |
-| 0 | Persistir una jerarquía de dos niveles sin alterar datos existentes | — | Planificada |
+| 0 | Persistir una jerarquía de dos niveles sin alterar datos existentes | — | Completa |
 | 1 | Gestionar nodos y restringir borrados de subcategoría y categoría | 0 | Planificada |
 | 2 | Asignar productos y consultar filtros con descendientes | 1 | Planificada |
 | 3 | Gestionar y navegar ambos niveles en React | 2 | Planificada |
@@ -168,7 +168,29 @@ Agregar `parent_subcategory_id` nullable y FK a `subcategories.id`. Sustituir `u
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** migración V14, mapeo del padre, consultas del repositorio y pruebas de persistencia.
+
+**Diferencias respecto del plan:** MySQL inicialmente no pudo ejecutarse por falta de Docker; se validó en el reintento. No se modificaron servicios ni contratos.
+
+**Tests ejecutados:** integración H2, pruebas MySQL mediante Testcontainers y regresión completa de backend. En el reintento específico se ejecutaron 9 pruebas sin omisiones.
+
+**Tests exitosos:** 3 pruebas H2 y 6 MySQL específicas; migraciones desde cero y desde V8 con datos, conservación de referencias, unicidad, FK, validación JPA y consultas del repositorio. Regresión completa: 439 casos exitosos, 177 omitidos al no estar disponible Docker al inicio.
+
+**Tests fallidos:** ninguno en los reintentos. Inicialmente hubo cinco errores SMTP y uno HTTP; ver INC-003. La primera ejecución específica fue interrumpida por INC-002.
+
+**Incidentes:** INC-001, Docker no disponible; INC-002, adjunción dinámica del agente de Mockito; INC-003, errores SMTP y conexión HTTP local. Detalle en el [resultado de la tanda 0](resultado-tanda-0-segundo-nivel-subcategorias.md).
+
+**Tests faltantes:** ninguno de los específicos planificados para esta tanda. La regresión general omitió 177 casos, incluidos los dependientes de Docker; las pruebas MySQL específicas se ejecutaron luego.
+
+**Riesgos residuales:** la validación local no demuestra el comportamiento en el entorno desplegado; profundidad, CRUD y filtros corresponden a las siguientes tandas.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** migración V14, entidad y repositorio de subcategorías, pruebas de persistencia y migración, este plan y el documento de resultado.
+
+**Cierre:** [x] migración y datos en MySQL; [x] unicidad y FK en MySQL; [x] arranque H2; [x] incidentes y faltantes registrados.
 
 ---
 
@@ -427,7 +449,8 @@ Durante la ejecución, registrar cada incidente relevante una sola vez como `INC
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY
+IMPLEMENTADO HOY — TANDA 0 COMPLETA
+Persistencia y mapeo preparados para padre opcional; validación MySQL realizada.
 Categoría obligatoria → subcategoría opcional de un nivel
                    → producto consultable por igualdad exacta de subcategoriaId
                    → borrado de subcategoría desvincula productos
