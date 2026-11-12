@@ -1,10 +1,10 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createCategory, deactivateCategory, listCategories, reactivateCategory, updateCategory } from '../services/categoryService.js'
+import { createCategory, deactivateCategory, deleteCategory, listCategories, reactivateCategory, updateCategory } from '../services/categoryService.js'
 import { CategoryManagementPage } from './CategoryManagementPage.jsx'
 
-vi.mock('../services/categoryService.js', () => ({ listCategories: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), deactivateCategory: vi.fn(), reactivateCategory: vi.fn() }))
+vi.mock('../services/categoryService.js', () => ({ listCategories: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), deactivateCategory: vi.fn(), deleteCategory: vi.fn(), reactivateCategory: vi.fn() }))
 vi.mock('../../subcategories/components/SubcategoryManager.jsx', () => ({ SubcategoryManager: () => null }))
 
 const categories = [
@@ -13,6 +13,18 @@ const categories = [
 ]
 
 describe('CategoryManagementPage', () => {
+  it('presenta el conflicto del servidor al borrar sin anunciar éxito', async () => {
+    const user = userEvent.setup()
+    listCategories.mockResolvedValue(categories)
+    deleteCategory.mockRejectedValue({ status: 409, message: 'Tiene productos asociados' })
+    render(<CategoryManagementPage />)
+    await screen.findByRole('heading', { name: 'Plomería' })
+    await user.click(screen.getByRole('button', { name: 'Eliminar categoría Plomería' }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar eliminación' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tiene productos asociados')
+    expect(deleteCategory).toHaveBeenCalledOnce()
+    expect(screen.queryByText('Categoría eliminada.')).not.toBeInTheDocument()
+  })
   beforeEach(() => vi.resetAllMocks())
 
   it('muestra carga, orden recibido, estados e íconos conocidos/desconocidos', async () => {

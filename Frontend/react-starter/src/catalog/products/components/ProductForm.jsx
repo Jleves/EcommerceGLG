@@ -35,6 +35,9 @@ export function ProductForm({ initialValues, categories, subcategories = [], cha
   const existingVariableId = editing ? String(initialValues.variantes?.find((item) => item.caracteristicaId)?.caracteristicaId ?? '') : ''
   const eligibleCategories = categories.filter((item) => item.activo || (editing && String(item.id) === String(initialValues.categoriaId)))
   const eligibleSubcategories = subcategories.filter((item) => String(item.categoriaId) === values.categoriaId)
+  const selectedNode = eligibleSubcategories.find((item) => String(item.id) === values.subcategoriaId)
+  const rootId = selectedNode ? String(selectedNode.subcategoriaPadreId ?? selectedNode.id) : ''
+  const childId = selectedNode?.subcategoriaPadreId != null ? values.subcategoriaId : ''
 
   function changeCharacteristic(index, changes) {
     setValues((current) => ({ ...current, caracteristicas: current.caracteristicas.map((item, row) => row === index ? { ...item, ...changes } : item) }))
@@ -96,12 +99,18 @@ export function ProductForm({ initialValues, categories, subcategories = [], cha
           {fieldError(error, 'categoriaId') && <small className="text-red-700">{fieldError(error, 'categoriaId')}</small>}
         </label>
         <label className={labelClass} htmlFor="product-subcategory">Subcategoría
-          <select id="product-subcategory" value={values.subcategoriaId} onChange={(event) => setValues({ ...values, subcategoriaId: event.target.value })} className={fieldClass}>
+          <select id="product-subcategory" value={rootId} onChange={(event) => setValues({ ...values, subcategoriaId: event.target.value })} className={fieldClass}>
             <option value="">Sin subcategoría</option>
-            {eligibleSubcategories.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            {eligibleSubcategories.filter((item) => item.subcategoriaPadreId == null).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
           </select>
           {fieldError(error, 'subcategoriaId') && <small className="text-red-700">{fieldError(error, 'subcategoriaId')}</small>}
         </label>
+        {rootId && <label className={labelClass} htmlFor="product-subcategory-child">Subcategoría de segundo nivel
+          <select id="product-subcategory-child" value={childId} onChange={(event) => setValues({ ...values, subcategoriaId: event.target.value || rootId })} className={fieldClass}>
+            <option value="">Sin segundo nivel</option>
+            {eligibleSubcategories.filter((item) => String(item.subcategoriaPadreId) === rootId).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+        </label>}
         <label className={labelClass} htmlFor="product-description">Descripción
           <textarea id="product-description" maxLength={1000} value={values.descripcion} onChange={(event) => setValues({ ...values, descripcion: event.target.value })} className={`${fieldClass} min-h-24 resize-y`} />
           {fieldError(error, 'descripcion') && <small className="text-red-700">{fieldError(error, 'descripcion')}</small>}

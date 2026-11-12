@@ -3,6 +3,7 @@ import { __resetApiClientForTests } from '../../../services/apiClient.js'
 import {
   createCategory,
   deactivateCategory,
+  deleteCategory,
   listCategories,
   reactivateCategory,
   updateCategory,
@@ -84,6 +85,7 @@ describe('categoryService', () => {
   })
 
   const mutations = [
+    ['borrado', () => deleteCategory(7)],
     ['alta', () => createCategory(form)],
     ['edición', () => updateCategory(7, form)],
     ['desactivación', () => deactivateCategory(7)],

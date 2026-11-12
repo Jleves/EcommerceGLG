@@ -77,6 +77,7 @@ export function SubcategoryManager({ categories }) {
   async function requestDelete(item) {
     if (inFlight.current || needsReview) return
     setError(null)
+    setNotice('')
     setDetailLoading(true)
     try {
       setConfirming(await getSubcategory(item.id))
@@ -88,14 +89,14 @@ export function SubcategoryManager({ categories }) {
   }
 
   async function confirmDelete() {
-    if (!confirming || inFlight.current || needsReview) return
+    if (!confirming || confirming.hijosAsociados > 0 || confirming.productosAsociados > 0 || inFlight.current || needsReview) return
     inFlight.current = true
     setPending(true)
     setError(null)
     try {
       await deleteSubcategory(confirming.id)
       setConfirming(null)
-      setNotice('Subcategoría eliminada. Los productos conservaron su categoría padre y quedaron sin subcategoría.')
+      setNotice('Subcategoría eliminada.')
       reload()
     } catch (failure) {
       setError(failure)
@@ -128,28 +129,28 @@ export function SubcategoryManager({ categories }) {
         <p role="status">No pudimos confirmar el resultado. Consultá el estado actual antes de enviar otro cambio.</p>
         <button type="button" onClick={review} className="rounded-xl bg-amber-800 px-4 py-2 font-semibold text-white">Consultar estado actual</button>
       </div>}
-      <SubcategoryForm key={form.id ?? 'create'} initialValues={form.id ? form : null} categories={categories} onSubmit={submit} onCancel={closeForm} pending={pending} blocked={needsReview} error={error} />
+      <SubcategoryForm key={form.id ?? 'create'} initialValues={form.id ? form : null} categories={categories} subcategories={state.data} onSubmit={submit} onCancel={closeForm} pending={pending} blocked={needsReview} error={error} />
     </dialog>}
     {confirming && <div role="dialog" aria-labelledby="subcategory-delete-title" className="mb-4 rounded border border-amber-300 bg-amber-50 p-4">
       <h3 id="subcategory-delete-title" className="font-bold">Eliminar {confirming.nombre}</h3>
-      <p>{confirming.productosAsociados} productos actualmente asociados perderán esta subcategoría. Los productos conservarán su categoría padre. El borrado de la subcategoría es irreversible.</p>
+      <p>Hijos: {confirming.hijosAsociados}. Productos directos: {confirming.productosAsociados}. Solo se puede eliminar una subcategoría sin dependencias.</p>
       <p className="text-sm">La cantidad puede cambiar antes de confirmar.</p>
       <div className="mt-3 flex gap-3">
         <button type="button" disabled={pending} onClick={() => setConfirming(null)} className="rounded border px-4 py-2">Cancelar</button>
-        <button type="button" disabled={pending || needsReview} onClick={confirmDelete} className="rounded bg-red-700 px-4 py-2 text-white">Confirmar eliminación</button>
+        <button type="button" disabled={pending || needsReview || confirming.hijosAsociados > 0 || confirming.productosAsociados > 0} onClick={confirmDelete} className="rounded bg-red-700 px-4 py-2 text-white">Confirmar eliminación</button>
       </div>
     </div>}
     {state.loading ? <p role="status">Cargando subcategorías…</p> : state.error ? <div><RequestError error={state.error} /><button type="button" onClick={reload}>Reintentar</button></div> :
       <div className="grid gap-6">{categories.map((category) => <section key={category.id} aria-label={`Subcategorías de ${category.nombre}`}>
         <h3 className="mb-3 text-lg font-bold text-slate-900">{category.nombre}</h3>
         {state.data.filter((item) => item.categoriaId === category.id).length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Sin subcategorías.</p> :
-          <ul className="grid gap-3">{state.data.filter((item) => item.categoriaId === category.id).map((item) => <li key={item.id} className="rounded-xl border border-slate-200 bg-white p-4">
+          <ul className="grid gap-3">{state.data.filter((item) => item.categoriaId === category.id).slice().sort((a, b) => (a.subcategoriaPadreId ?? a.id) - (b.subcategoriaPadreId ?? b.id) || (a.subcategoriaPadreId == null ? -1 : 1)).map((item) => <li key={item.id} className={`rounded-xl border border-slate-200 bg-white p-4 ${item.subcategoriaPadreId != null ? "ml-6 border-l-4 border-l-emerald-500" : ""}`}>
             <div className="flex items-start gap-4">
               <CategoryIcon name={category.icono} />
               <div>
                 <h4 className="font-bold text-slate-900">{item.nombre}</h4>
                 {item.descripcion && <p className="mt-1 text-slate-700">{item.descripcion}</p>}
-                <p className="mt-2 text-sm text-slate-600">ID {item.id} · Categoría {category.nombre}</p>
+                <p className="mt-2 text-sm text-slate-600">ID {item.id} · Categoría {category.nombre}{item.subcategoriaPadreId != null && ` · Subcategoría padre: ${state.data.find ( (parent) => parent.id === item.subcategoriaPadreId)?.nombre ?? item.subcategoriaPadreId}`}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" disabled={busy || Boolean(form) || Boolean(confirming)} onClick={() => { setError(null); setForm(item) }} aria-label={`Editar subcategoría ${item.nombre}`} className="rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-700 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50">Editar</button>
                   <button type="button" disabled={busy || Boolean(form) || Boolean(confirming)} onClick={() => requestDelete(item)} aria-label={`Eliminar subcategoría ${item.nombre}`} className="rounded-xl bg-[#B42318] px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-[#912018] enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B42318] disabled:opacity-50">Eliminar</button>

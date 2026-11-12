@@ -52,6 +52,9 @@ export function CatalogPage() {
 
   const categories = catalog.data?.categories ?? []
   const subcategories = (catalog.data?.subcategories ?? []).filter((subcategory) => String(subcategory.categoriaId) === categoriaId)
+  const selectedNode = subcategories.find((item) => String(item.id) === subcategoriaId)
+  const rootId = selectedNode ? String(selectedNode.subcategoriaPadreId ?? selectedNode.id) : ''
+  const childId = selectedNode?.subcategoriaPadreId != null ? subcategoriaId : ''
   const facets = catalog.data?.facets ?? []
   const brands = facets.find((facet) => facet.name.toLowerCase() === 'marca')?.values ?? []
   return <section className="catalog-page public-container">
@@ -59,7 +62,8 @@ export function CatalogPage() {
     <div className="catalog-layout"><aside className="catalog-filters" aria-label="Filtros de productos"><h2>Filtrar productos</h2>
       {catalog.error && <p role="alert">No se pudieron cargar los filtros.</p>}
       <label>Categoría<select value={categoriaId} onChange={(event) => updateParams({ categoriaId: event.target.value, subcategoriaId: '' })}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nombre}</option>)}</select></label>
-      {subcategories.length > 0 && <label>Subcategoría<select value={subcategoriaId} onChange={(event) => updateParams({ subcategoriaId: event.target.value })}><option value="">Todas</option>{subcategories.map((subcategory) => <option key={subcategory.id} value={subcategory.id}>{subcategory.nombre}</option>)}</select></label>}
+      {subcategories.length > 0 && <label>Subcategoría<select value={rootId} onChange={(event) => updateParams({ subcategoriaId: event.target.value })}><option value="">Todas</option>{subcategories.filter((item) => item.subcategoriaPadreId == null).map ( (subcategory) => <option key={subcategory.id} value={subcategory.id}>{subcategory.nombre}</option>)}</select></label>}
+      {rootId && <label>Subcategoría de segundo nivel<select value={childId} onChange={(event) => updateParams({ subcategoriaId: event.target.value || rootId })}><option value="">Todas</option>{subcategories.filter((item) => String(item.subcategoriaPadreId) === rootId).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>}
       <label>Marca<select value={marca} onChange={(event) => updateParams({ marca: event.target.value })}><option value="">Todas</option>{brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
       {facets.filter((facet) => facet.name.toLowerCase() !== 'marca').map((facet) => <label key={facet.id}>{facet.name}<select value={atributos.find((item) => item.startsWith(`${facet.id}:`))?.slice(String(facet.id).length + 1) ?? ''} onChange={(event) => changeAttribute(facet.id, event.target.value)}><option value="">Todos</option>{facet.values.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>)}
       <button className="clear-filters" type="button" onClick={() => setSearchParams({})}>Limpiar filtros</button>

@@ -12,9 +12,9 @@ export function getSubcategory(id, { signal } = {}) {
   return apiRequest(ENDPOINTS.CATALOG.SUBCATEGORY(id), { signal })
 }
 
-export function createSubcategory({ categoriaId, nombre, descripcion }) {
+export function createSubcategory({ categoriaId, nombre, descripcion, subcategoriaPadreId }) {
   return apiRequest(ENDPOINTS.CATALOG.SUBCATEGORIES, {
-    ...mutationOptions, method: 'POST', body: { categoriaId, nombre, descripcion },
+    ...mutationOptions, method: 'POST', body: { categoriaId, nombre, descripcion, subcategoriaPadreId },
   })
 }
 

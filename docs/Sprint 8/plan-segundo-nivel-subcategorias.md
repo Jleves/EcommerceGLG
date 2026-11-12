@@ -1,6 +1,6 @@
 # Plan de implementación por tandas — segundo nivel de subcategorías
 
-**Estado:** tandas 0, 1 y 2 completas; tanda 3 no iniciada.
+**Estado:** tandas 0, 1 y 2 completas; tanda 3 parcial, pendiente de validación integral.
 **Fuente de alcance:** decisiones acordadas para Sprint 8 y `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.  
 **Fuente del comportamiento actual:** código y pruebas del repositorio revisados durante la planificación.
 
@@ -464,7 +464,23 @@ Sin cambios de base. Ampliar `subcategoryService` para enviar `subcategoriaPadre
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** PARCIAL.
+
+**Cambios realizados:** gestión de dos niveles, borrado de categorías, selección de producto y navegación pública jerárquica en React.
+
+**Diferencias respecto del plan:** no se completó el recorrido integral ni la revisión visual; Maven no arrancó por JAVA_HOME.
+
+**Tests ejecutados y exitosos:** 383 pruebas React en 41 archivos; lint y build exitosos. Incluyen selección de hijo, limpieza, conflictos y enlaces públicos.
+
+**Tests fallidos e incidentes:** expectativas anteriores al contrato y un defecto inicial en menú móvil corregidos; Maven no arrancó. Ver [resultado de tanda 3](resultado-tanda-3-segundo-nivel-subcategorias.md).
+
+**Tests faltantes y riesgos residuales:** recorrido integral con MySQL, pruebas backend y revisión visual y de teclado en navegador real; entorno desplegado no validado.
+
+**Decisiones pendientes descubiertas:** ninguna.
+
+**Archivos modificados:** componentes, servicios y pruebas React correspondientes; este plan y el resultado de tanda.
+
+**Cierre:** [x] gestión y selección implementadas; [x] regresión React; [ ] recorrido integral, backend y revisión visual; [x] faltantes e incidentes documentados.
 
 ## Registro global de decisiones pendientes
 
@@ -481,10 +497,10 @@ Durante la ejecución, registrar cada incidente relevante una sola vez como `INC
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY — TANDAS 0, 1 Y 2 COMPLETAS
-Persistencia y gestión de dos niveles; borrado restringido; asignación de productos y filtros con descendientes en backend. La interfaz todavía es de un nivel.
+IMPLEMENTADO HOY — TANDAS 0, 1 Y 2 COMPLETAS; TANDA 3 PARCIAL
+Persistencia y gestión de dos niveles; borrado restringido; asignación de productos y filtros con descendientes en backend. La interfaz representa dos niveles; queda pendiente la validación integral.
 
-MODELO ACUMULADO — BACKEND IMPLEMENTADO; INTERFAZ PENDIENTE
+MODELO ACUMULADO — BACKEND E INTERFAZ IMPLEMENTADOS; VALIDACIÓN INTEGRAL PENDIENTE
 Categoría → subcategoría de primer nivel → subcategoría de segundo nivel
     ↓                    ↓                         ↓
 Producto directo     Producto directo          Producto directo

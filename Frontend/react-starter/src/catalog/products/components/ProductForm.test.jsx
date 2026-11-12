@@ -7,6 +7,18 @@ const categories = [{ id: 1, nombre: 'Activa', activo: true }, { id: 2, nombre: 
 const characteristics = [{ id: 3, nombre: 'Color' }, { id: 4, nombre: 'Peso' }]
 
 describe('ProductForm', () => {
+  it('reconstruye el hijo y limpia al cambiar de padre', async () => {
+    const user = userEvent.setup(), submit = vi.fn()
+    const nodes = [{ id: 8, categoriaId: 1, nombre: 'Raíz' }, { id: 9, categoriaId: 1, nombre: 'Hijo', subcategoriaPadreId: 8 }, { id: 10, categoriaId: 1, nombre: 'Otra' }]
+    render(<ProductForm categories={categories} subcategories={nodes} characteristics={[]} initialValues={{ nombre: 'Arena', categoriaId: 1, subcategoriaId: 9 }} onSubmit={submit} onCancel={() => {}} />)
+    expect(screen.getByRole('combobox', { name: 'Subcategoría' })).toHaveValue('8')
+    expect(screen.getByRole('combobox', { name: 'Subcategoría de segundo nivel' })).toHaveValue('9')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(submit).toHaveBeenLastCalledWith(expect.objectContaining({ subcategoriaId: 9 }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Subcategoría' }), '10')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(submit).toHaveBeenLastCalledWith(expect.objectContaining({ subcategoriaId: 10 }))
+  })
   it('edita solo datos compartidos y reserva Color para las variantes', async () => {
     const user = userEvent.setup()
     const submit = vi.fn()

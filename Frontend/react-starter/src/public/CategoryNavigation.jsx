@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { IconChevronDown, IconMenu2, IconX } from '@tabler/icons-react'
 
@@ -6,7 +6,11 @@ const categoryUrl = (id) => `/catalog?categoriaId=${id}`
 const subcategoryUrl = (categoryId, id) => `/catalog?categoriaId=${categoryId}&subcategoriaId=${id}`
 
 function childrenOf(catalog, categoryId) {
-  return (catalog.data?.subcategories ?? []).filter((subcategory) => subcategory.categoriaId === categoryId)
+  return (catalog.data?.subcategories ?? []).filter((subcategory) => subcategory.categoriaId === categoryId && subcategory.subcategoriaPadreId == null)
+}
+
+function descendantsOf(catalog, id) {
+  return (catalog.data?.subcategories ?? []).filter((item) => item.subcategoriaPadreId === id)
 }
 
 export function DesktopCategoryNavigation({ catalog, showAbout = false }) {
@@ -35,7 +39,7 @@ export function DesktopCategoryNavigation({ catalog, showAbout = false }) {
           return <div className="site-nav-category" key={category.id}>
             <Link className="site-nav-category-link" to={categoryUrl(category.id)} onClick={() => setOpen(false)}>{category.nombre}</Link>
             {subcategories.length > 0 && <div className="site-nav-subcategories">
-                {subcategories.map((subcategory) => <Link key={subcategory.id} to={subcategoryUrl(category.id, subcategory.id)} onClick={() => setOpen(false)}>{subcategory.nombre}</Link>)}
+                {subcategories.map((subcategory) => <Fragment key={subcategory.id}><Link to={subcategoryUrl(category.id, subcategory.id)} onClick={() => setOpen(false)}>{subcategory.nombre}</Link>{descendantsOf(catalog, subcategory.id).map((child) => <Link key={child.id} style={{ paddingLeft: '1rem' }} to={subcategoryUrl(category.id, child.id)} onClick={() => setOpen(false)}>{child.nombre}</Link>)}</Fragment>)}
               </div>}
           </div>
         })}
@@ -102,7 +106,7 @@ export function MobileCategoryNavigation({ catalog, showAbout = false }) {
                 <button className="mobile-category-toggle" type="button" aria-expanded={expanded === category.id} onClick={() => setExpanded(expanded === category.id ? null : category.id)}>{category.nombre}<IconChevronDown size={18} /></button>
                 {expanded === category.id && <div className="mobile-subcategories">
                   <Link to={categoryUrl(category.id)} onClick={() => setOpen(false)}>Ver todos</Link>
-                  {subcategories.map((subcategory) => <Link key={subcategory.id} to={subcategoryUrl(category.id, subcategory.id)} onClick={() => setOpen(false)}>{subcategory.nombre}</Link>)}
+                  {subcategories.map((subcategory) => <Fragment key={subcategory.id}><Link to={subcategoryUrl(category.id, subcategory.id)} onClick={() => setOpen(false)}>{subcategory.nombre}</Link>{descendantsOf(catalog, subcategory.id).map((child) => <Link key={child.id} style={{ paddingLeft: '1rem' }} to={subcategoryUrl(category.id, child.id)} onClick={() => setOpen(false)}>{child.nombre}</Link>)}</Fragment>)}
                 </div>}
               </> : <Link className="mobile-category-link" to={categoryUrl(category.id)} onClick={() => setOpen(false)}>{category.nombre}</Link>}
             </div>

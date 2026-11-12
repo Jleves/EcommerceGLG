@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { RequestError } from '../../../auth/components/RequestError.jsx'
 import { CategoryForm } from '../components/CategoryForm.jsx'
 import { CategoryIcon } from '../components/CategoryIcon.jsx'
-import { createCategory, deactivateCategory, listCategories, reactivateCategory, updateCategory } from '../services/categoryService.js'
+import { createCategory, deactivateCategory, deleteCategory, listCategories, reactivateCategory, updateCategory } from '../services/categoryService.js'
 import { SubcategoryManager } from '../../subcategories/components/SubcategoryManager.jsx'
 
 export function CategoryManagementPage() {
@@ -16,6 +16,7 @@ export function CategoryManagementPage() {
   const [needsReview, setNeedsReview] = useState(false)
   const [notice, setNotice] = useState('')
   const [confirming, setConfirming] = useState(null)
+  const [deleting, setDeleting] = useState(null)
   const [statusError, setStatusError] = useState(null)
   const [confirmedStatus, setConfirmedStatus] = useState('')
   const inFlight = useRef(false)
@@ -138,6 +139,26 @@ export function CategoryManagementPage() {
     }
   }
 
+  async function confirmDelete() {
+    if (!deleting || inFlight.current || needsReview) return
+    inFlight.current = true
+    setPending(true)
+    setStatusError(null)
+    try {
+      await deleteCategory(deleting.id)
+      setDeleting(null)
+      setNotice('Categoría eliminada.')
+      retry()
+    } catch (error) {
+      setDeleting(null)
+      setStatusError(error)
+      if (!error?.status || error.status >= 500) setNeedsReview(true)
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+
   return (
     <section className="mx-auto max-w-5xl">
       <header className="mb-6">
@@ -146,7 +167,7 @@ export function CategoryManagementPage() {
       </header>
 
       <div className="mb-5 flex justify-end">
-        <button type="button" aria-label="Crear categoría" disabled={pending || needsReview || state.loading || Boolean(state.error) || Boolean(confirming) || Boolean(editing)} onClick={() => { setMutationError(null); setNotice(''); setCreating(true) }} className="rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50">
+        <button type="button" aria-label="Crear categoría" disabled={pending || needsReview || state.loading || Boolean(state.error) || (Boolean(confirming) || Boolean(deleting)) || Boolean(editing)} onClick={() => { setMutationError(null); setNotice(''); setCreating(true) }} className="rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-800 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50">
           <span className="sm:hidden" aria-hidden="true">+</span>
           <span className="hidden sm:inline" aria-hidden="true">Crear categoría</span>
         </button>
@@ -165,6 +186,12 @@ export function CategoryManagementPage() {
         </div>}
       </div>
 
+      {deleting && <div role="dialog" aria-labelledby="category-delete-title" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <h2 id="category-delete-title">Eliminar {deleting.nombre}</h2>
+        <p>Solo se puede eliminar una categoría sin subcategorías ni productos. Esta acción es irreversible.</p>
+        <button type="button" disabled={pending} onClick={() => setDeleting(null)}>Cancelar</button>{' '}
+        <button type="button" disabled={pending} onClick={confirmDelete}>Confirmar eliminación</button>
+      </div>}
       {confirming && <div role="dialog" aria-labelledby="category-status-title" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
         <h2 id="category-status-title" className="font-bold text-slate-900">{confirming.activo ? 'Desactivar' : 'Reactivar'} {confirming.nombre}</h2>
         <p className="mt-2 text-slate-700">¿Confirmás {confirming.activo ? 'la desactivación' : 'la reactivación'} de {confirming.nombre}?</p>
@@ -201,8 +228,9 @@ export function CategoryManagementPage() {
                   {category.descripcion && <p className="mt-1 text-slate-700">{category.descripcion}</p>}
                   <p className="mt-2 text-sm text-slate-600">ID {category.id} · {category.activo ? 'Activa' : 'Inactiva'}</p>
                   <div className="mt-3 flex gap-2">
-                    <button className="rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-700 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50" type="button" aria-label={`Editar ${category.nombre}`} disabled={pending || needsReview || state.loading || Boolean(confirming) || creating || Boolean(editing)} onClick={() => selectEdit(category)}>Editar</button>
-                    <button className={`rounded-xl px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${category.activo ? 'bg-amber-800 enabled:hover:bg-amber-900 focus-visible:outline-amber-800' : 'bg-emerald-700 enabled:hover:bg-emerald-800 focus-visible:outline-emerald-700'}`} type="button" aria-label={`${category.activo ? 'Desactivar' : 'Reactivar'} ${category.nombre}`} disabled={pending || needsReview || state.loading || Boolean(confirming) || creating || Boolean(editing)} onClick={() => requestStatusChange(category)}>{category.activo ? 'Desactivar' : 'Reactivar'}</button>
+                    <button className="rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:bg-emerald-700 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-50" type="button" aria-label={`Editar ${category.nombre}`} disabled={pending || needsReview || state.loading || (Boolean(confirming) || Boolean(deleting)) || creating || Boolean(editing)} onClick={() => selectEdit(category)}>Editar</button>
+                    <button className={`rounded-xl px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${category.activo ? 'bg-amber-800 enabled:hover:bg-amber-900 focus-visible:outline-amber-800' : 'bg-emerald-700 enabled:hover:bg-emerald-800 focus-visible:outline-emerald-700'}`} type="button" aria-label={`${category.activo ? 'Desactivar' : 'Reactivar'} ${category.nombre}`} disabled={pending || needsReview || state.loading || (Boolean(confirming) || Boolean(deleting)) || creating || Boolean(editing)} onClick={() => requestStatusChange(category)}>{category.activo ? 'Desactivar' : 'Reactivar'}</button>
+                    <button type="button" aria-label={`Eliminar categoría ${category.nombre}`} disabled={pending || needsReview || Boolean(confirming) || Boolean(deleting) || creating || Boolean(editing)} onClick={() => { setStatusError(null); setNotice(''); setDeleting(category) }} className="rounded-xl bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Eliminar</button>
                   </div>
                 </div>
               </div>

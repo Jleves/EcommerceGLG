@@ -13,6 +13,16 @@ const product = { id: 7, nombre: 'Cemento Portland', categoriaId: 3, precioRefer
 function renderRoute(path) { return render(<MemoryRouter initialEntries={[path]}><AppRouter /></MemoryRouter>) }
 
 describe('catálogo público', () => {
+  it('muestra el hijo en navegación y filtro', async () => {
+    const user = userEvent.setup()
+    getPublicCatalog.mockResolvedValueOnce({ ...catalog, subcategories: [...catalog.subcategories, { id: 12, categoriaId: 3, nombre: 'Portland', subcategoriaPadreId: 11 }] })
+    renderRoute('/catalog?categoriaId=3&subcategoriaId=12')
+    expect(await screen.findByRole('combobox', { name: 'Subcategoría de segundo nivel' })).toHaveValue('12')
+    expect(screen.getByRole('combobox', { name: 'Subcategoría' })).toHaveValue('11')
+    const nav = screen.getByRole('navigation', { name: 'Navegación pública' })
+    await user.click(within(nav).getByRole('button', { name: 'Desplegar categorías' }))
+    expect(within(nav).getByRole('link', { name: 'Portland' })).toHaveAttribute('href', '/catalog?categoriaId=3&subcategoriaId=12')
+  })
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
   beforeEach(() => {
     vi.clearAllMocks()
@@ -22,6 +32,20 @@ describe('catálogo público', () => {
     getPublicOffers.mockResolvedValue({ content: [], page: 0, size: 6, totalElements: 0, totalPages: 0 })
     getRelatedProducts.mockResolvedValue({ content: [] })
     getPublicProduct.mockResolvedValue({ ...product, descripcion: 'Para obra', images: [], caracteristicas: [], variantes: [{ id: 12, precioReferencia: 1200, disponible: true, caracteristicaNombre: 'Color', valor: 'Gris' }, { id: 13, precioReferencia: 1500, disponible: false, caracteristicaNombre: 'Color', valor: 'Blanco' }] })
+  })
+
+  it('permite navegar al hijo en el menú móvil y devuelve el foco al cerrar', async () => {
+    const user = userEvent.setup()
+    getPublicCatalog.mockResolvedValueOnce({ ...catalog, subcategories: [...catalog.subcategories, { id: 12, categoriaId: 3, nombre: 'Portland', subcategoriaPadreId: 11 }] })
+    renderRoute('/')
+    await screen.findAllByRole('link', { name: /Materiales/ })
+    const trigger = screen.getByRole('button', { name: 'Abrir menú' })
+    await user.click(trigger)
+    const dialog = screen.getByRole('dialog', { name: 'Menú' })
+    await user.click(within(dialog).getByRole('button', { name: 'Materiales' }))
+    expect(within(dialog).getByRole('link', { name: 'Portland' })).toHaveAttribute('href', '/catalog?categoriaId=3&subcategoriaId=12')
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
   })
 
   it('muestra el home público y solo enlaces listos', async () => {

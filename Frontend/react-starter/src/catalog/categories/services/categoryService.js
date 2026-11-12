@@ -40,3 +40,7 @@ export function reactivateCategory(id) {
     method: 'POST',
   })
 }
+
+export function deleteCategory(id) {
+  return apiRequest(ENDPOINTS.CATALOG.CATEGORY(id), { ...mutationOptions, method: 'DELETE' })
+}

@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { RequestError } from '../../../auth/components/RequestError.jsx'
 import { fieldError } from '../../../auth/components/fieldErrors.js'
 
-export function SubcategoryForm({ initialValues, categories, parentId, onSubmit, onCancel, pending, blocked, error }) {
+export function SubcategoryForm({ initialValues, categories, subcategories = [], parentId, onSubmit, onCancel, pending, blocked, error }) {
   const editing = Boolean(initialValues)
   const [values, setValues] = useState({
     categoriaId: String(initialValues?.categoriaId ?? parentId ?? ''),
+    subcategoriaPadreId: String(initialValues?.subcategoriaPadreId ?? ''),
     nombre: initialValues?.nombre ?? '',
     descripcion: initialValues?.descripcion ?? '',
   })
@@ -22,7 +23,7 @@ export function SubcategoryForm({ initialValues, categories, parentId, onSubmit,
     setValidation('')
     onSubmit(editing
       ? { nombre: values.nombre.trim(), descripcion: values.descripcion }
-      : { categoriaId: Number(values.categoriaId), nombre: values.nombre.trim(), descripcion: values.descripcion })
+      : { categoriaId: Number(values.categoriaId), nombre: values.nombre.trim(), descripcion: values.descripcion, subcategoriaPadreId: values.subcategoriaPadreId ? Number(values.subcategoriaPadreId) : null })
   }
 
   return <form onSubmit={submit} className="grid gap-4 rounded-xl bg-white p-5">
@@ -32,11 +33,18 @@ export function SubcategoryForm({ initialValues, categories, parentId, onSubmit,
     <fieldset disabled={pending || blocked} className="grid gap-4">
       {editing ? <p>Categoría padre: {categories.find((item) => String(item.id) === values.categoriaId)?.nombre ?? values.categoriaId}</p> :
         <label htmlFor="subcategory-category">Categoría padre
-          <select id="subcategory-category" required value={values.categoriaId} onChange={(event) => setValues({ ...values, categoriaId: event.target.value })} className="w-full rounded-lg border p-2">
+          <select id="subcategory-category" required value={values.categoriaId} onChange={(event) => setValues({ ...values, categoriaId: event.target.value, subcategoriaPadreId: '' })} className="w-full rounded-lg border p-2">
             <option value="">Seleccioná una categoría</option>
             {categories.filter((item) => item.activo).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
           </select>
           {fieldError(error, 'categoriaId') && <small role="alert">{fieldError(error, 'categoriaId')}</small>}
+        </label>}
+      {editing ? <p>Subcategoría padre: {subcategories.find((item) => String(item.id) === values.subcategoriaPadreId)?.nombre ?? 'Ninguna'}</p> :
+        <label htmlFor="subcategory-parent">Subcategoría padre (opcional)
+          <select id="subcategory-parent" value={values.subcategoriaPadreId} onChange={(event) => setValues({ ...values, subcategoriaPadreId: event.target.value })} className="w-full rounded-lg border p-2">
+            <option value="">Ninguna — primer nivel</option>
+            {subcategories.filter((item) => String(item.categoriaId) === values.categoriaId && item.subcategoriaPadreId == null).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
         </label>}
       <label htmlFor="subcategory-name">Nombre
         <input id="subcategory-name" required maxLength={160} value={values.nombre} onChange={(event) => setValues({ ...values, nombre: event.target.value })} className="w-full rounded-lg border p-2" />
