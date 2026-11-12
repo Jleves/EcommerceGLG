@@ -1,6 +1,6 @@
 # Plan de implementación por tandas — segundo nivel de subcategorías
 
-**Estado:** tandas 0 y 1 completas; tandas 2 y 3 no iniciadas.
+**Estado:** tandas 0, 1 y 2 completas; tanda 3 no iniciada.
 **Fuente de alcance:** decisiones acordadas para Sprint 8 y `PROMPT_GENERAR_PLAN_IMPLEMENTACION.md`.  
 **Fuente del comportamiento actual:** código y pruebas del repositorio revisados durante la planificación.
 
@@ -102,7 +102,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 0 | Persistir una jerarquía de dos niveles sin alterar datos existentes | — | Completa |
 | 1 | Gestionar nodos y restringir borrados de subcategoría y categoría | 0 | Completa |
-| 2 | Asignar productos y consultar filtros con descendientes | 1 | Planificada |
+| 2 | Asignar productos y consultar filtros con descendientes | 1 | Completa |
 | 3 | Gestionar y navegar ambos niveles en React | 2 | Planificada |
 
 ```text
@@ -371,7 +371,23 @@ Sin columnas nuevas en `products` ni cambio de las URL de filtro. Mantener pagin
 
 ### Resultado de ejecución
 
-**PENDIENTE DE EJECUCIÓN**
+**Estado:** COMPLETA.
+
+**Cambios realizados:** filtros administrativo y público incluyen hijos directos al seleccionar un padre; validación pública de pertenencia entre categoría y subcategoría. Se conservan URLs, DTO y asignación única opcional.
+
+**Diferencias respecto del plan:** se usan subconsultas en lugar de obtener previamente IDs. Por decisión del responsable se conserva la edición existente que admite una categoría inactiva sin subcategoría; el alta y la asignación a una subcategoría de categoría inactiva siguen rechazándose.
+
+**Tests ejecutados y exitosos:** 24 pruebas de HTTP, listados y servicio en H2; 2 pruebas MySQL de listado y 4 de integración H2; reejecución de 7 pruebas HTTP públicas con combinación de jerarquía, marca y atributos. Sin fallos ni omisiones en esos grupos; detalle en el [resultado de la tanda 2](resultado-tanda-2-segundo-nivel-subcategorias.md).
+
+**Tests fallidos:** ninguno. **Incidentes:** acceso inicial a Docker y discrepancia de categoría inactiva, registrados en el resultado.
+
+**Tests faltantes:** suite completa, pruebas de carga y entorno desplegado. **Riesgos residuales:** rendimiento con datos reales, interacción fuera de la regresión focalizada y riesgos de concurrencia heredados de la tanda 1.
+
+**Decisiones pendientes descubiertas:** ninguna; la discrepancia sobre edición en categoría inactiva fue resuelta por el responsable.
+
+**Archivos modificados:** repositorio y servicios de filtros de productos; pruebas HTTP y MySQL; este plan y el documento de resultado.
+
+**Cierre:** [x] asignación en tres puntos; [x] filtros y paginación; [x] contratos y regresiones pertinentes; [x] riesgos e incidentes registrados.
 
 ---
 
@@ -465,11 +481,10 @@ Durante la ejecución, registrar cada incidente relevante una sola vez como `INC
 ## Flujo total acumulado
 
 ```text
-IMPLEMENTADO HOY — TANDAS 0 Y 1 COMPLETAS
-Persistencia y gestión de dos niveles; borrado restringido de categorías y subcategorías.
-Producto consultable por igualdad exacta de subcategoriaId; interfaz todavía de un nivel.
+IMPLEMENTADO HOY — TANDAS 0, 1 Y 2 COMPLETAS
+Persistencia y gestión de dos niveles; borrado restringido; asignación de productos y filtros con descendientes en backend. La interfaz todavía es de un nivel.
 
-OBJETIVO TODAVÍA NO IMPLEMENTADO
+MODELO ACUMULADO — BACKEND IMPLEMENTADO; INTERFAZ PENDIENTE
 Categoría → subcategoría de primer nivel → subcategoría de segundo nivel
     ↓                    ↓                         ↓
 Producto directo     Producto directo          Producto directo

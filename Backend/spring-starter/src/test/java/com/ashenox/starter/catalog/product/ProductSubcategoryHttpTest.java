@@ -126,6 +126,55 @@ class ProductSubcategoryHttpTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void assignsBothLevelsAndListsParentIncludingChildrenAcrossPages() throws Exception {
+        Category category = category(true);
+        Category otherCategory = category(true);
+        Subcategory parent = subcategory(category);
+        Subcategory child = subcategories.saveAndFlush(Subcategory.builder().category(category)
+                .parentSubcategory(parent).nombre("Hijo " + UUID.randomUUID())
+                .nombreNormalizado("hijo-" + UUID.randomUUID()).build());
+        Subcategory sibling = subcategory(category);
+        long categoryOnly = create(category.getId(), null);
+        long direct = create(category.getId(), parent.getId());
+        long descendant = create(category.getId(), child.getId());
+        create(category.getId(), sibling.getId());
+
+        update(categoryOnly, category.getId(), ",\"subcategoriaId\":" + child.getId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.subcategoriaId").value(child.getId()));
+        update(categoryOnly, category.getId(), ",\"subcategoriaId\":null")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.subcategoriaId").value(org.hamcrest.Matchers.nullValue()));
+
+        for (String path : new String[]{PATH, "/api/public/products"}) {
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("categoriaId", category.getId().toString()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(4));
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("subcategoriaId", parent.getId().toString()).param("size", "1"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+                    .andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.content[0].id").value(direct));
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("categoriaId", category.getId().toString())
+                            .param("subcategoriaId", parent.getId().toString()).param("size", "1").param("page", "1"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+                    .andExpect(jsonPath("$.content[0].id").value(descendant));
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("subcategoriaId", child.getId().toString()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.content[0].id").value(descendant));
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("categoriaId", otherCategory.getId().toString())
+                            .param("subcategoriaId", child.getId().toString()))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("subcategoriaId", "99999999"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+            mvc.perform(get(path).with(user("editor").roles("USER"))
+                            .param("categoriaId", category.getId().toString()).param("subcategoriaId", "99999999"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
     private long create(Long categoryId, Long subcategoryId) throws Exception {
         return ((Number) com.jayway.jsonpath.JsonPath.read(mvc.perform(post(PATH)
                 .with(user("editor").roles("USER")).with(csrf())

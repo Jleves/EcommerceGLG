@@ -17,6 +17,7 @@ import com.ashenox.starter.catalog.product.repository.ProductRepository;
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.repository.ProductVariantRepository;
 import com.ashenox.starter.catalog.product.variant.service.ProductVariantService;
+import com.ashenox.starter.catalog.subcategory.repository.SubcategoryRepository;
 import com.ashenox.starter.shared.error.BusinessException;
 import com.ashenox.starter.shared.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class PublicProductService {
     private final ProductImageRepository images;
     private final ProductCharacteristicRepository characteristics;
     private final ProductImageUrlService urls;
+    private final SubcategoryRepository subcategories;
 
     @Transactional(readOnly = true)
     public PublicProductPageResponse list(int page, int size) {
@@ -57,6 +59,13 @@ public class PublicProductService {
         String brandFilter = normalized(brand, 160, "La marca no es válida.");
         if (categoryId != null && categoryId < 1) throw new BusinessException("La categoría no es válida.");
         if (subcategoryId != null && subcategoryId < 1) throw new BusinessException("La subcategoría no es válida.");
+        if (categoryId != null && subcategoryId != null) {
+            var subcategory = subcategories.findById(subcategoryId)
+                    .orElseThrow(() -> new BusinessException("La subcategoría no pertenece a la categoría indicada."));
+            if (!subcategory.getCategory().getId().equals(categoryId)) {
+                throw new BusinessException("La subcategoría no pertenece a la categoría indicada.");
+            }
+        }
         if (rawAttributes.size() > 10) throw new BusinessException("Hay demasiados filtros de atributos.");
         List<PublicProductFilters.Attribute> attributes = rawAttributes.stream().map(this::parseAttribute).toList();
         Page<Product> result = products.findAll(PublicProductFilters.of(search, categoryId, subcategoryId, brandFilter, attributes),

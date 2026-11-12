@@ -71,6 +71,9 @@ class PublicProductHttpTest {
         variantCharacteristics.deleteAll();
         variants.deleteAll();
         products.deleteAll();
+        subcategories.deleteAll(subcategories.findAll().stream()
+                .filter(subcategory -> subcategory.getParentSubcategory() != null).toList());
+        subcategories.flush();
         subcategories.deleteAll();
         characteristics.deleteAll();
         categories.deleteAll();
@@ -268,6 +271,12 @@ class PublicProductHttpTest {
         Category tools = categories.saveAndFlush(Category.builder().nombre("Herramientas")
                 .nombreNormalizado("herramientas-" + UUID.randomUUID()).icono("herramientas").activo(true).build());
         Product matching = product(materials, "Cemento Portland", true, true);
+        Subcategory parent = subcategories.saveAndFlush(Subcategory.builder().category(materials)
+                .nombre("Cementos").nombreNormalizado("cementos").build());
+        Subcategory child = subcategories.saveAndFlush(Subcategory.builder().category(materials)
+                .parentSubcategory(parent).nombre("Portland").nombreNormalizado("portland").build());
+        matching.setSubcategory(child);
+        products.saveAndFlush(matching);
         Product otherBrand = product(materials, "Cemento blanco", true, true);
         Product otherCategory = product(tools, "Taladro", true, true);
         Product hidden = product(materials, "Cemento oculto", false, true);
@@ -288,6 +297,11 @@ class PublicProductHttpTest {
 
         mvc.perform(get(PATH).param("q", "cemento").param("categoriaId", materials.getId().toString())
                         .param("marca", "ACME").param("atributo", finish.getId() + ":Gris"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(matching.getId()));
+        mvc.perform(get(PATH).param("categoriaId", materials.getId().toString())
+                        .param("subcategoriaId", parent.getId().toString())
+                        .param("marca", "ACME").param("atributo", color.getId() + ":Azul"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].id").value(matching.getId()));
         mvc.perform(get(PATH).param("q", "acme"))

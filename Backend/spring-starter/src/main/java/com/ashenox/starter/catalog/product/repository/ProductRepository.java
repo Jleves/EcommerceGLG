@@ -16,8 +16,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     long countByCategoryId(Long categoryId);
 
-    @Query(value = "select product from Product product where (:pattern is null or lower(product.nombre) like lower(:pattern) escape '!') and (:categoryId is null or product.category.id = :categoryId) and (:subcategoryId is null or product.subcategory.id = :subcategoryId) order by product.nombre asc, product.id asc",
-            countQuery = "select count(product) from Product product where (:pattern is null or lower(product.nombre) like lower(:pattern) escape '!') and (:categoryId is null or product.category.id = :categoryId) and (:subcategoryId is null or product.subcategory.id = :subcategoryId)")
+    @Query(value = "select product from Product product where (:pattern is null or lower(product.nombre) like lower(:pattern) escape '!') and (:categoryId is null or product.category.id = :categoryId) and (:subcategoryId is null or product.subcategory.id = :subcategoryId or product.subcategory.id in (select child.id from Subcategory child where child.parentSubcategory.id = :subcategoryId)) order by product.nombre asc, product.id asc",
+            countQuery = "select count(product) from Product product where (:pattern is null or lower(product.nombre) like lower(:pattern) escape '!') and (:categoryId is null or product.category.id = :categoryId) and (:subcategoryId is null or product.subcategory.id = :subcategoryId or product.subcategory.id in (select child.id from Subcategory child where child.parentSubcategory.id = :subcategoryId))")
     Page<Product> findPageByFilters(String pattern, Long categoryId, Long subcategoryId, Pageable pageable);
 
     @Query(value = "select product from Product product where :pattern is null or lower(product.nombre) like lower(:pattern) escape '!' order by product.nombre asc, product.id asc",

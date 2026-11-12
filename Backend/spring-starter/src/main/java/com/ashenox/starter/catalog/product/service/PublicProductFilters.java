@@ -4,6 +4,7 @@ import com.ashenox.starter.catalog.characteristic.model.ProductCharacteristic;
 import com.ashenox.starter.catalog.product.model.Product;
 import com.ashenox.starter.catalog.product.variant.model.ProductVariant;
 import com.ashenox.starter.catalog.product.variant.model.VariantCharacteristic;
+import com.ashenox.starter.catalog.subcategory.model.Subcategory;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -28,7 +29,13 @@ final class PublicProductFilters {
             conditions.add(cb.exists(activeVariant));
 
             if (categoryId != null) conditions.add(cb.equal(root.get("category").get("id"), categoryId));
-            if (subcategoryId != null) conditions.add(cb.equal(root.get("subcategory").get("id"), subcategoryId));
+            if (subcategoryId != null) {
+                Subquery<Long> children = criteria.subquery(Long.class);
+                Root<Subcategory> child = children.from(Subcategory.class);
+                children.select(child.get("id")).where(cb.equal(child.get("parentSubcategory").get("id"), subcategoryId));
+                conditions.add(cb.or(cb.equal(root.get("subcategory").get("id"), subcategoryId),
+                        root.get("subcategory").get("id").in(children)));
+            }
             if (brand != null) conditions.add(characteristicMatches(root, criteria, cb, null, brand, true));
             for (Attribute attribute : attributes) {
                 conditions.add(cb.or(characteristicMatches(root, criteria, cb, attribute.id(), attribute.value(), false),
